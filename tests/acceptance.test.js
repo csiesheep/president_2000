@@ -7,7 +7,7 @@
 //
 // Group 0 compares the product's data with the rulebook's numbers. The numbers
 // in SPEC were copied BY HAND from the owner's vault, `Projects/president_2000/
-// president_2000 - rulebook.md` (v0.3, 2026-10-14), sections 二–四, 六, 十三,
+// president_2000 - rulebook.md` (v0.3, 2026-10-14, vault e487d8e), sections 二–四, 六, 十三,
 // 十四, and the region adjacency from the design simulator `sim/sim.js`
 // (REG_ADJ; the rulebook has no table). They are not read from the product:
 // changing a number in public/shared/ to make a later check pass turns this
@@ -60,8 +60,13 @@ const SPEC = {
   // Region adjacency for movement: the rulebook (§7.1) has no table; copied from
   // the design simulator vault sim/sim.js REG_ADJ (the owner's file).
   regionEdges: [[0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [4, 5], [3, 6], [4, 6]],
-  localsByCounty: { "台北縣": 6, "台北市": 6, "桃園縣": 4, "台中縣": 3, "高雄市": 3, "高雄縣": 3, "彰化縣": 2, "台南縣": 2, "台南市": 2,
-    "台中市": 1, "屏東縣": 1, "雲林縣": 1, "苗栗縣": 1, "南投縣": 1, "嘉義縣": 1, "嘉義市": 1, "新竹縣": 1, "宜蘭縣": 1, "花蓮縣": 1 },
+  // §14.2's per-county table: [前期 2 CP, 前期 3 CP, 後期 2 CP, 後期 3 CP]. Totals 15/10/8/8.
+  localsTable: {
+    "台北縣": [5, 1, 0, 0], "台北市": [3, 3, 0, 0], "桃園縣": [3, 1, 0, 0], "台中縣": [0, 3, 0, 0], "高雄市": [2, 1, 0, 0],
+    "高雄縣": [1, 0, 1, 1], "台南市": [0, 1, 1, 0], "嘉義市": [1, 0, 0, 0], "彰化縣": [0, 0, 2, 0], "台南縣": [0, 0, 0, 2],
+    "屏東縣": [0, 0, 1, 0], "雲林縣": [0, 0, 1, 0], "苗栗縣": [0, 0, 1, 0], "南投縣": [0, 0, 1, 0], "台中市": [0, 0, 0, 1],
+    "嘉義縣": [0, 0, 0, 1], "新竹縣": [0, 0, 0, 1], "宜蘭縣": [0, 0, 0, 1], "花蓮縣": [0, 0, 0, 1],
+  },
 };
 
 // ---------------------------------------------------------------- group 0
@@ -161,12 +166,19 @@ check("區域相鄰：規則書沒有表，抄自設計模擬器 REG_ADJ", () =>
   const r = eq(norm(B.REGION_EDGES), norm(SPEC.regionEdges), "區域邊"); if (r !== true) return r;
   return ok(true, `${SPEC.regionEdges.length} 條邊相符`);
 });
-check("地方牌 41 張的縣市分配（§14.2）", () => {
+check("地方牌 41 張：逐縣市的前期／後期 × 2 CP／3 CP（§14.2 的表）", () => {
   const got = {};
-  for (const c of C.localCards()) got[c.county] = (got[c.county] || 0) + 1;
-  const keys = [...new Set([...Object.keys(got), ...Object.keys(SPEC.localsByCounty)])];
-  const bad = keys.filter((k) => got[k] !== SPEC.localsByCounty[k]).map((k) => `${k} 期望 ${SPEC.localsByCounty[k] || 0} 實際 ${got[k] || 0}`);
-  return bad.length ? bad.join("；") : ok(true, `${keys.length} 縣市相符`);
+  for (const c of C.localCards()) {
+    const r = (got[c.county] ||= [0, 0, 0, 0]);
+    r[(c.deck === "early" ? 0 : 2) + (c.cp === 3 ? 1 : 0)]++;
+  }
+  const want = SPEC.localsTable;
+  const sum = [0, 1, 2, 3].map((k) => Object.values(want).reduce((t, r) => t + r[k], 0)).join("/");
+  const r0 = eq(sum, "15/10/8/8", "表的合計（抄寫檢查）"); if (r0 !== true) return r0;
+  const keys = [...new Set([...Object.keys(got), ...Object.keys(want)])];
+  const bad = keys.filter((k) => (got[k] || [0, 0, 0, 0]).join() !== (want[k] || [0, 0, 0, 0]).join())
+    .map((k) => `${k} 期望 ${(want[k] || [0, 0, 0, 0]).join("/")} 實際 ${(got[k] || [0, 0, 0, 0]).join("/")}`);
+  return bad.length ? "（前2/前3/後2/後3）" + bad.join("；") : ok(true, `${keys.length} 縣市逐欄相符，合計 15/10/8/8`);
 });
 
 // ---------------------------------------------------------------- group 1
@@ -724,7 +736,7 @@ c2("留牌 · 第 7–8 回合留 2 張到投票日堆（§十）", () => {
   r = eq(`${st.turn} ${st.phase} ${st.savedElection.map((p) => p.length).join("/")} ${st.savedDebate.map((p) => p.length).join("/")}`, "8 order 2/2/2 0/0/0", "留完之後 回合、投票日堆、政見發表會堆"); if (r !== true) return r;
   return ok(true, "每人留 2 到投票日堆，進第 8 回合");
 });
-c2("留牌 · 出過候選人牌的那一回合前期手上剩 2 張：留 1、另一張進棄牌堆（§5.4、§6.3；#2 照設計模擬器的預設，等 owner 裁決）", () => {
+c2("留牌 · 出過候選人牌的那一回合前期手上剩 2 張：留 1、另一張進棄牌堆（§5.4、§6.3；owner 裁決 #2：整局唯一會產生棄牌的情況）", () => {
   let used = false;
   let st = D.playUntil(D.firstActor(CHEN), (s) => s.phase === "save", null, (s, seat, ms) => {
     if (seat === CHEN && !used && ms.some((m) => m.type === "candidate")) { used = true; return ms.find((m) => m.type === "candidate"); }
