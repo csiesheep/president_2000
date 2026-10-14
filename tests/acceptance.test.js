@@ -1503,6 +1503,23 @@ c6("政見發表會 · 情境 B：平手時從持有者順時針比（宋持有�
   return ok(true, "陳連平手 → 連；沒人出牌的兩岸、清廉給持有者宋；軌道 清廉/兩岸/經濟");
 });
 
+c6("政見發表會 · 情境 C：同一輪兩個議題到 2 張時的順序來自發表會開始時的軌道，不是議題的固定順序（軌道 經濟/清廉/兩岸 → 經濟先結算）（§九）", () => {
+  let st = toDebate();
+  setPile(st, CHEN, ["dpp_counties", "lu_running_mate", "taiwan_son", "alternation", "future_resolution"]);
+  setPile(st, SOONG, ["poll_lead", "hakka_vote", "diligent", "million_signatures", "veterans_village"]);
+  setPile(st, LIEN, ["stability", "lee_campaigns", "ma_campaigns", "party_machine", LOCAL3]);
+  const byName = Object.fromEntries(st.issues.map((i) => [i.name, i]));
+  st.issues = ["econ", "clean", "cross"].map((n) => byName[n]);
+  st = round(st, [[CHEN, "dpp_counties"], [SOONG, "poll_lead"], [LIEN, "stability"]]);
+  // 第 2 輪：經濟 陳 4+2、宋 2；兩岸 連 3+3 → 兩個議題都到 2 張；軌道上經濟在第一槽 → 陳先放 2 顆，連再放 3 顆
+  st = round(st, [[CHEN, "lu_running_mate"], [SOONG, "hakka_vote"], [LIEN, "lee_campaigns"]]);
+  let r = eq(JSON.stringify(E.mustAct(st)), JSON.stringify([CHEN]), "第 2 輪之後先放方塊的人（經濟在軌道第一）"); if (r !== true) return r;
+  for (let k = 0; k < 2; k++) st = E.apply(st, CHEN, E.legalMoves(st, CHEN)[0]);
+  r = eq(JSON.stringify(E.mustAct(st)), JSON.stringify([LIEN]), "陳放完 2 顆之後（接著是兩岸的連）"); if (r !== true) return r;
+  r = eq(E.legalMoves(st, LIEN).every((m) => m.type === "fill" || m.type === "cross"), true, "連的選項都是放方塊"); if (r !== true) return r;
+  return ok(true, "軌道 經濟/清廉/兩岸：經濟（陳）先、兩岸（連）後");
+});
+
 c6("政見發表會 · 發表會的牌全部進前期棄牌堆；第 6 回合結束時前期牌放到一旁（decks.earlyDiscard），第 7 回合的棄牌堆是空的（§14.1）", () => {
   let st = toDebate();
   const debateCards = st.savedDebate.flat();
@@ -1537,9 +1554,12 @@ c6("行動階段 · 沒牌又已出過候選人牌的人跳過那一個階段，
   st.decks.early.push(...st.hands[SOONG].splice(0)); st.candidateUsed[SOONG] = true;
   st = D.act(st, CHEN, { type: "candidate" }); st = D.act(st, CHEN, { type: "action", kind: "campaign" }); st = D.act(st, CHEN, { type: "done" });
   let r = eq(JSON.stringify(E.mustAct(st)), JSON.stringify([LIEN]), "陳出完之後（宋沒牌、候選人牌用過）要動的人"); if (r !== true) return r;
-  st = D.playUntil(st, (s) => s.phase === "order" && s.turn === 2, D.rng(8), null);
+  st = D.playUntil(st, (s) => s.phase === "save", D.rng(8), null);
+  // 留牌階段：宋手上沒牌，也跳過（不是給他一個「留 0 張」的動作）
+  if (E.mustAct(st).includes(SOONG) || E.legalMoves(st, SOONG).length) return "留牌階段宋手上沒牌，卻還要他動：" + JSON.stringify(E.legalMoves(st, SOONG));
+  st = D.playUntil(st, (s) => s.phase === "order" && s.turn === 2, D.rng(9), null);
   const c = D.conservation(st); if (c !== true) return c;
-  return ok(true, "宋每個階段都被跳過，回合照常走完");
+  return ok(true, "宋每個行動階段與留牌階段都被跳過，回合照常走完");
 });
 check("棄保 · 第二段（投票日，動全部游離塊）", () => "TODO: §十一、§十二（#7）");
 check("投票日七步", () => "TODO: §十二");
