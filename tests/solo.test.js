@@ -208,6 +208,121 @@ c18("開關跟著存檔：開著的 session 存成 JSON 再讀回來，仍然只
   return ok(true, "開關存在 session 裡");
 });
 
+// ---- 玩起來看得懂（#23）. Owner (2026-10-14): 「Try to improve the UI as a real human user
+// playing it.」 From the orchestrator's playtest. solo.js also exports
+//   recent(session, lang) → [string]   what happened since the human last decided: every bot move
+//                                       (which card, where it placed or took, check outcomes), in order
+//   lastResult(session, lang) → string | null   the outcome of the human's own last move when it
+//                                       involved a support check: success or failure, and where
+// and screen() shows both above the decision. choices() lists the campaign options in the order the
+// page shows them. Reports 尚未實作 until solo.js exports recent.
+const UX = !!(S && typeof S.recent === "function" && typeof S.lastResult === "function");
+const c23 = (name, fn) => c12(name, () => (UX ? fn() : "TODO: solo.js 還沒有 recent、lastResult（#23）"));
+const cardLabel = (id, lang) => (id === "candidate" ? null : EV[id] ? cardName(id, lang) : null);
+// Does this move make a support check? Ask the engine: apply it to a copy and look at the log.
+const checks = (st, seat, m) => { const s2 = E.apply(st, seat, m); return s2.log.slice(st.log.length).some((e) => e.t === "check"); };
+section("23 玩起來看得懂（單人）");
+c23("對手做了什麼：每次輪到你時，recent 列出上一次你決定之後 bot 打出的每一張事件牌名，而且這些字在畫面上", () => {
+  let checked = 0;
+  for (const [lang, seat, seed] of [["zh-Hant", 0, 81], ["en", 1, 82]]) {
+    let s = S.advance(S.newSolo({ seat, level: 2, seed }));
+    const R1 = D.rng(seed);
+    for (let n = 0; n < 120 && s.st.phase !== "end"; n++) {
+      const ch = S.choices(s, lang);
+      const before = s.st.log.length;
+      s = S.act(s, ch[Math.floor(R1() * ch.length)].move);
+      const mid = s.st.log.length;
+      s = S.advance(s);
+      const played = s.st.log.slice(mid).filter((e) => e.t === "play" && e.seat !== seat).map((e) => cardLabel(e.card, lang)).filter(Boolean);
+      const lines = S.recent(s, lang);
+      if (!Array.isArray(lines)) return `${lang}：recent 回的不是陣列`;
+      const all = lines.join(" ");
+      const miss = played.filter((nm) => !all.includes(nm));
+      if (miss.length) return `${lang} 第 ${s.st.turn} 回合 ${s.st.phase}：bot 打了 ${miss.join("、")}，recent 沒寫（${JSON.stringify(lines.slice(0, 3))}）`;
+      const seen = text(S.screen(s, lang));
+      const off = lines.filter((l) => !seen.includes(text(l).trim()));
+      if (off.length) return `${lang}：recent 的「${off[0]}」不在畫面上`;
+      if (played.length) checked++;
+      void before;
+    }
+  }
+  const r = nonEmpty(checked, "有 bot 出牌的回合"); if (r !== true) return r;
+  return ok(true, `${checked} 次輪到你時，bot 打的牌都寫在 recent 與畫面上`);
+});
+c23("自己那一步的結果：你做了要檢定的動作之後，lastResult 說成功或失敗，而且在畫面上；沒檢定的動作不說", () => {
+  let withCheck = 0, withoutCheck = 0;
+  for (const [lang, seat, seed, okWord, failWord] of [["zh-Hant", 0, 83, "成功", "失敗"], ["en", 2, 84, "succe", "fail"]]) {
+    let s = S.advance(S.newSolo({ seat, level: 1, seed }));
+    const R1 = D.rng(seed);
+    for (let n = 0; n < 150 && s.st.phase !== "end"; n++) {
+      const ch = S.choices(s, lang);
+      const before = s.st.log.length;
+      s = S.act(s, ch[Math.floor(R1() * ch.length)].move);
+      const mine = s.st.log.slice(before).filter((e) => e.t === "check" && e.seat === seat);
+      const res = S.lastResult(s, lang);
+      if (mine.length) {
+        if (!res) return `${lang} 第 ${s.st.turn} 回合：你剛做了 ${mine.length} 次檢定，lastResult 是空的`;
+        const want = mine[mine.length - 1].ok ? okWord : failWord;
+        if (!res.toLowerCase().includes(want)) return `${lang}：檢定${mine[mine.length - 1].ok ? "成功" : "失敗"}，lastResult 卻是「${res}」`;
+        if (!text(S.screen(s, lang)).includes(text(res).trim())) return `${lang}：lastResult「${res}」不在畫面上`;
+        withCheck++;
+      } else if (res) return `${lang} 第 ${s.st.turn} 回合 ${s.st.phase}：這一步沒有檢定，lastResult 卻說「${res}」`;
+      else withoutCheck++;
+      s = S.advance(s);
+    }
+  }
+  const r = nonEmpty(withCheck, "要檢定的步"); if (r !== true) return r;
+  return ok(true, `${withCheck} 步有檢定、${withoutCheck} 步沒有，結果都對`);
+});
+c23("競選的選項好找：同一個縣市的選項排在一起；有不用檢定的填塊時排在最前面；移動排在放方塊之後", () => {
+  let checked = 0;
+  for (const seed of [85, 86, 87]) {
+    let s = S.advance(S.newSolo({ seat: (seed % 3), level: 1, seed }));
+    const R1 = D.rng(seed);
+    for (let n = 0; n < 200 && s.st.phase !== "end"; n++) {
+      const st = s.st, seat = s.seat, ch = S.choices(s, "zh-Hant");
+      const place = ch.filter((c) => ["fill", "cross", "steal"].includes(c.move.type));
+      if (place.length >= 3 && st.pending && st.pending.stage === "campaign") {
+        const order = ch.map((c) => c.move.type);
+        const lastPlace = order.map((t, i) => (["fill", "cross", "steal"].includes(t) ? i : -1)).reduce((a, b) => Math.max(a, b), -1);
+        const firstMove = order.indexOf("move");
+        if (firstMove >= 0 && firstMove < lastPlace) return `第 ${st.turn} 回合：移動排在放方塊前面`;
+        const seenC = []; let prev = null;
+        for (const c of place) { const k = c.move.county; if (k !== prev && seenC.includes(k)) return `第 ${st.turn} 回合：縣市 ${k} 的選項沒排在一起`; if (k !== prev) seenC.push(k); prev = k; }
+        const free = place.filter((c) => !checks(st, seat, c.move));
+        if (free.length && checks(st, seat, place[0].move)) return `第 ${st.turn} 回合：有不用檢定的填塊（${free[0].label}），第一個卻是要檢定的「${place[0].label}」`;
+        checked++;
+      }
+      s = S.advance(S.act(s, ch[Math.floor(R1() * ch.length)].move));
+    }
+  }
+  const r = nonEmpty(checked, "競選的決定"); if (r !== true) return r;
+  return ok(true, `${checked} 個競選決定的排序都對`);
+});
+c23("候選人牌：選項上寫明整局只能用一次（中文「整局一次」、英文 once）", () => {
+  for (const [lang, word] of [["zh-Hant", "整局一次"], ["en", "once"]]) {
+    const s = S.advance(S.newSolo({ seat: 0, level: 1, seed: 88 }));
+    let x = s;
+    for (let n = 0; n < 20 && !S.choices(x, lang).some((c) => c.move.type === "candidate"); n++) x = S.advance(S.act(x, S.choices(x, lang)[0].move));
+    const c = S.choices(x, lang).find((c) => c.move.type === "candidate");
+    if (!c) return `${lang}：走不到有候選人牌選項的時候`;
+    if (!c.label.toLowerCase().includes(word)) return `${lang} 候選人牌的選項沒寫「${word}」：${c.label}`;
+  }
+  return ok(true, "中英都寫了");
+});
+c23("★ 只用在軍師：軍師關著時畫面上沒有 ★（主動權等其他標記不用 ★）", () => {
+  let screens = 0;
+  for (const lang of ["zh-Hant", "en"]) {
+    let s = S.advance(S.newSolo({ seat: 1, level: 1, seed: 89 }));
+    for (let n = 0; n < 40 && s.st.phase !== "end"; n++) {
+      if (text(S.screen(s, lang)).includes("★")) return `${lang} 第 ${s.st.turn} 回合 ${s.st.phase}：軍師關著，畫面上卻有 ★`;
+      screens++;
+      s = S.advance(S.act(s, S.choices(s, lang)[0].move));
+    }
+  }
+  return ok(true, `${screens} 個畫面沒有 ★`);
+});
+
 test("solo", () => {
   const s = summary();
   for (const p of R.pass) console.log(`  ✓ ${p.label}${p.msg ? " — " + p.msg : ""}`);
