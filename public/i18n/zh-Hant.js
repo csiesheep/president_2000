@@ -45,7 +45,7 @@ export default {
       },
       menu: { quit: "放棄這局", confirm: "放棄這一局，回到設定？", skip: "點一下跳過動畫" },
       hdr: {
-        turn: "第 {n} 回合", initiative: "主動權 {who}", star: "主動權", mom: "動能", bag: "袋子", feed: "紀錄",
+        turn: "第 {n} 回合", initiative: "主動權 {who}", star: "主動權", mom: "動能", bag: "袋子", feed: "紀錄", first: "先", momL: "動能", slotsL: "議題槽", tap: "點一下看說明",
         yourTurn: "輪到你", busy: "{who} 行動中…", waitHint: "對手行動中。你可以先翻看手牌。",
         slot: { 1: "第一槽", 2: "第二槽", 3: "第三槽" },
         phase: { action: "行動階段 {n} / 4", order: "選行動順位", momentum: "動能階段", save: "留牌", debate: "公辦政見發表會", election: "投票日 · 催票", end: "開票結果" },
@@ -53,11 +53,40 @@ export default {
       },
       map: {
         title: "各區票勢", here: "{who}在此", endorse: "背書", media: "媒體", blocks: "{n} 塊", empty: "空 {n}", boss: "{who}是地方大老",
-        legendEmpty: "空的游離塊", legendGrey: "沒投票的無色塊",
+        legendEmpty: "空的游離塊", legendGrey: "沒投票的無色塊", changed: "剛剛有變動",
+      },
+      help: {
+        mom: "動能：你的氣勢。每回合結束先減半（陳進位，宋、連捨去），再依議題領先加分；可以花動能來封鎖，或觸發對手拿去當 CP 的你的牌。",
+        bag: "袋子：支持檢定從這裡抽一顆方塊，抽到自己的顏色就成功；抽到別人的就失敗，那顆回到它的主人手上。數字是袋裡各色的方塊數。",
+        slot: "議題槽：回合結算時，第一槽的領先者 +1 動能並抽背書，第二槽的領先者選獎勵，第三槽的領先者 +1 動能；之後每槽的領先者少 1 顆方塊。",
+        close: "收起說明",
+      },
+      now: { title: "剛剛" },
+      r: {
+        turn: "第 {n} 回合開始 · 主動權 {who} · 發到 {cards} 張牌", turnNoDeal: "第 {n} 回合開始 · 主動權 {who}",
+        turnDebate: "第 {n} 回合：公辦政見發表會開始", turnElection: "第 {n} 回合：投票日開始",
+        decay: "回合結算 · 動能減半：{text}", slot1: "第一槽「{issue}」{who}領先：+1 動能，抽 1 張背書", slot3: "第三槽「{issue}」{who}領先：+1 動能",
+        issueDecay: "各議題槽的領先者少 1 顆方塊", momNow: "結算後動能：{text}", group: "{head}：{what}", times: "×{n}",
+        p: {
+          fill: "{county} +{n}", cross: "{county} 跨營 +{n}", steal: "{county} 搶{target} {n} 顆", remove: "{county} 移除{target} {n} 顆", grey: "{county} 無色塊 +{n}",
+          fillFail: "{county} 沒填成", crossFail: "{county} 跨營沒成", stealFail: "{county} 搶{target}沒成", removeFail: "{county} 移除{target}沒成", greyFail: "{county} 沒填成",
+          adOk: "廣告命中", adFail: "廣告沒中", move: "移到{county}", media: "{region}放媒體", mediaRemove: "{region}移除{target}的媒體",
+          issue: "「{issue}」放 {n} 顆", issueRemove: "「{issue}」移除{target} {n} 顆",
+        },
+      },
+      res: {
+        ok: "檢定成功：{what}", okPlain: "檢定成功", did: "你剛剛：{what}", label: "你的上一步",
+        fail: "檢定失敗：{where}，抽到{drew}，這顆回到{drew}手上", failNoWhere: "檢定失敗：抽到{drew}，這顆回到{drew}手上",
       },
       hand: { title: "手牌 {n}", titleDebate: "政見發表會留牌 {n}", titleElection: "投票日留牌 {n}", kept: "已留 {n} 張（給{dest}）", none: "沒有牌" },
       card: { local: "地方牌", cand: "候選人牌" },
       p: {
+        candConfirm: "候選人牌整局只能用一次。現在就用嗎？", candYes: "確定使用", candNo: "先不要",
+        movesOpen: "移到別的縣市…", movesShut: "收起移動", moveHint: "要移動的話，得在放第一塊之前。", eg: "空綠 {n}", eb: "空藍 {n}",
+        c: {
+          fill: "填 1 塊", cross: "跨營填 1 塊", steal: "搶{who} 1 顆（{kind}）", grey: "填 1 塊無色塊", remove: "移除{who} 1 顆（{kind}）",
+          convert: "把 1 塊無色塊轉成綠營游離塊", move: "{county}\n移動後剩 {left} CP",
+        },
         moveHead: "移動", back: "← 收起", notNow: "現在不能打這張牌。",
         order: "你有主動權：選這回合你排第幾個行動。",
         orderElection: "你有主動權：選投票日你第幾個催票，順序依座位順時針接下去。",
@@ -77,7 +106,7 @@ export default {
         canvass: "選一張留牌來催票：在牌上的縣市做 3 次檢定。", canvassPlace: "催票成功：{county}。選一件事（這張還剩 {left} 次檢定）。", canvassRate: "每次檢定約 {p}%。",
       },
       o: {
-        order: "排第 {n} 個行動", orderElection: "第 {n} 個催票", candidate: "候選人牌：{cp} CP", playEvent: "{card}：當事件打出", playCp: "{card}：拿 {cp} CP 做行動", playBlock: "{card}：拿 CP，並花 2 動能封鎖",
+        order: "排第 {n} 個行動", orderElection: "第 {n} 個催票", candidate: "候選人牌：{cp} CP · 整局一次", playEvent: "{card}：當事件打出", playCp: "{card}：拿 {cp} CP 做行動", playBlock: "{card}：拿 CP，並花 2 動能封鎖",
         trigger: "觸發（花 1 動能）", pass: "不觸發",
         kind: { campaign: "競選 · 填塊或搶塊", ads: "廣告 · 每 1 CP 抽一次，成功率約 {p}%", adsNoRate: "廣告 · 每 1 CP 抽一次", issue: "議題 · 放方塊（第 1 顆 1 CP，之後每顆 2 CP）" },
         move: "移到 {county}（{cost} CP）", fill: "{county} · 填 1 塊", cross: "{county} · 跨營填 1 塊", steal: "{county} · 搶{who} 1 顆（{kind}）",

@@ -104,11 +104,16 @@ const bagRate = (v, seat) => { const t = v.bag[0] + v.bag[1] + v.bag[2]; return 
 
 // ---------------------------------------------------------------- the words of one legal move
 
+// " · no check" / " · check about 34%" / "" (not sure): the tail of a placement's label.
+function suffixFor(v, m, x) {
+  const rate = bagRate(v, v.seat), ck = checkKind(v, v.seat, m);
+  return ck === "none" ? x.tr("o.noCheck") : ck === "check" && rate != null ? x.tr("o.check", { p: rate }) : "";
+}
+
 export function labelMove(v, m, lang) {
   const x = bind(lang), seat = v.seat, tr = x.tr;
   const rate = bagRate(v, seat);
-  const ck = checkKind(v, seat, m);
-  const suffix = ck === "none" ? tr("o.noCheck") : ck === "check" && rate != null ? tr("o.check", { p: rate }) : "";
+  const suffix = suffixFor(v, m, x);
   const cpOf = (id) => CARD[id].cp;
   switch (m.type) {
     case "order": return tr(v.phase === "election" ? "o.orderElection" : "o.order", { n: m.pos + 1 });
@@ -146,6 +151,145 @@ export function labelMove(v, m, lang) {
   return tr("o.unknown");
 }
 
+// A placement's short words inside its county's block (the county is the block's heading), or null.
+function shortOpt(v, m, x) {
+  const tr = x.tr, suffix = suffixFor(v, m, x);
+  const kind = () => ({ who: x.short(m.target), kind: tr("o.block." + m.t) });
+  switch (m.type) {
+    case "fill": return tr("p.c.fill") + suffix;
+    case "cross": return tr("p.c.cross") + suffix;
+    case "steal": return tr("p.c.steal", kind()) + suffix;
+    case "remove": return tr("p.c.remove", kind()) + suffix;
+    case "grey": return tr("p.c.grey");
+    case "convert": return tr("p.c.convert");
+    case "move": {
+      const left = v.pending && typeof v.pending.cp === "number" ? v.pending.cp - moveCost(v.seat, v.pos[v.seat], m.to) : null;
+      return left == null ? null : tr("p.c.move", { county: x.county(m.to), left });
+    }
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------- the order of the options
+
+const PLACE_T = new Set(["fill", "cross", "steal", "grey", "remove", "convert"]);
+const END_T = new Set(["done", "pass", "noswap"]);
+const isPlace = (c) => PLACE_T.has(c.move.type) && c.move.county != null;
+
+// The options in the order the table shows them (#23): whatever is not about a county, then the
+// counties (one block per county, the ones that offer a placement with no check first, and inside a
+// county the no-check ones first), then moving, then "end the action". `free(move)` says whether a
+// placement needs no support check; the solo page asks the engine, the room (which has only a view)
+// reads the rules off it. Lists with no county placement come back unchanged.
+export function orderChoices(v, list, free) {
+  const place = list.filter(isPlace);
+  if (!place.length) return list;
+  const isFree = (c) => (free ? !!free(c.move) : checkKind(v, v.seat, c.move) === "none");
+  const byCounty = new Map();
+  for (const c of place) { if (!byCounty.has(c.move.county)) byCounty.set(c.move.county, []); byCounty.get(c.move.county).push(c); }
+  const groups = [...byCounty].map(([k, items]) => {
+    const f = items.map(isFree);
+    return { k, free: f.some(Boolean), items: items.map((c, i) => ({ c, f: f[i], i })).sort((a, b) => Number(!a.f) - Number(!b.f) || a.i - b.i).map((z) => z.c) };
+  }).sort((a, b) => Number(!a.free) - Number(!b.free) || a.k - b.k);
+  const moves = list.filter((c) => c.move.type === "move"), end = list.filter((c) => END_T.has(c.move.type));
+  const rest = list.filter((c) => !place.includes(c) && !moves.includes(c) && !end.includes(c));
+  return [...rest, ...groups.flatMap((g) => g.items), ...moves, ...end];
+}
+
+// ---------------------------------------------------------------- "just now" and "your result"
+
+const NUMBERED = new Set(["fill", "cross", "steal", "remove", "grey", "issue", "issueRemove"]);
+const listSep = (x) => (x.lang === "en" ? ", " : "、");
+
+function turnLine(e, v, x) {
+  if (e.turn === 6) return x.tr("r.turnDebate", { n: e.turn });
+  if (e.turn === 9) return x.tr("r.turnElection", { n: e.turn });
+  const who = e.initiative >= 0 ? x.short(e.initiative) : "—";
+  const cards = v && Array.isArray(v.hands[v.seat]) ? v.hands[v.seat].length : 0;
+  return cards && v.phase !== "end" ? x.tr("r.turn", { n: e.turn, who, cards }) : x.tr("r.turnNoDeal", { n: e.turn, who });
+}
+
+// The few words one placement entry takes inside a line: "台南縣 +2", "雲林縣 沒填成".
+function phrase(key, vars, n, x) {
+  const t = x.tr("r.p." + key, { ...vars, n });
+  return NUMBERED.has(key) || n < 2 ? t : t + " " + x.tr("r.times", { n });
+}
+function entryPhrase(e, x) {
+  const county = e.county != null ? x.county(e.county) : "", target = e.target != null ? x.short(e.target) : "";
+  switch (e.k) {
+    case "fill": case "cross": case "grey": return phrase(e.k + (e.ok ? "" : "Fail"), { county }, 1, x);
+    case "steal": case "remove": return phrase(e.k + (e.ok ? "" : "Fail"), { county, target }, 1, x);
+    case "ad": return phrase(e.ok ? "adOk" : "adFail", {}, 1, x);
+  }
+  return "";
+}
+
+// What happened since the human last decided, from the record's entries (solo.js, roomclient.js):
+// [{ seat, text }] in order. One line per action: the card an opponent played and, after the colon,
+// what it did ("宋拿「X」做 CP：台南縣 +2、雲林縣 沒填成"), never one line per block.
+export function recentLines(entries, v, x) {
+  const tr = x.tr, who = (p) => x.short(p), items = [], last = {};
+  const group = (seat, head) => { const g = { seat, head, parts: new Map() }; items.push(g); last[seat] = g; return g; };
+  const part = (seat, key, vars) => {
+    const g = last[seat] || group(seat, who(seat)), id = key + "|" + JSON.stringify(vars), p = g.parts.get(id);
+    if (p) p.n++; else g.parts.set(id, { key, vars, n: 1 });
+  };
+  const line = (seat, text) => { if (text) items.push({ seat, line: text }); };
+  for (const e of entries) {
+    const county = e.county != null ? x.county(e.county) : "", target = e.target != null ? who(e.target) : "";
+    switch (e.k) {
+      case "turn": line(null, turnLine(e, v, x)); for (const s of Object.keys(last)) delete last[s]; break;
+      case "play": case "cand": case "trigger": case "canvass": group(e.seat, feedLine(e, v, x)); break;
+      case "fill": case "cross": case "grey": part(e.seat, e.k + (e.ok ? "" : "Fail"), { county }); break;
+      case "steal": case "remove": part(e.seat, e.k + (e.ok ? "" : "Fail"), { county, target }); break;
+      case "move": part(e.seat, "move", { county: x.county(e.to) }); break;
+      case "ad": part(e.seat, e.ok ? "adOk" : "adFail", {}); break;
+      case "media": part(e.seat, e.target == null ? "media" : "mediaRemove", { region: x.region(e.region), target }); break;
+      case "issue": part(e.seat, e.target == null ? "issue" : "issueRemove", { issue: x.issue(e.issue), target }); break;
+      case "say": break;
+      default: line(e.seat ?? null, feedLine(e, v, x));
+    }
+  }
+  return items.map((g) => {
+    if (g.line != null) return { seat: g.seat, text: g.line };
+    const what = [...g.parts.values()].map((p) => phrase(p.key, p.vars, p.n, x)).join(listSep(x));
+    return { seat: g.seat, text: what ? tr("r.group", { head: g.head, what }) : g.head };
+  }).filter((l) => l.text);
+}
+
+// The counties an entry list touched, for the map to mark. `tried`: count a failed attempt too.
+export function changedCounties(entries, tried = false) {
+  const s = new Set();
+  for (const e of entries) {
+    if (["fill", "cross", "steal", "grey", "remove"].includes(e.k) && e.county != null && (e.ok || tried)) s.add(e.county);
+    else if (e.k === "move" && e.to != null) s.add(e.to);
+  }
+  return [...s];
+}
+
+// The outcome of your own last move when it made a support check ({ checks: [{ ok, drew }], lines:
+// the entries of the move }), else null. The last check decides what it says.
+export function resultLine(res, x) {
+  if (!res || !res.checks || !res.checks.length) return null;
+  const c = res.checks[res.checks.length - 1], ents = (res.lines || []).filter((e) => entryPhrase(e, x));
+  if (c.ok) {
+    const e = ents.slice().reverse().find((q) => q.ok);
+    return e ? x.tr("res.ok", { what: entryPhrase(e, x) }) : x.tr("res.okPlain");
+  }
+  const drew = c.drew != null ? x.short(c.drew) : "…", e = ents.slice().reverse().find((q) => !q.ok) || ents[ents.length - 1];
+  return e ? x.tr("res.fail", { where: entryPhrase({ ...e, ok: false }, x), drew }) : x.tr("res.failNoWhere", { drew });
+}
+
+// What the table writes at the top of the decision after your own step: { text, kind } with kind
+// "ok" / "fail" (a support check was made: resultLine) or "did" (a placement that needed none, so
+// the table can still say it went on the board; lastResult stays null for those), else null.
+export function resultBlock(res, x) {
+  const text = resultLine(res, x);
+  if (text) return { text, kind: res.checks[res.checks.length - 1].ok ? "ok" : "fail" };
+  const e = res && (res.lines || []).slice().reverse().find((q) => q.ok && entryPhrase(q, x));
+  return e ? { text: x.tr("res.did", { what: entryPhrase(e, x) }), kind: "did" } : null;
+}
+
 // ---------------------------------------------------------------- pieces
 
 const sq = (cls) => `<i class="b ${cls}"></i>`;
@@ -180,14 +324,17 @@ function miniCard(id, x, cls, attr, star = false) {
     `<span class="hf"><b>${c.cp} ${esc(u.cpUnit)}</b><span class="hi">${esc(iss)}</span></span></button>`;
 }
 
-const btn = (c, cls = "", x = null) => {
-  const adv = !!c.advised && x;
-  return `<button type="button" class="opt${cls ? " " + cls : ""}${adv ? " adv" : ""}" data-move="${esc(JSON.stringify(c.move))}">${adv ? starHTML(x) : ""}${esc(c.label)}</button>`;
+// One option button. The candidate card is the one a new player must not hit by accident: it is drawn
+// quietly and asks again (data-confirm; the page keeps the question in its own state).
+const btn = (c, cls = "", x = null, label = null) => {
+  const adv = !!c.advised && x, cand = c.move.type === "candidate";
+  return `<button type="button" class="opt${cls ? " " + cls : ""}${cand ? " weak" : ""}${adv ? " adv" : ""}" data-move="${esc(JSON.stringify(c.move))}"${cand ? ` data-confirm="1"` : ""}>${adv ? starHTML(x) : ""}${esc(label || c.label)}</button>`;
 };
 
 // ---------------------------------------------------------------- the board
 
-function mapHTML(v, x, open) {
+function mapHTML(v, x, open, changed = []) {
+  const chg = new Set(changed), mark = (k) => (chg.has(k) ? ` <em class="new">${esc(x.tr("map.changed"))}</em>` : "");
   const seatsHere = (k) => [0, 1, 2].filter((p) => v.pos[p] === k);
   const flag = (p, k) => `<svg class="flag-svg" width="14" height="16" viewBox="0 0 16 18" role="img" aria-label="${esc(x.tr("map.here", { who: x.full(p) }))}"><path d="M2 1v16" stroke="#1a1a1a" stroke-width="2"/><path d="M3 2h12l-4 4 4 4H3z" class="f${p}"/></svg>`;
   const out = [];
@@ -201,8 +348,9 @@ function mapHTML(v, x, open) {
     const endorse = v.endorse[r] >= 0 ? `${x.tr("map.endorse")} ${x.short(v.endorse[r])}` : "";
     const extra = [medTxt ? `${x.tr("map.media")} ${medTxt}` : "", endorse].filter(Boolean).join(" · ");
     const flags = ks.flatMap((k) => seatsHere(k)).map((p) => flag(p)).join("");
-    out.push(`<div class="reg${isOpen ? " open" : ""}"><button type="button" class="rh" data-region="${r}" aria-expanded="${isOpen}">` +
-      `<span class="rn">${esc(x.region(r))} · ${esc(x.tr("map.blocks", { n: total }))} ${flags}</span>` +
+    const touched = ks.some((k) => chg.has(k));
+    out.push(`<div class="reg${isOpen ? " open" : ""}${touched ? " chg" : ""}"><button type="button" class="rh" data-region="${r}" aria-expanded="${isOpen}">` +
+      `<span class="rn">${esc(x.region(r))} · ${esc(x.tr("map.blocks", { n: total }))} ${flags}${touched && !isOpen ? `<em class="new">${esc(x.tr("map.changed"))}</em>` : ""}</span>` +
       `<span class="rs">${SHOW_ORDER.map((p) => `<span class="rc s${p}">${esc(x.short(p))} ${per[p]}</span>`).join("")}<span class="rc">${esc(x.tr("map.empty", { n: empty }))}</span></span>` +
       (extra ? `<span class="rx">${esc(extra)}</span>` : "") + `</button>`);
     if (isOpen) {
@@ -210,7 +358,7 @@ function mapHTML(v, x, open) {
         const blocks = v.counties[k].blocks.slice().sort((a, b) => key(a) - key(b));
         const bosses = [0, 1, 2].filter((p) => cubesIn(v, k, p) >= BOSS_THRESHOLD);
         const sub = bosses.length ? `<span class="boss">${esc(x.tr("map.boss", { who: bosses.map((p) => x.short(p)).join("/") }))}</span>` : "";
-        return `<div class="cty${bosses.length ? " hot" : ""}"><span class="cn">${esc(x.county(k))}<small>${esc(x.tr("map.blocks", { n: blocks.length }))}</small>${sub}</span>` +
+        return `<div class="cty${bosses.length ? " hot" : ""}${chg.has(k) ? " chg" : ""}"><span class="cn">${esc(x.county(k))}<small>${esc(x.tr("map.blocks", { n: blocks.length }))}</small>${mark(k)}${sub}</span>` +
           `<span class="bs">${blocks.map((b) => sq(b.o >= 0 ? "o" + b.o : "e" + b.t)).join("")}</span>` +
           `<span class="pw">${seatsHere(k).map((p) => flag(p)).join("")}</span></div>`;
       }).join("") + `</div>`);
@@ -240,16 +388,25 @@ function headerHTML(v, ch, x, o) {
   else if (ch.length) status = `<span class="yrow"><span class="you">${esc(x.tr("hdr.yourTurn"))}</span>${clockHTML(o.clock)}</span>`;
   else status = `<span class="wait">${esc(o.waitLabel ? fill(o.waitLabel, { who: waitNames || "…" }) : x.tr("hdr.busy", { who: waitNames || "…" }))}${clockHTML(o.clock)}</span>`;
   const init = v.initiative >= 0 && v.phase !== "end" ? ` · ${x.tr("hdr.initiative", { who: x.short(v.initiative) })}` : "";
-  const chips = SHOW_ORDER.map((p) => `<span class="chip s${p}${p === me ? " me" : ""}" title="${esc(x.full(p))}">${esc(x.short(p))}<b>${v.mom[p]}</b>${v.initiative === p && v.phase !== "end" ? `<i class="star" aria-label="${esc(x.tr("hdr.star"))}">★</i>` : ""}</span>`).join("");
+  const chips = SHOW_ORDER.map((p) => `<span class="chip s${p}${p === me ? " me" : ""}" title="${esc(x.full(p))}">${esc(x.short(p))}<b>${v.mom[p]}</b>${v.initiative === p && v.phase !== "end" ? `<i class="first" role="img" aria-label="${esc(x.tr("hdr.star"))}">${esc(x.tr("hdr.first"))}</i>` : ""}</span>`).join("");
   return `<header class="t-top"><div class="t-ttl"><span class="t-turn">${esc(x.tr("hdr.turn", { n: v.turn }))}${esc(init)}</span>` +
-    `<b class="t-phase">${esc(phase)}</b>${status}</div><div class="t-mom" aria-label="${esc(x.tr("hdr.mom"))}">${chips}</div></header>`;
+    `<b class="t-phase">${esc(phase)}</b>${status}</div>` +
+    `<button type="button" class="t-mom helpable${o.help === "mom" ? " on" : ""}" data-help="mom" aria-expanded="${o.help === "mom"}" aria-label="${esc(x.tr("hdr.momL") + " · " + x.tr("hdr.tap"))}">` +
+    `<span class="hl">${esc(x.tr("hdr.momL"))} <i aria-hidden="true">?</i></span><span class="chips">${chips}</span></button></header>`;
 }
 
-function trackHTML(v, x) {
+// The one-line explanation under the header, for whichever small label was tapped (o.help).
+function helpHTML(x, o) {
+  if (!o.help || !["mom", "bag", "slot"].includes(o.help)) return "";
+  return `<p class="help" role="note">${esc(x.tr("help." + o.help))} <button type="button" class="hx" data-help="">${esc(x.tr("help.close"))}</button></p>`;
+}
+
+function trackHTML(v, x, o = {}) {
   const slots = v.issues.map((iss, i) => `<div class="slot"><span class="sl">${esc(x.tr("hdr.slot." + (i + 1)))}</span><b>${esc(x.issue(iss.name))}</b>` +
     `<span class="cb">${cubesRow(iss.cubes) || `<em>—</em>`}</span></div>`).join("");
-  const bag = `<div class="bag"><span class="sl">${esc(x.tr("hdr.bag"))}</span>${SHOW_ORDER.map((p) => `<span class="s${p}">${esc(x.short(p))} ${v.bag[p]}</span>`).join("")}</div>`;
-  return `<section class="t-track">${slots}${bag}</section>`;
+  const bag = `<button type="button" class="bag helpable${o.help === "bag" ? " on" : ""}" data-help="bag" aria-expanded="${o.help === "bag"}" aria-label="${esc(x.tr("hdr.bag") + " · " + x.tr("hdr.tap"))}">` +
+    `<span class="sl">${esc(x.tr("hdr.bag"))} <i aria-hidden="true">?</i></span>${SHOW_ORDER.map((p) => `<span class="s${p}">${esc(x.short(p))} ${v.bag[p]}</span>`).join("")}</button>`;
+  return `<section class="t-track"><button type="button" class="slotsl helpable${o.help === "slot" ? " on" : ""}" data-help="slot" aria-expanded="${o.help === "slot"}" aria-label="${esc(x.tr("hdr.slotsL") + " · " + x.tr("hdr.tap"))}">${esc(x.tr("hdr.slotsL"))} <i aria-hidden="true">?</i></button>${slots}${bag}</section>`;
 }
 
 function oppHTML(v, x) {
@@ -261,26 +418,40 @@ function oppHTML(v, x) {
 
 // ---------------------------------------------------------------- the action panel
 
-function groupedList(v, ch, x) {
-  const done = ch.filter((c) => c.move.type === "done" || c.move.type === "pass" || c.move.type === "noswap");
-  const rest = ch.filter((c) => !done.includes(c));
-  const cty = (c) => (c.move.county != null ? c.move.county : c.move.to != null ? c.move.to : null);
-  const plain = rest.filter((c) => cty(c) == null);
-  const withCty = rest.filter((c) => cty(c) != null);
-  const moves = withCty.filter((c) => c.move.type === "move");
-  const here = withCty.filter((c) => c.move.type !== "move");
+// One county's block: its heading says how it stands now (who has how many cubes, how many empty
+// green and blue blocks are left), the buttons under it are what can be done there.
+function countyBlock(v, k, items, x) {
+  const blocks = v.counties[k].blocks, tr = x.tr;
+  const eg = blocks.filter((b) => b.o < 0 && b.t === "G").length, eb = blocks.filter((b) => b.o < 0 && b.t === "B").length;
+  const own = SHOW_ORDER.map((p) => `<span class="s${p}">${esc(x.short(p))} ${cubesIn(v, k, p)}</span>`).join("");
+  const here = [0, 1, 2].filter((p) => v.pos[p] === k).map((p) => `<span class="s${p}">⚑${esc(x.short(p))}</span>`).join("");
+  return `<section class="cg"><h4 class="cg-h"><b class="cg-n">${esc(x.county(k))}</b><span class="cg-o">${own}</span>` +
+    `<span class="cg-e"><i class="b eG"></i>${esc(tr("p.eg", { n: eg }))}<i class="b eB"></i>${esc(tr("p.eb", { n: eb }))}</span>${here ? `<span class="cg-p">${here}</span>` : ""}</h4>` +
+    `<div class="opts">${items.map((c) => btn(c, "", x, shortOpt(v, c.move, x))).join("")}</div></section>`;
+}
+
+// The options in the order choices() gave them: a block per county (placements), then "move to
+// another county…" folded away, then "end the action".
+function groupedList(v, ch, x, o) {
+  const done = ch.filter((c) => END_T.has(c.move.type)), moves = ch.filter((c) => c.move.type === "move");
+  const here = ch.filter(isPlace), plain = ch.filter((c) => !done.includes(c) && !moves.includes(c) && !here.includes(c));
   const out = [];
   if (plain.length) out.push(`<div class="opts">${plain.map((c) => btn(c, "", x)).join("")}</div>`);
-  const byRegion = (list) => {
-    let s = "";
-    for (let r = 0; r < REGIONS.length; r++) {
-      const items = list.filter((c) => REGION_OF[cty(c)] === r).sort((a, b) => cty(a) - cty(b));
-      if (items.length) s += `<h4 class="t-gh">${esc(x.region(r))}</h4><div class="opts">${items.map((c) => btn(c, "", x)).join("")}</div>`;
+  const byCounty = new Map();
+  for (const c of here) { if (!byCounty.has(c.move.county)) byCounty.set(c.move.county, []); byCounty.get(c.move.county).push(c); }
+  for (const [k, items] of byCounty) out.push(countyBlock(v, k, items, x));
+  if (moves.length) {
+    const open = !!o.moves;
+    let list = "";
+    if (open) {
+      for (let r = 0; r < REGIONS.length; r++) {
+        const items = moves.filter((c) => REGION_OF[c.move.to] === r).sort((a, b) => a.move.to - b.move.to);
+        if (items.length) list += `<h4 class="t-gh">${esc(x.region(r))}</h4><div class="opts two">${items.map((c) => btn(c, "", x, shortOpt(v, c.move, x))).join("")}</div>`;
+      }
     }
-    return s;
-  };
-  if (here.length) out.push(byRegion(here));
-  if (moves.length) out.push(`<h4 class="t-gh mv">${esc(x.tr("p.moveHead"))}</h4>` + byRegion(moves));
+    out.push(`<div class="mvs"><button type="button" class="opt weak more${open ? " on" : ""}" data-toggle="moves" aria-expanded="${open}">${esc(x.tr(open ? "p.movesShut" : "p.movesOpen"))}</button>` +
+      `<p class="ct">${esc(x.tr("p.moveHint"))}</p>${list}</div>`);
+  }
   if (done.length) out.push(`<div class="opts">${done.map((c) => btn(c, "ghost", x)).join("")}</div>`);
   return out.join("");
 }
@@ -370,10 +541,17 @@ function panelHTML(v, ch, x, o) {
     if (!sel && cards.length === 1 && !ch.some((c) => c.move.type === "candidate")) sel = cards[0];
     const cand = ch.filter((c) => c.move.type === "candidate");
     if (sel) return sheetHTML(v, ch, x, sel);
-    return prompt(v, ch, x) + (cand.length ? `<div class="opts">${cand.map((c) => btn(c, "", x)).join("")}</div>` : "") +
-      `<p class="ct">${esc(x.tr(v.phase === "debate" ? "p.pickCardDebate" : v.phase === "election" ? "p.pickCardElection" : "p.pickCard"))}</p>`;
+    // The candidate card can be used once a game: tapping it asks again before it is played.
+    const sure = cand.find((c) => o.confirm && JSON.stringify(c.move) === o.confirm);
+    if (sure) {
+      return `<div class="confirm"><p class="pr">${esc(x.tr("p.candConfirm"))}</p><div class="opts">` +
+        `<button type="button" class="opt" data-move="${esc(JSON.stringify(sure.move))}">${esc(x.tr("p.candYes"))}</button>` +
+        `<button type="button" class="opt ghost" data-cancel="1">${esc(x.tr("p.candNo"))}</button></div></div>`;
+    }
+    return prompt(v, ch, x) + `<p class="ct">${esc(x.tr(v.phase === "debate" ? "p.pickCardDebate" : v.phase === "election" ? "p.pickCardElection" : "p.pickCard"))}</p>` +
+      (cand.length ? `<div class="opts">${cand.map((c) => btn(c, "", x)).join("")}</div>` : "");
   }
-  return prompt(v, ch, x) + groupedList(v, ch, x);
+  return prompt(v, ch, x) + groupedList(v, ch, x, o);
 }
 
 function sheetHTML(v, ch, x, sel) {
@@ -464,6 +642,11 @@ export function feedLine(e, v, x) {
       return tr(e.k === "endorse" ? "f.endorse" : e.half ? "f.strategicHalf" : "f.strategic", { text });
     }
     case "result": return tr("f.result");
+    // The end-of-turn settlement (solo.js settleEntries): why momentum moved.
+    case "decay": return tr("r.decay", { text: e.per.map((q, p) => `${who(p)} ${q[0]}→${q[1]}`).join(" · ") });
+    case "slot": return tr(e.slot === 1 ? "r.slot1" : "r.slot3", { issue: x.issue(e.issue), who: who(e.seat) });
+    case "issueDecay": return tr("r.issueDecay");
+    case "momNow": return tr("r.momNow", { text: SHOW_ORDER.map((p) => `${who(p)} ${e.mom[p]}`).join(" · ") });
   }
   return "";
 }
@@ -487,12 +670,26 @@ export function sayLine(why, seat, x) {
   return head + fill(t, vars).replace(/\{\w+\}/g, "…");
 }
 
+// Of everything a bot says while it does one thing (one card, with every block it places), only the
+// first sentence is kept (#23). A new action starts at a card, the turn, or another seat's move.
+export function firstSayings(entries) {
+  const keep = new Set();
+  let seat = null, said = false;
+  entries.forEach((e, i) => {
+    if (["play", "cand", "trigger", "canvass", "turn", "order"].includes(e.k) || e.seat !== seat) said = false;
+    seat = e.seat;
+    if (e.why && e.why.key !== "only_move" && !said) { keep.add(i); said = true; }
+  });
+  return keep;
+}
+
 function feedHTML(v, x, o) {
-  const feed = (o.feed || []).slice(-14).reverse();
+  const all = o.feed || [], keep = firstSayings(all);
+  const feed = all.map((e, i) => ({ e, i })).slice(-14).reverse();
   if (!feed.length) return "";
-  const rows = feed.map((e) => {
+  const rows = feed.map(({ e, i }) => {
     const line = e.k === "say" ? "" : feedLine(e, v, x);
-    const say = e.why && e.why.key !== "only_move" ? sayLine(e.why, line ? null : e.seat, x) : "";
+    const say = keep.has(i) ? sayLine(e.why, line ? null : e.seat, x) : "";
     if (!line && !say) return "";
     return `<li class="${e.seat != null ? "s" + e.seat : "sys"}${e.k === "turn" ? " turn" : ""}">${line ? esc(line) : ""}${say ? `<span class="say">${esc(say)}</span>` : ""}</li>`;
   }).join("");
@@ -562,14 +759,27 @@ function adviceLine(x, o) {
   return say ? `<p class="advice"><b>${esc(x.d.ui.advisor.prefix)}</b> ${esc(say)}</p>` : "";
 }
 
+// "Just now" (o.recent = [{ seat, text }] from recentLines): what the others did since you last decided.
+function nowHTML(x, o) {
+  const lines = o.recent || [];
+  if (!lines.length) return "";
+  return `<section class="t-now" aria-label="${esc(x.tr("now.title"))}"><h3 class="t-h">${esc(x.tr("now.title"))}</h3><ul>` +
+    lines.map((l) => `<li class="${l.seat != null ? "s" + l.seat : "sys"}">${esc(l.text)}</li>`).join("") + `</ul></section>`;
+}
+
+// Your own last step (o.result = resultBlock), at the top of the decision.
+function resultHTML(o, x) {
+  return o.result ? `<p class="res ${o.result.kind}" role="status"><small>${esc(x.tr("res.label"))}</small>${esc(o.result.text)}</p>` : "";
+}
+
 export function tableHTML(view, choices, lang, opts = {}) {
   const x = bind(lang), v = view, o = opts;
   const bar = o.advisor ? advisorBar(x, o) : "";
   const open = o.open || [v.pos ? REGION_OF[v.pos[v.seat]] : 0];
   if (v.phase === "end") {
-    return `<div class="tbl end" data-phase="end">${headerHTML(v, choices, x, o)}${endHTML(v, x, o)}${trackHTML(v, x)}${mapHTML(v, x, open)}${feedHTML(v, x, o)}</div>`;
+    return `<div class="tbl end" data-phase="end">${headerHTML(v, choices, x, o)}${endHTML(v, x, o)}${nowHTML(x, o)}${resultHTML(o, x)}${trackHTML(v, x, o)}${mapHTML(v, x, open, o.changed)}${feedHTML(v, x, o)}</div>`;
   }
-  return `<div class="tbl${bar ? " hasbar" : ""}" data-phase="${esc(v.phase)}">${bar}${headerHTML(v, choices, x, o)}${trackHTML(v, x)}${oppHTML(v, x)}` +
-    `<section class="t-act${choices.length ? " mine" : ""}" id="act">${choices.length ? adviceLine(x, o) : ""}${panelHTML(v, choices, x, o)}</section>` +
-    `${v.phase === "debate" ? debateHTML(v, x) : ""}${mapHTML(v, x, open)}${feedHTML(v, x, o)}${handHTML(v, choices, x, o)}</div>`;
+  return `<div class="tbl${bar ? " hasbar" : ""}" data-phase="${esc(v.phase)}">${bar}${headerHTML(v, choices, x, o)}${trackHTML(v, x, o)}${helpHTML(x, o)}${oppHTML(v, x)}` +
+    `${nowHTML(x, o)}<section class="t-act${choices.length ? " mine" : ""}" id="act">${resultHTML(o, x)}${choices.length ? adviceLine(x, o) : ""}${panelHTML(v, choices, x, o)}</section>` +
+    `${v.phase === "debate" ? debateHTML(v, x) : ""}${mapHTML(v, x, open, o.changed)}${feedHTML(v, x, o)}${handHTML(v, choices, x, o)}</div>`;
 }

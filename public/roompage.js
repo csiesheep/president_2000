@@ -11,6 +11,7 @@
 import * as RC from "./roomclient.js";
 import { COUNTIES } from "./shared/board.js";
 import { esc } from "./table.js";
+import { drawInto } from "./drawing.js";
 
 const ADV_KEY = "p2000.advisor", NAME_KEY = "p2000.room.name", LEVEL_KEY = "p2000.room.level", roomKey = (code) => "p2000.room." + code;
 const BACKOFF_MAX = 30; // seconds: 1, 2, 4, 8, 16, 30, 30, …
@@ -64,7 +65,7 @@ export function mount({ T, lang, qs, store, $ }) {
 
   // ---- the room
   let roomCode = null, name = "", client = RC.setAdvisor(RC.newClient(), store.get(ADV_KEY) === true), sock = null, attempts = 0, retry = null, tick = null, terminal = false, gone = false;
-  let ui = { open: null, sel: null, picks: [], draft: "", level: [1, 2, 3].includes(store.get(LEVEL_KEY)) ? store.get(LEVEL_KEY) : 2 };
+  let ui = { open: null, sel: null, picks: [], help: null, moves: false, confirm: null, draft: "", level: [1, 2, 3].includes(store.get(LEVEL_KEY)) ? store.get(LEVEL_KEY) : 2 };
 
   const say = (text) => { banner.textContent = text || ""; banner.hidden = !text; };
   const draw = () => {
@@ -75,7 +76,7 @@ export function mount({ T, lang, qs, store, $ }) {
     // A redraw replaces the chat box: keep what is typed, and the caret if the box had focus.
     const box = $("#chatin"), had = box && document.activeElement === box, caret = had ? [box.selectionStart, box.selectionEnd] : null;
     const log = stage.querySelector(".chatlog"), pinned = !log || log.scrollHeight - log.scrollTop - log.clientHeight < 40;
-    stage.innerHTML = RC.screen(client, lang, { level: ui.level, open: ui.open || undefined, sel: ui.sel, picks: ui.picks, draft: ui.draft });
+    drawInto(stage, RC.screen(client, lang, { level: ui.level, open: ui.open || undefined, sel: ui.sel, picks: ui.picks, draft: ui.draft, help: ui.help, moves: ui.moves, confirm: ui.confirm }));
     const nb = $("#chatin");
     if (nb && had) { nb.focus({ preventScroll: true }); try { nb.setSelectionRange(caret[0], caret[1]); } catch { /* not a text field */ } }
     const nl = stage.querySelector(".chatlog");
@@ -130,7 +131,7 @@ export function mount({ T, lang, qs, store, $ }) {
     };
   };
   const send = (msg) => {
-    client = { ...client, error: null };
+    client = RC.sent({ ...client, error: null }, msg.t === "move" ? msg.move : null);
     if (sock && sock.readyState === 1) sock.send(JSON.stringify(msg));
     draw();
   };
@@ -165,7 +166,11 @@ export function mount({ T, lang, qs, store, $ }) {
     if (!t) return;
     const d = t.dataset;
     if (d.msg) { const m = JSON.parse(d.msg); ui.sel = null; ui.picks = []; send(m); if (m.t === "move") window.scrollTo({ top: 0 }); }
-    else if (d.move) { ui.sel = null; ui.picks = []; send({ t: "move", move: JSON.parse(d.move) }); window.scrollTo({ top: 0 }); }
+    else if (d.confirm && d.move) { ui.confirm = d.move; draw(); toAct(); }
+    else if (d.move) { ui.sel = null; ui.picks = []; ui.moves = false; ui.confirm = null; send({ t: "move", move: JSON.parse(d.move) }); window.scrollTo({ top: 0 }); }
+    else if (d.cancel) { ui.confirm = null; draw(); }
+    else if (d.help != null) { ui.help = d.help && ui.help !== d.help ? d.help : null; draw(); }
+    else if (d.toggle === "moves") { ui.moves = !ui.moves; draw(); }
     else if (d.advisor != null) { client = RC.setAdvisor(client, d.advisor === "on"); store.set(ADV_KEY, client.advisor); draw(); }
     else if (d.level != null) { ui.level = +d.level; store.set(LEVEL_KEY, ui.level); draw(); }
     else if (d.copy) {
