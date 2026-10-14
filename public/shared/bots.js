@@ -99,8 +99,13 @@ const W_MAIN = 0.65, W_OTHER = [0.3, 0.35];
 // every empty block in full on election day.
 const EW_GREEN = 0.5, EW_BLUE = 0.6, EW_ONE_CUBE = 0.85;
 // A region's media lead: a base, plus each own-camp fill it frees from a
-// boss check (up to 3 per county), times the odds of failing that check.
-const MEDIA_LEAD = 0.25, MEDIA_WAIVE = 0.35;
+// boss check (up to 3 per county), times the odds of failing that check,
+// again for each later turn with an action phase at MEDIA_PERSIST (the lead
+// may be contested before then). Set in #10 so that all-操盤手 games run
+// about as many ads as the design simulator's bots (6.8 vs 6.3 a game);
+// counting the waiver once, the bots never advertised (0 in 200 games).
+const MEDIA_LEAD = 0.25, MEDIA_WAIVE = 0.35, MEDIA_PERSIST = 0.75;
+const ACTION_TURNS = [1, 2, 3, 4, 5, 7, 8];
 const ISSUE_CUBE = 0.12;   // an issue cube becomes a bag cube on election day
 const MEDIA_CUBE = 0.15;   // likewise a media cube
 // Soft strategic-vote flow by |宋 − 連| in the county (design sim's SOFT), a
@@ -371,7 +376,9 @@ class Bot {
         const c = this.v.counties[k];
         if ([0, 1, 2].some((x) => x !== l && c.v[x] >= BOSS_THRESHOLD)) waived += Math.min(c[CAMP[l]], 3);
       }
-      V[l] += MEDIA_LEAD + waived * (1 - this.share[l]) * MEDIA_WAIVE;
+      // a lead keeps waiving those checks every turn until someone contests it
+      const later = ACTION_TURNS.filter((t) => t > this.v.turn).length;
+      V[l] += MEDIA_LEAD + waived * (1 - this.share[l]) * MEDIA_WAIVE * (1 + MEDIA_PERSIST * later);
     }
     const nat = leaderOf([0, 1, 2].map((q) => media.reduce((s, m) => s + m[q], 0)));
     if (nat >= 0) V[nat] += 0.4;
