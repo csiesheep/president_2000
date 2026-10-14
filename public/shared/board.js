@@ -1,6 +1,7 @@
 // The board as data: 25 counties (金門+連江 merged as 金馬), 154 vote blocks,
 // seven media regions, the opening position. Numbers follow the rulebook
-// (vault: Projects/president_2000/president_2000 - rulebook.md, v0.2, §3–4).
+// (vault: Projects/president_2000/president_2000 - rulebook.md, v0.3, §3–4;
+// v0.3 opens 陳 −1 and 連 +1 in each of 台北市 and 台北縣, owner ruling in #2).
 // Phase 0: written by the kickoff session, not independently verified.
 
 export const CHEN = 0, SOONG = 1, LIEN = 2;
@@ -15,8 +16,8 @@ export const REGION_EDGES = [[0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [4, 5], [3,
 // blocks, opening cubes [陳, 宋, 連]. Opening cubes sit on blocks of their own
 // camp, so the empty floating blocks are G - 陳 and B - 宋 - 連.
 export const COUNTIES = [
-  ["台北市", 0, 6, 10, 3, [4, 5, 2]],
-  ["台北縣", 0, 7, 13, 4, [4, 4, 3]],
+  ["台北市", 0, 6, 10, 3, [3, 5, 3]],
+  ["台北縣", 0, 7, 13, 4, [3, 4, 4]],
   ["基隆市", 0, 1, 1, 1, [1, 1, 0]],
   ["桃園縣", 1, 2, 7, 2, [1, 3, 1]],
   ["新竹縣", 1, 0, 2, 1, [0, 1, 1]],
