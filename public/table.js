@@ -218,14 +218,15 @@ const key = (b) => (b.o >= 0 ? b.o : 3 + (b.t === "G" ? 0 : b.t === "B" ? 1 : 2)
 
 function headerHTML(v, ch, x, o) {
   const me = v.seat, S = x.S;
-  const waitNames = (o.wait || []).map((p) => x.short(p)).join(x.lang === "en" ? ", " : "、");
+  const nm = (p) => x.short(p) + (o.names && o.names[p] ? ` (${o.names[p]})` : "");
+  const waitNames = (o.wait || []).map(nm).join(x.lang === "en" ? ", " : "、");
   let phase;
   if (v.phase === "action") phase = x.tr("hdr.phase.action", { n: Math.min(v.step + 1, 4) });
   else phase = x.tr("hdr.phase." + v.phase);
   let status = "";
   if (v.phase === "end") status = "";
   else if (ch.length) status = `<span class="you">${esc(x.tr("hdr.yourTurn"))}</span>`;
-  else status = `<span class="wait">${esc(x.tr("hdr.busy", { who: waitNames || "…" }))}</span>`;
+  else status = `<span class="wait">${esc(o.waitLabel ? fill(o.waitLabel, { who: waitNames || "…" }) : x.tr("hdr.busy", { who: waitNames || "…" }))}</span>`;
   const init = v.initiative >= 0 && v.phase !== "end" ? ` · ${x.tr("hdr.initiative", { who: x.short(v.initiative) })}` : "";
   const chips = SHOW_ORDER.map((p) => `<span class="chip s${p}${p === me ? " me" : ""}" title="${esc(x.full(p))}">${esc(x.short(p))}<b>${v.mom[p]}</b>${v.initiative === p && v.phase !== "end" ? `<i class="star" aria-label="${esc(x.tr("hdr.star"))}">★</i>` : ""}</span>`).join("");
   return `<header class="t-top"><div class="t-ttl"><span class="t-turn">${esc(x.tr("hdr.turn", { n: v.turn }))}${esc(init)}</span>` +
@@ -347,7 +348,7 @@ function panelHTML(v, ch, x, o) {
   const hand = sourceCards(v);
   if (!ch.length) {
     const sel = o.sel && hand.includes(o.sel) ? o.sel : null;
-    return sel ? sheetHTML(v, ch, x, sel) : `<p class="pr dim">${esc(x.tr("hdr.waitHint"))}</p>`;
+    return sel ? sheetHTML(v, ch, x, sel) : `<p class="pr dim">${esc(o.waitHint || x.tr("hdr.waitHint"))}</p>`;
   }
   if (v.phase === "save") return savePanel(v, ch, x, o);
   const cardMoves = ch.filter((c) => c.move.card && (c.move.type === "play" || c.move.type === "reveal" || c.move.type === "canvass"));
@@ -454,13 +455,33 @@ export function feedLine(e, v, x) {
   return "";
 }
 
+// What a bot's team says about its move: talk[why.key] with the placeholders read as names.
+// A placeholder the move did not carry is shown as "…", never as a raw "{x}".
+export function sayLine(why, seat, x) {
+  const t = x.d.talk && x.d.talk[why.key];
+  if (!t) return "";
+  const who = (s) => (typeof s === "number" ? s : SEATS.indexOf(s));
+  const vars = {};
+  if (why.card != null) vars.card = x.card(why.card);
+  if (why.county != null) vars.county = x.lang === "en" ? x.d.counties[why.county] || why.county : why.county;
+  if (why.region != null) vars.region = x.lang === "en" ? x.d.regions[why.region] || why.region : why.region;
+  if (why.issue != null) vars.issue = x.issue(why.issue);
+  for (const k of ["target", "seat"]) if (why[k] != null && who(why[k]) >= 0) vars[k] = x.short(who(why[k]));
+  if (why.cp != null) vars.cp = why.cp;
+  if (why.slot != null) vars.slot = why.slot;
+  const tag = x.d.ui.room && x.d.ui.room.say;
+  const head = tag && seat != null ? fill(tag, { who: x.short(seat) }) + " " : "";
+  return head + fill(t, vars).replace(/\{\w+\}/g, "…");
+}
+
 function feedHTML(v, x, o) {
   const feed = (o.feed || []).slice(-14).reverse();
   if (!feed.length) return "";
   const rows = feed.map((e) => {
-    const line = feedLine(e, v, x);
-    if (!line) return "";
-    return `<li class="${e.seat != null ? "s" + e.seat : "sys"}${e.k === "turn" ? " turn" : ""}">${esc(line)}</li>`;
+    const line = e.k === "say" ? "" : feedLine(e, v, x);
+    const say = e.why ? sayLine(e.why, line ? null : e.seat, x) : "";
+    if (!line && !say) return "";
+    return `<li class="${e.seat != null ? "s" + e.seat : "sys"}${e.k === "turn" ? " turn" : ""}">${line ? esc(line) : ""}${say ? `<span class="say">${esc(say)}</span>` : ""}</li>`;
   }).join("");
   return `<section class="t-feed"><h3 class="t-h">${esc(x.tr("hdr.feed"))}</h3><ol>${rows}</ol></section>`;
 }
@@ -508,7 +529,7 @@ function endHTML(v, x, o) {
     `<h3 class="t-h">${esc(x.tr("end.dayTitle"))}</h3><ul class="day">${lines.join("")}</ul>` +
     `<h3 class="t-h">${esc(x.tr("end.leadTitle"))}</h3><div class="leads">${leadRows}</div>` +
     `<p class="hist">${esc(x.tr("end.history"))}</p>` +
-    `<div class="opts"><button type="button" class="opt" data-act="again">${esc(x.tr("end.again"))}</button><a class="opt ghost" href="./${q}">${esc(x.tr("end.home"))}</a></div></section>`;
+    `<div class="opts">${o.noAgain ? "" : `<button type="button" class="opt" data-act="again">${esc(x.tr("end.again"))}</button>`}<a class="opt ghost" href="./${q}">${esc(x.tr("end.home"))}</a></div></section>`;
 }
 
 // ---------------------------------------------------------------- the whole table

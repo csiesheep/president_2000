@@ -26,8 +26,8 @@
   </ul>
   <div class="cta">
     <a id="play" class="big" href="?play" data-i18n="ui.solo.land.solo">單人對戰 AI</a>
-    <span class="big off" aria-disabled="true"><span data-i18n="ui.solo.land.room">開房</span><small data-i18n="ui.solo.land.soon">即將推出</small></span>
-    <span class="big off" aria-disabled="true"><span data-i18n="ui.solo.land.join">加入</span><small data-i18n="ui.solo.land.soon">即將推出</small></span>
+    <a id="host" class="big" href="?host" data-i18n="ui.solo.land.room">開房</a>
+    <a id="join" class="big" href="?join" data-i18n="ui.solo.land.join">加入</a>
   </div>
   <nav class="links"><a id="rules" href="rules" data-i18n="nav.rules">規則</a><a href="https://games.csiesheep.com/" data-i18n="nav.hub">csiesheep games</a></nav>
   <p class="credit" data-i18n="credit">同人作品，非官方。靈感來自 Christian Leonhard 與 Jason Matthews 設計的 <em>1960: The Making of the President</em>；規則與機制不受著作權保護，本作為獨立實作、自創名稱與美術。</p>
@@ -35,6 +35,11 @@
 <main class="wrap game" id="solo" hidden>
   <div class="topbar"><a id="home" href="./">←</a><span class="tb"><button type="button" id="quit" class="btn"></button><a id="glang" class="btn" href="?play&amp;lang=en">EN</a></span></div>
   <div id="stage"></div>
+</main>
+<main class="wrap game" id="room" hidden>
+  <div class="topbar"><a id="rhome" href="./">←</a><span class="tb"><button type="button" id="rleave" class="btn" hidden></button><a id="rlang" class="btn" href="?lang=en">EN</a></span></div>
+  <p id="rbanner" class="rbanner" role="status" hidden></p>
+  <div id="rstage"></div>
 </main>
 <script type="module" src="app.js"></script>
 </body>

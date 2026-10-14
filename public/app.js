@@ -4,6 +4,7 @@
 import en from "./i18n/en.js";
 import zh from "./i18n/zh-Hant.js";
 import * as Solo from "./solo.js";
+import { mount as mountRoom } from "./roompage.js";
 
 if (typeof document !== "undefined") {
   const qs = new URLSearchParams(location.search);
@@ -32,11 +33,15 @@ if (typeof document !== "undefined") {
   langLink.href = other ? "?lang=en" : "./";
   $("#rules").href = "rules" + (code === "en" ? "?lang=en" : "");
   $("#play").href = "?play" + (code === "en" ? "&lang=en" : "");
+  $("#host").href = "?host" + (code === "en" ? "&lang=en" : "");
+  $("#join").href = "?join" + (code === "en" ? "&lang=en" : "");
   $("#home").href = "./" + (code === "en" ? "?lang=en" : "");
   $("#home").textContent = S.setup.home;
   $("#quit").textContent = S.menu.quit;
 
-  if (!qs.has("play")) {
+  if (!qs.has("play") && (qs.has("host") || qs.has("join") || qs.has("room"))) {
+    mountRoom({ T, lang: code, qs, store, $ });
+  } else if (!qs.has("play")) {
     document.title = T.title;
   } else {
     $("#land").hidden = true;
