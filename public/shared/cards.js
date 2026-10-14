@@ -98,15 +98,15 @@ export const EVENTS = [
 // deck; CP alternates 2/3 so that 20 are 2 CP and 16 are 3 CP. Do not change
 // LOCAL_SPEC or LOCAL_V02_EARLY: that would move or re-cost existing ids.
 // local_36–local_40 are v0.3's five extra early cards, listed one by one
-// (orchestrator default in #2 pending owner Q3), which make it early 25 /
-// late 16, 2 CP 23 / 3 CP 18.
+// (owner ruling in #2, comment 6163533701, after the §14.2 county table),
+// which make it early 25 / late 16, 2 CP 23 / 3 CP 18.
 export const LOCAL_SPEC = [
   ["台北縣", 6], ["台北市", 5], ["桃園縣", 3], ["台中縣", 3], ["高雄市", 3], ["彰化縣", 2], ["高雄縣", 2], ["台南縣", 2],
   ["台中市", 1], ["屏東縣", 1], ["雲林縣", 1], ["台南市", 1], ["苗栗縣", 1], ["南投縣", 1], ["嘉義縣", 1], ["新竹縣", 1], ["宜蘭縣", 1], ["花蓮縣", 1],
 ];
 const LOCAL_V02_EARLY = 20;
 // [county, cp], all early, ids local_36 onward in this order.
-export const LOCAL_V03_EXTRA = [["高雄縣", 2], ["台北市", 2], ["桃園縣", 2], ["台南市", 3], ["嘉義市", 3]];
+export const LOCAL_V03_EXTRA = [["高雄縣", 2], ["台北市", 2], ["桃園縣", 3], ["台南市", 3], ["嘉義市", 2]];
 export const DECK_SIZES = { early: 75, late: 36, earlyLocal: 25, lateLocal: 16 };
 
 const LOCAL_TEXT = "出牌者在該縣市放 1 顆方塊（需檢定）";
