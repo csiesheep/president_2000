@@ -199,7 +199,11 @@ section("22 規則頁：政見發表會沒人出牌的議題");
 check("規則頁的政見發表會寫出：沒人出過牌的議題不結算（中文「不結算」、英文 not settled），議題照原順序回軌道", () => {
   if (!Q7) return "TODO: 規則頁還沒寫 Q7 = B（#22）";
   if (!/not settled/i.test(debateText(en))) return "英文的政見發表會一節沒有寫 not settled";
-  if (!/原(來的)?順序/.test(debateText(zh))) return "中文沒有寫議題照原順序回軌道";
+  // The order has to be said after 不結算 / not settled: the sentence before already says the
+  // settled ones go in track order (found by the writer, #22).
+  const after = (text, re) => { const m = text.match(re); return m ? text.slice(m.index + m[0].length) : ""; };
+  if (!/原(來的)?順序/.test(after(debateText(zh), /不結算/))) return "中文在「不結算」之後沒有寫議題照原順序回軌道";
+  if (!/original order/i.test(after(debateText(en), /not settled/i))) return "英文在 not settled 之後沒有寫 original order";
   return ok(true, "中英都寫了");
 });
 
