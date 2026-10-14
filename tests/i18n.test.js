@@ -145,8 +145,8 @@ c14("佔位字 {…} 只用 bot 每次都會帶的參數（從四局 bot 對打�
 });
 // The room server's error codes (#13 handover, copied by hand; not read from src/roomcore.js).
 const ERROR_CODES = ["bad_message", "bad_seat", "seat_taken", "started", "not_host", "bad_level", "not_seated",
-  "not_started", "not_your_turn", "illegal_move", "engine_error", "no_room"];
-c14("房間的錯誤碼：12 個都有中英說明（errors）", () => {
+  "not_started", "not_your_turn", "illegal_move", "engine_error", "no_room", "empty_chat", "not_ended"]; // the last two from #16
+c14(`房間的錯誤碼：${ERROR_CODES.length} 個都有中英說明（errors）`, () => {
   for (const [lang, t] of [["zh", zh], ["en", en]]) {
     const miss = ERROR_CODES.filter((k) => !t.errors || !String(t.errors[k] || "").trim());
     if (miss.length) return `${lang} 缺錯誤說明：${miss.join("、")}`;
