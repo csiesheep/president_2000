@@ -116,6 +116,33 @@ export default {
         again: "再來一局", home: "回首頁",
       },
     },
+    // 房間頁（#15）：開房、加入、大廳、多人對局
+    room: {
+      say: "{who}陣營：",
+      form: {
+        hostKicker: "開房", hostTitle: "開一間房", hostSub: "你坐房主的位子，其他位子等朋友入座；沒人坐的位子開局時由 bot 接手。",
+        joinKicker: "加入", joinTitle: "加入朋友的房間", joinSub: "輸入朋友給你的四碼房間代碼。",
+        name: "你的名字", namePh: "例如：小羊", code: "房間代碼", codePh: "K7PM",
+        hostGo: "開房", joinGo: "加入", back: "← 回首頁", needName: "請先輸入你的名字。", badCode: "房間代碼是四個英文字母或數字。",
+      },
+      lobby: {
+        kicker: "競選總部", code: "房間代碼 · ROOM", copy: "複製連結", copied: "已複製",
+        share: "把代碼或連結傳給朋友，他們就能入座。",
+        sit: "入座", moveTo: "換到這裡", you: "你", host: "房主", offline: "斷線", bot: "Bot", empty: "空位 · 等人加入", guest: "玩家",
+        start: "開局 · {bot}", startBig: "開局 · 空位由 bot 接手",
+        pickSeat: "先選一個座位入座。房主入座後才能開局。", hostUnseated: "房主入座後才能開局。", waitHost: "等房主開局。",
+        rules: "空位開局時由 bot 接手；斷線 15 秒後也是；每個行動 60 秒，逾時由 bot 代打這一手。",
+      },
+      game: {
+        wait: "等 {who}", hint: "還沒輪到你。可以先看地圖和手牌。",
+        noSeat: "這個房間已經開局，你沒有座位。可以回首頁另開一間，或加入別的房間。",
+      },
+      conn: {
+        connecting: "連線中…", retry: "連線中斷，{n} 秒後重試…", retrying: "重新連線中…",
+        leave: "離開房間", leaveConfirm: "離開這個房間？你的位子會由 bot 接手。",
+        unknownError: "發生了預期之外的狀況。請重新整理頁面再試一次。",
+      },
+    },
   },
   rules: [
     { id: "overview", title: "總覽", body: [

@@ -117,6 +117,33 @@ export default {
         again: "Play again", home: "Home",
       },
     },
+    // The room page (#15): host, join, lobby, multiplayer table
+    room: {
+      say: "Team {who}:",
+      form: {
+        hostKicker: "HOST A ROOM", hostTitle: "Open a room", hostSub: "You take the host's seat and your friends take the others; any seat left empty is played by a bot when the game starts.",
+        joinKicker: "JOIN A ROOM", joinTitle: "Join a friend's room", joinSub: "Enter the four-character room code your friend gave you.",
+        name: "Your name", namePh: "e.g. Sheep", code: "Room code", codePh: "K7PM",
+        hostGo: "Open the room", joinGo: "Join", back: "← Home", needName: "Please enter your name first.", badCode: "A room code is four letters or digits.",
+      },
+      lobby: {
+        kicker: "CAMPAIGN HQ", code: "ROOM CODE", copy: "Copy link", copied: "Copied",
+        share: "Send the code or the link to your friends and they can take a seat.",
+        sit: "Sit here", moveTo: "Move here", you: "You", host: "Host", offline: "Offline", bot: "Bot", empty: "Empty · waiting for a player", guest: "Player",
+        start: "Start · {bot}", startBig: "Start · empty seats go to bots",
+        pickSeat: "Take a seat first. The host has to be seated before the game can start.", hostUnseated: "The game can start once the host has a seat.", waitHost: "Waiting for the host to start.",
+        rules: "Empty seats are played by bots when the game starts, and so is a seat whose player has been offline for 15 seconds. Each action has 60 seconds; after that a bot plays that one move for you.",
+      },
+      game: {
+        wait: "Waiting for {who}", hint: "It isn't your move yet. You can look over the map and your hand meanwhile.",
+        noSeat: "This room has already started and you have no seat. Go home to open another room, or join a different one.",
+      },
+      conn: {
+        connecting: "Connecting…", retry: "Connection lost. Retrying in {n} s…", retrying: "Reconnecting…",
+        leave: "Leave the room", leaveConfirm: "Leave this room? A bot will take your seat.",
+        unknownError: "Something unexpected happened. Refresh the page and try again.",
+      },
+    },
   },
   rules: [
     { id: "overview", title: "Overview", body: [

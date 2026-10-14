@@ -49,7 +49,7 @@ function describe(b, seat, m, a) {
 const perSeat = (list) => { const per = [0, 0, 0]; for (const x of list) per[x.seat] += x.n; return per; };
 
 // The engine's own log entries the record keeps: the turn, endorsements, the debate and election day.
-function fromLog(st, from) {
+export function fromLog(st, from) {
   const out = [];
   for (const e of st.log.slice(from)) {
     if (e.t === "turn") out.push({ k: "turn", turn: e.turn, initiative: e.initiative });
@@ -64,9 +64,17 @@ function fromLog(st, from) {
   return out;
 }
 
-function move(session, seat, m) {
+// What a bot said about its move (#14): the key and the parameters a sentence may use, never the bot's own scores.
+const SAY_PARAMS = ["card", "county", "region", "issue", "target", "seat", "cp", "slot"];
+const sayOf = (why) => (why && why.key ? Object.fromEntries([["key", why.key], ...SAY_PARAMS.filter((k) => why[k] != null).map((k) => [k, why[k]])]) : null);
+
+function move(session, seat, m, why) {
   const b = session.st, a = E.apply(b, seat, m);
-  const feed = session.feed.concat(describe(b, seat, m, a), fromLog(a, session.logSeen)).slice(-FEED_MAX);
+  // The bot's line goes on the first line the move wrote, or stands alone when the move wrote none.
+  const said = sayOf(why);
+  const lines = describe(b, seat, m, a);
+  if (said) { if (lines.length) lines[0] = { ...lines[0], why: said }; else lines.push({ k: "say", seat, why: said }); }
+  const feed = session.feed.concat(lines, fromLog(a, session.logSeen)).slice(-FEED_MAX);
   return { ...session, st: a, feed, logSeen: a.log.length };
 }
 
@@ -80,8 +88,8 @@ export function stepBot(session) {
   const todo = botsToMove(session);
   if (!todo.length) return session;
   const r = E.makeRng(0); r.state = session.rng;
-  const { move: m } = chooseMove(session.st, todo[0], session.level, () => r.next());
-  return { ...move(session, todo[0], m), rng: r.state };
+  const { move: m, why } = chooseMove(session.st, todo[0], session.level, () => r.next());
+  return { ...move(session, todo[0], m, why), rng: r.state };
 }
 
 export function advance(session) {
