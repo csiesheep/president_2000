@@ -132,20 +132,26 @@ c12("結束畫面：寫出當選人的名字與三人的票數（方塊數）", 
   }
   return ok(true, out.join("；"));
 });
-c12("存檔：中途的 session 存成 JSON 再讀回來（sessionStorage），畫面一樣；用同樣的選擇接著打，結果跟沒存過一樣", () => {
-  const a = soloGame(1, 2, 77, "zh-Hant", { holdAt: 60 });
-  if (a.bad) return a.bad;
-  if (!a.saved) return "這局不到 60 個決定，沒有存檔可比";
-  const back = JSON.parse(a.saved);
-  let x = eq(S.screen(back, "zh-Hant") === S.screen(a.live, "zh-Hant"), true, "讀回來的畫面跟存之前一樣"); if (x !== true) return x;
-  const run = (s) => {
-    const R2 = D.rng(5);
-    for (let n = 0; n < 3000 && s.st.phase !== "end"; n++) { const ch = S.choices(s, "zh-Hant"); s = S.advance(S.act(s, ch[Math.floor(R2() * ch.length)].move)); }
-    return s;
-  };
-  const e1 = run(a.live), e2 = run(back);
-  x = eq(same(e1.st, e2.st), true, "沒存過與存過再讀回，接著打到的結束狀態"); if (x !== true) return x;
-  return ok(true, `從第 60 個決定接著打，兩次都是 ${e1.st.result.votes.join("/")}`);
+// Level 1 is in here on purpose: levels 2 and 3 hardly ever draw from their rng, so a bot rng
+// kept outside the session only shows up with level 1 (found by the FE peer, #12).
+c12("存檔：中途的 session 存成 JSON 再讀回來（sessionStorage），畫面一樣；用同樣的選擇接著打，結果跟沒存過一樣（三個存檔點，含等級 1）", () => {
+  const out = [];
+  for (const [seat, level, seed, holdAt] of [[1, 1, 77, 5], [2, 1, 90, 20], [1, 2, 77, 60]]) {
+    const a = soloGame(seat, level, seed, "zh-Hant", { holdAt });
+    if (a.bad) return a.bad;
+    if (!a.saved) return `等級 ${level} seed ${seed} 這局不到 ${holdAt} 個決定，沒有存檔可比`;
+    const back = JSON.parse(a.saved);
+    let x = eq(S.screen(back, "zh-Hant") === S.screen(a.live, "zh-Hant"), true, `等級 ${level} 第 ${holdAt} 個決定：讀回來的畫面跟存之前一樣`); if (x !== true) return x;
+    const run = (s) => {
+      const R2 = D.rng(5);
+      for (let n = 0; n < 3000 && s.st.phase !== "end"; n++) { const ch = S.choices(s, "zh-Hant"); s = S.advance(S.act(s, ch[Math.floor(R2() * ch.length)].move)); }
+      return s;
+    };
+    const e1 = run(a.live), e2 = run(back);
+    x = eq(same(e1.st, e2.st), true, `等級 ${level} seed ${seed}：沒存過與存過再讀回，從第 ${holdAt} 個決定接著打到的結束狀態`); if (x !== true) return x;
+    out.push(`等級 ${level} 第 ${holdAt} 個決定 → ${e1.st.result.votes.join("/")}`);
+  }
+  return ok(true, out.join("；"));
 });
 
 test("solo", () => {
