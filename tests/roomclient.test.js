@@ -193,6 +193,118 @@ c18("房間裡 A 開軍師、B 不開：輪到 A 時剛好一個「走一步」�
   return ok(true, `A 的 ${mine} 個決定都標對，${reasons} 句理由；B 沒有標`);
 });
 
+// ---- 房間頁補上聊天、再來一局、倒數、bot 的步（#19; the server side is #16）. roomclient.js also
+// exports chatLines(client) → [{ seat, name, text }]: the room's chat as the page shows it (the
+// chat message right after hello is the whole history and replaces; later ones append). With the
+// game over, the host's actions() include exactly one { t: "rematch" }. screen(client, lang,
+// { now }) shows the clock as an element with data-left="<whole seconds left>" whenever the last
+// state has a deadline, and the table talk of the last state's botMoves (talk[why.key],
+// placeholders filled; not for only_move). Reports 尚未實作 until roomclient.js exports chatLines.
+const ROOM19 = !!(C && typeof C.chatLines === "function");
+const c19 = (name, fn) => c15(name, () => (ROOM19 ? fn() : "TODO: roomclient.js 還沒有 chatLines（#19）"));
+// A table that also remembers the last message of each kind each conn received.
+function table19(seed) {
+  const w = table(seed);
+  w.got = {};
+  const inner = w.do;
+  w.do = (ev) => { const out = inner(ev); for (const o of out) (w.got[o.to] ??= {})[o.msg.t] = o.msg; return out; };
+  return w;
+}
+section("19 房間頁：聊天、再來一局、倒數、bot 的步");
+c19("聊天：別人送的話出現在你的 chatLines 與畫面上；拿 token 重連，紀錄不重複", () => {
+  const w = table19(19);
+  w.join("A", "Ann"); w.join("B", "Bo");
+  w.click("A", { t: "chat", text: "誰要當阿扁？" });
+  w.click("B", { t: "chat", text: "我來" });
+  const lines = C.chatLines(w.clients.B);
+  let r = eq(lines.map((l) => `${l.name}:${l.text}`).join("|"), "Ann:誰要當阿扁？|Bo:我來", "B 的 chatLines"); if (r !== true) return r;
+  const seen = text(C.screen(w.clients.B, "zh-Hant"));
+  if (!seen.includes("誰要當阿扁？")) return "B 的畫面沒有 A 說的話";
+  const token = w.clients.B.token;
+  // The page keeps its client across a reconnect, so the same client object gets hello and the
+  // history again: the history must replace, not append.
+  w.do({ type: "close", conn: "B" });
+  w.clients.B2 = w.clients.B;
+  w.do({ type: "open", conn: "B2", name: "Bo", token });
+  r = eq(C.chatLines(w.clients.B2).length, 2, "B 拿 token 重連之後的聊天條數（不重複）"); if (r !== true) return r;
+  return ok(true, "兩句話、重連後仍是兩句");
+});
+c19("再來一局：結束後只有房主的 actions 有一個 rematch；按下去回到第 1 回合，兩邊都能繼續走", () => {
+  const w = table19(23);
+  w.join("A", "Ann"); w.join("B", "Bo");
+  w.click("A", { t: "sit", seat: 0 }); w.click("B", { t: "sit", seat: 1 });
+  w.click("A", { t: "start", level: 1 });
+  const R1 = D.rng(9);
+  const rematch = (conn) => C.actions(w.clients[conn], "zh-Hant").filter((a) => a.data && a.data.t === "rematch");
+  for (let n = 0; n < 5000 && w.room.st.phase !== "end"; n++) {
+    if (rematch("A").length) return `第 ${w.room.st.turn} 回合 ${w.room.st.phase}：還沒結束就有再來一局`;
+    const conn = ["A", "B"].find((c) => C.actions(w.clients[c], "zh-Hant").some((a) => a.data && a.data.t === "move"));
+    if (!conn) return "兩個人都沒有選項";
+    const acts = C.actions(w.clients[conn], "zh-Hant").filter((a) => a.data && a.data.t === "move");
+    w.click(conn, acts[Math.floor(R1() * acts.length)].data);
+  }
+  let r = eq(`${w.room.st.phase} ${rematch("A").length} ${rematch("B").length}`, "end 1 0", "結束後 A（房主）與 B 的再來一局選項數"); if (r !== true) return r;
+  w.click("A", rematch("A")[0].data);
+  r = eq(`${w.room.st.phase !== "end"} ${w.room.st.turn}`, "true 1", "按下再來一局之後"); if (r !== true) return r;
+  const moves = ["A", "B"].some((c) => C.actions(w.clients[c], "zh-Hant").some((a) => a.data && a.data.t === "move"));
+  r = eq(moves, true, "新的一局有人有選項"); if (r !== true) return r;
+  return ok(true, "只有房主、只在結束後；新的一局能走");
+});
+c19("倒數：最後一則 state 有 deadline 時，畫面有 data-left = 剩下的秒數（用傳進去的 now 算）", () => {
+  const w = table19(29);
+  w.join("A", "Ann"); w.join("B", "Bo");
+  w.click("A", { t: "sit", seat: 0 }); w.click("B", { t: "sit", seat: 1 });
+  w.click("A", { t: "start", level: 1 });
+  let checked = 0;
+  for (const conn of ["A", "B"]) {
+    const st = w.got[conn] && w.got[conn].state;
+    if (!st || st.deadline == null) continue;
+    for (const left of [42, 7]) {
+      const html = C.screen(w.clients[conn], "zh-Hant", { now: st.deadline - left * 1000 });
+      const m = html.match(/data-left="(\d+)"/);
+      if (!m) return `${conn} 的畫面沒有 data-left（deadline 還有 ${left} 秒）`;
+      if (+m[1] !== left) return `${conn} 的倒數：期望 ${left}，實際 ${m[1]}`;
+      checked++;
+    }
+  }
+  const r = nonEmpty(checked, "帶 deadline 的畫面"); if (r !== true) return r;
+  return ok(true, `${checked} 個畫面的倒數對`);
+});
+c19("bot 的步：最後一則 state 的 botMoves 裡，bot 的桌邊話出現在畫面上（only_move 除外，佔位字填好）", () => {
+  const w = table19(31);
+  w.join("A", "Ann"); w.join("B", "Bo");
+  w.click("A", { t: "sit", seat: 0 }); w.click("B", { t: "sit", seat: 1 });
+  w.click("A", { t: "start", level: 2 });
+  const R1 = D.rng(10);
+  let checked = 0;
+  for (let n = 0; n < 400 && w.room.st.phase !== "end"; n++) {
+    for (const [conn, lang, t] of [["A", "zh-Hant", zh], ["B", "en", en]]) {
+      const st = w.got[conn] && w.got[conn].state;
+      const said = st && (st.botMoves || []).filter((b) => b.why.key !== "only_move");
+      if (!said || !said.length) continue;
+      const seen = text(C.screen(w.clients[conn], lang)), last = said[said.length - 1];
+      const lit = literal(t.talk[last.why.key]);
+      if (lit && !seen.includes(lit)) return `${lang} 第 ${w.room.st.turn} 回合：畫面沒有 bot 的桌邊話（${last.why.key}：「${lit}」）`;
+      const hole = seen.match(/.{0,10}\{\w+\}.{0,10}/);
+      if (hole) return `${lang} 畫面有沒填的佔位字：${hole[0]}`;
+      checked++;
+    }
+    const conn = ["A", "B"].find((c) => C.actions(w.clients[c], "zh-Hant").some((a) => a.data && a.data.t === "move"));
+    if (!conn) return "兩個人都沒有選項";
+    const acts = C.actions(w.clients[conn], "zh-Hant").filter((a) => a.data && a.data.t === "move");
+    w.click(conn, acts[Math.floor(R1() * acts.length)].data);
+  }
+  const r = nonEmpty(checked, "有 bot 桌邊話的畫面"); if (r !== true) return r;
+  return ok(true, `${checked} 個畫面有 bot 的桌邊話`);
+});
+c19("新的錯誤碼有中英說明：empty_chat、not_ended", () => {
+  for (const [lang, t] of [["zh", zh], ["en", en]]) {
+    const miss = ["empty_chat", "not_ended"].filter((k) => !t.errors || !String(t.errors[k] || "").trim());
+    if (miss.length) return `${lang} 缺錯誤說明：${miss.join("、")}`;
+  }
+  return ok(true, "兩個新碼兩邊都有");
+});
+
 test("roomclient", () => {
   const s = summary();
   for (const p of R.pass) console.log(`  ✓ ${p.label}${p.msg ? " — " + p.msg : ""}`);
