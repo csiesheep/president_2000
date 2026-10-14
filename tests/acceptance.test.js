@@ -57,6 +57,17 @@ const SPEC = {
   hand: { dealEarly: 5, dealLate: 6, play: 4, saveEarly: 1, saveLate: 2 },
   must: ["yang_exposes"],
   cpRange: [2, 4],
+  // §14.2「事件牌上印的縣市也依票塊數加權；兩者合計每個縣市至少出現 1 次」. Orchestrator ruling (#7):
+  // each deck apportioned by vote blocks on its own (largest remainder); 澎湖 and 金馬, which no
+  // card names otherwise, take one early event each from 台南縣 and 台南市 (the two smallest
+  // remainders that were rounded up).
+  eventCounties: {
+    early: { "台北縣": 8, "台北市": 6, "桃園縣": 3, "台中縣": 3, "高雄市": 3, "彰化縣": 3, "高雄縣": 3, "台南縣": 2, "台中市": 2, "屏東縣": 2,
+      "雲林縣": 2, "台南市": 1, "苗栗縣": 1, "南投縣": 1, "嘉義縣": 1, "基隆市": 1, "新竹縣": 1, "宜蘭縣": 1, "花蓮縣": 1, "新竹市": 1,
+      "嘉義市": 1, "台東縣": 1, "澎湖縣": 1, "金馬": 1 },
+    late: { "台北縣": 3, "台北市": 3, "桃園縣": 2, "台中縣": 1, "高雄市": 1, "彰化縣": 1, "高雄縣": 1, "台南縣": 1, "台中市": 1, "屏東縣": 1,
+      "雲林縣": 1, "台南市": 1, "苗栗縣": 1, "南投縣": 1, "嘉義縣": 1 },
+  },
   // §14.3 row by row: id: "owner deck cp icon". Transcribed by script from the rulebook's tables
   // (vault e487d8e); the card name was used only to attach the product's id to each row.
   eventTable: {
@@ -176,6 +187,26 @@ check("事件牌逐張：歸屬、前後期、CP、議題照 §14.3", () => {
   const extra = C.EVENTS.filter((e) => !(e.id in want)).map((e) => e.id);
   if (extra.length) bad.push("規則書沒有的事件：" + extra.join(","));
   return bad.length ? bad.join("；") : ok(true, `${Object.keys(want).length} 張逐張相符`);
+});
+check("事件牌印的縣市：前期 50、後期 20 各自照票塊數分配；地方牌加事件每縣市至少 1 次；引擎用牌上印的縣市（§14.2；#7）", () => {
+  if (!C.EVENTS.some((e) => e.county)) return "TODO: 事件牌還沒有印縣市（#7）";
+  const names = new Set(B.COUNTIES.map((c) => c[0]));
+  const bad = C.EVENTS.filter((e) => !names.has(e.county)).map((e) => e.id);
+  if (bad.length) return "沒有縣市或縣市不在盤上：" + bad.join(",");
+  for (const deck of ["early", "late"]) {
+    const got = {};
+    for (const e of C.EVENTS.filter((x) => x.deck === deck)) got[e.county] = (got[e.county] || 0) + 1;
+    const want = SPEC.eventCounties[deck], keys = [...new Set([...Object.keys(got), ...Object.keys(want)])];
+    const diff = keys.filter((k) => (got[k] || 0) !== (want[k] || 0)).map((k) => `${k} 期望 ${want[k] || 0} 實際 ${got[k] || 0}`);
+    if (diff.length) return `${deck === "early" ? "前期" : "後期"}事件的縣市：${diff.join("；")}`;
+  }
+  const seen = new Set([...C.EVENTS.map((e) => e.county), ...C.localCards().map((c) => c.county)]);
+  const none = [...names].filter((n) => !seen.has(n));
+  if (none.length) return "沒有任何一張牌印的縣市：" + none.join(",");
+  const st = E.createGame(1);
+  const moved = C.EVENTS.filter((e) => st.cards[e.id].county !== e.county).map((e) => e.id);
+  if (moved.length) return "引擎沒有用牌上印的縣市：" + moved.slice(0, 5).join(",");
+  return ok(true, "70 張照表；24 縣市都有牌；引擎用印的縣市");
 });
 check("必觸發牌只有楊吉雄爆料；條件牌指向存在的牌", () => {
   const must = C.EVENTS.filter((e) => e.must).map((e) => e.id);
