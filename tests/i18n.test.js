@@ -12,6 +12,9 @@ import * as B from "../public/shared/board.js";
 import * as C from "../public/shared/cards.js";
 import zh from "../public/i18n/zh-Hant.js";
 import en from "../public/i18n/en.js";
+import * as E from "../public/shared/engine.js";
+import * as BOTS from "../public/shared/bots.js";
+import * as D from "./driver.js";
 
 // The rules page follows the rulebook's chapters (v0.3, vault e487d8e). Copied by hand.
 const SECTIONS = ["overview", "components", "board", "setup", "turn", "play", "actions", "checks",
@@ -92,6 +95,59 @@ c9("英文字串裡沒有中文字（語言切換鈕 nav.lang 除外，它寫的
   if (bad.length) return "英文裡有中文：" + bad.slice(0, 5).map((s) => JSON.stringify(s.slice(0, 40))).join("；");
   const r = eq(en.nav && en.nav.lang, "中文", "英文頁的語言切換鈕"); if (r !== true) return r;
   return ok(true, `${strings(en).length} 條英文`);
+});
+
+// ---- 桌邊話（#14）: one line per bot why.key, in both languages. A {name} placeholder must be a
+// param the bot sends with that key every time it sends it (sampled from four bot games), so the
+// table never shows a raw "{county}". Every check reports 尚未實作 until zh-Hant.js has `talk`.
+const TALKING = !!(zh.talk && typeof zh.talk === "object");
+const c14 = (name, fn) => check(name, () => (TALKING ? fn() : "TODO: 桌邊話還沒開始（#14）"));
+const TALK_MAX = { zh: 32, en: 100 };  // orchestrator ruling (#14): one bubble on a 390-wide phone
+const holes = (str) => [...String(str).matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
+let PARAMS = null; // key → Set of params present on every occurrence
+function sampleParams() {
+  if (PARAMS) return PARAMS;
+  const seen = {};
+  for (const [seed, lv] of [[1, 3], [2, 3], [3, 2], [4, 1]]) {
+    let st = E.createGame(seed); const r = D.rng(seed);
+    for (let n = 0; n < 20000 && st.phase !== "end"; n++) {
+      const p = E.mustAct(st)[0], o = BOTS.chooseMove(st, p, lv, r);
+      const ks = new Set(Object.keys(o.why).filter((k) => k !== "key"));
+      seen[o.why.key] = seen[o.why.key] ? new Set([...seen[o.why.key]].filter((k) => ks.has(k))) : ks;
+      st = E.apply(st, p, o.move);
+    }
+  }
+  return (PARAMS = seen);
+}
+section("14 桌邊話");
+c14("每一個 bot 的 why.key 都有中英一句話，沒有多出來的 key", () => {
+  const r = nonEmpty(BOTS.WHY.length, "bots.js 的 WHY"); if (r !== true) return r;
+  for (const [lang, t] of [["zh", zh], ["en", en]]) {
+    if (!t.talk) return `${lang} 沒有 talk`;
+    const miss = BOTS.WHY.filter((k) => !String(t.talk[k] || "").trim());
+    if (miss.length) return `${lang} 缺：${miss.slice(0, 8).join("、")}${miss.length > 8 ? `…（共 ${miss.length}）` : ""}`;
+    const extra = Object.keys(t.talk).filter((k) => !BOTS.WHY.includes(k));
+    if (extra.length) return `${lang} 多了 WHY 裡沒有的 key：${extra.join("、")}`;
+  }
+  return ok(true, `${BOTS.WHY.length} 個 key 兩邊都有`);
+});
+c14("佔位字 {…} 只用 bot 每次都會帶的參數（從四局 bot 對打取樣；沒出現過的 key 不能有佔位字）", () => {
+  const P = sampleParams();
+  const bad = [];
+  for (const [lang, t] of [["zh", zh], ["en", en]]) for (const k of BOTS.WHY) {
+    const allowed = P[k] || new Set();
+    for (const h of holes(t.talk[k])) if (!allowed.has(h)) bad.push(`${lang}.${k} 用了 {${h}}（bot 每次都帶的：${[...allowed].join(",") || "無"}${P[k] ? "" : "；這個 key 四局裡沒出現過"}）`);
+  }
+  if (bad.length) return bad.slice(0, 5).join("；");
+  return ok(true, `${Object.keys(P).length} 個 key 取樣到；${BOTS.WHY.filter((k) => !P[k]).join("、") || "全部都有"}沒出現過`);
+});
+c14(`一句話放得進手機上的泡泡：中文 ≤ ${TALK_MAX.zh} 字、英文 ≤ ${TALK_MAX.en} 字元（佔位字不算）`, () => {
+  const long = [];
+  for (const [lang, t] of [["zh", zh], ["en", en]]) for (const k of BOTS.WHY) {
+    const n = [...String(t.talk[k]).replace(/\{\w+\}/g, "")].length;
+    if (n > TALK_MAX[lang]) long.push(`${lang}.${k} ${n}`);
+  }
+  return long.length ? "太長：" + long.slice(0, 6).join("、") : ok(true, `${BOTS.WHY.length * 2} 句`);
 });
 
 test("i18n", () => {
