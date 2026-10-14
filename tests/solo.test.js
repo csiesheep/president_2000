@@ -15,11 +15,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
-import { R, section, check, eq, ok, summary } from "./harness.js";
+import { R, section, check, eq, ok, nonEmpty, summary } from "./harness.js";
 import * as E from "../public/shared/engine.js";
 import * as C from "../public/shared/cards.js";
+import zh from "../public/i18n/zh-Hant.js";
 import en from "../public/i18n/en.js";
 import * as D from "./driver.js";
+import * as BOTS from "../public/shared/bots.js";
 
 const CJK = /[㐀-鿿豈-﫿]/;
 const FILE = new URL("../public/solo.js", import.meta.url);
@@ -152,6 +154,58 @@ c12("存檔：中途的 session 存成 JSON 再讀回來（sessionStorage），�
     out.push(`等級 ${level} 第 ${holdAt} 個決定 → ${e1.st.result.votes.join("/")}`);
   }
   return ok(true, out.join("；"));
+});
+
+// ---- 軍師（#18）. solo.js also exports setAdvisor(session, on) → session; the switch lives in the
+// session, so a reload keeps it (owner: 「Game page 上方有開關 for 軍師模式」). With it on, at every
+// human decision choices() marks exactly one option advised: true, the move
+// bots.advise(E.view(st, seat), E.legalMoves(st, seat)) picks, and screen() shows the reason: the
+// line talk[why.key] with its placeholders filled (not for only_move). Off: nothing marked.
+const ADV = !!(S && typeof S.setAdvisor === "function");
+const c18 = (name, fn) => c12(name, () => (ADV ? fn() : "TODO: solo.js 還沒有 setAdvisor（#18）"));
+// The longest fixed piece of a talk line (what is left when the placeholders are cut out).
+const literal = (tpl) => String(tpl).split(/\{\w+\}/).map((x) => x.trim()).filter((x) => x.length >= 2).sort((a, b) => b.length - a.length)[0] || "";
+section("18 軍師（單人）");
+c18("開著時，每個決定剛好一個選項標 advised，就是 bots.advise 選的那一步；畫面有理由（talk 那一句、佔位字填好）；關著時都沒有標", () => {
+  const out = [];
+  for (const [lang, t, seat, seed] of [["zh-Hant", zh, 1, 61], ["en", en, 2, 64]]) {
+    let s = S.setAdvisor(S.advance(S.newSolo({ seat, level: 2, seed })), true);
+    let checked = 0, reasons = 0;
+    const R1 = D.rng(seed);
+    for (let n = 0; n < 3000 && s.st.phase !== "end"; n++) {
+      const st = s.st;
+      const ch = S.choices(s, lang);
+      const marked = ch.filter((c) => c.advised === true);
+      const want = BOTS.advise(E.view(st, seat), E.legalMoves(st, seat));
+      const where = `${lang} 第 ${st.turn} 回合 ${st.phase}`;
+      if (marked.length !== 1) return `${where}：標 advised 的選項有 ${marked.length} 個`;
+      if (!same(marked[0].move, want.move)) return `${where}：標的是 ${JSON.stringify(marked[0].move)}，軍師選的是 ${JSON.stringify(want.move)}`;
+      if (want.why.key !== "only_move") {
+        const seen = text(S.screen(s, lang)), lit = literal(t.talk[want.why.key]);
+        if (lit && !seen.includes(lit)) return `${where}：畫面沒有軍師的理由（${want.why.key}：「${lit}」）`;
+        const hole = seen.match(/.{0,10}\{\w+\}.{0,10}/);
+        if (hole) return `${where}：畫面有沒填的佔位字：${hole[0]}`;
+        reasons++;
+      }
+      checked++;
+      s = S.advance(S.act(s, ch[Math.floor(R1() * ch.length)].move));
+    }
+    const r = nonEmpty(reasons, `${lang} 有理由的決定`); if (r !== true) return r;
+    out.push(`${lang} ${checked} 個決定、${reasons} 句理由`);
+  }
+  let s = S.setAdvisor(S.advance(S.newSolo({ seat: 0, level: 1, seed: 62 })), false);
+  for (let n = 0; n < 60 && s.st.phase !== "end"; n++) {
+    const ch = S.choices(s, "zh-Hant");
+    if (ch.some((c) => c.advised)) return `軍師關著，第 ${s.st.turn} 回合 ${s.st.phase} 卻有選項標 advised`;
+    s = S.advance(S.act(s, ch[0].move));
+  }
+  return ok(true, out.join("；") + "；關著時 60 個決定都沒有標");
+});
+c18("開關跟著存檔：開著的 session 存成 JSON 再讀回來，仍然只標一個 advised", () => {
+  const s = S.setAdvisor(S.advance(S.newSolo({ seat: 2, level: 1, seed: 63 })), true);
+  const back = JSON.parse(JSON.stringify(s));
+  const r = eq(S.choices(back, "zh-Hant").filter((c) => c.advised).length, 1, "讀回來之後標 advised 的選項數"); if (r !== true) return r;
+  return ok(true, "開關存在 session 裡");
 });
 
 test("solo", () => {

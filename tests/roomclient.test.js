@@ -23,6 +23,7 @@ import * as RC from "../src/roomcore.js";
 import zh from "../public/i18n/zh-Hant.js";
 import en from "../public/i18n/en.js";
 import * as D from "./driver.js";
+import * as BOTS from "../public/shared/bots.js";
 
 const CJK = /[㐀-鿿豈-﫿]/;
 const FILE = new URL("../public/roomclient.js", import.meta.url);
@@ -147,6 +148,49 @@ c15("英文：大廳、對局中、結束的英文畫面與選項都沒有中文
   }
   bad = cjk("A", "結束"); if (bad) return bad;
   return ok(true, `${n} 步的英文畫面`);
+});
+
+// ---- 軍師（#18）. roomclient.js also exports setAdvisor(client, on) → client; receive() keeps it.
+// With it on and the seat to act, actions() marks exactly one move advised: true, the move
+// bots.advise(view, legal) picks from what the server sent, and screen() shows the reason
+// (talk[why.key], placeholders filled; not for only_move). Not your turn, or off: nothing marked.
+const ADV = !!(C && typeof C.setAdvisor === "function");
+const c18 = (name, fn) => c15(name, () => (ADV ? fn() : "TODO: roomclient.js 還沒有 setAdvisor（#18）"));
+const literal = (tpl) => String(tpl).split(/\{\w+\}/).map((x) => x.trim()).filter((x) => x.length >= 2).sort((a, b) => b.length - a.length)[0] || "";
+section("18 軍師（房間）");
+c18("房間裡 A 開軍師、B 不開：輪到 A 時剛好一個「走一步」標 advised，就是 bots.advise(view, legal) 那一步，畫面有理由；沒輪到 A 時、還有 B，都沒有標", () => {
+  const w = table(17);
+  w.join("A", "Ann"); w.join("B", "Bo");
+  w.click("A", { t: "sit", seat: 0 }); w.click("B", { t: "sit", seat: 1 });
+  w.clients.A = C.setAdvisor(w.clients.A, true);
+  w.click("A", { t: "start", level: 1 });
+  const R1 = D.rng(5);
+  let mine = 0, reasons = 0;
+  for (let n = 0; n < 5000 && w.room.st.phase !== "end"; n++) {
+    const movesOf = (conn) => C.actions(w.clients[conn], "zh-Hant").filter((x) => x.data && x.data.t === "move");
+    const a = movesOf("A"), b = movesOf("B");
+    if (b.some((x) => x.advised)) return "B 沒開軍師，卻有選項標 advised";
+    const markedA = a.filter((x) => x.advised);
+    const where = `第 ${w.room.st.turn} 回合 ${w.room.st.phase}`;
+    if (!a.length && markedA.length) return `${where}：沒輪到 A，卻有標 advised`;
+    if (a.length) {
+      const want = BOTS.advise(E.view(w.room.st, 0), E.legalMoves(w.room.st, 0));
+      if (markedA.length !== 1) return `${where}：A 標 advised 的選項有 ${markedA.length} 個`;
+      if (!same(markedA[0].data.move, want.move)) return `${where}：A 標的是 ${JSON.stringify(markedA[0].data.move)}，軍師選的是 ${JSON.stringify(want.move)}`;
+      if (want.why.key !== "only_move") {
+        const seen = text(C.screen(w.clients.A, "zh-Hant")), lit = literal(zh.talk[want.why.key]);
+        if (lit && !seen.includes(lit)) return `${where}：A 的畫面沒有軍師的理由（${want.why.key}：「${lit}」）`;
+        reasons++;
+      }
+      mine++;
+    }
+    const conn = a.length ? "A" : b.length ? "B" : null;
+    if (!conn) return `${where}：兩個人都沒有選項`;
+    const acts = conn === "A" ? a : b;
+    w.click(conn, acts[Math.floor(R1() * acts.length)].data);
+  }
+  const r = nonEmpty(reasons, "A 有理由的決定"); if (r !== true) return r;
+  return ok(true, `A 的 ${mine} 個決定都標對，${reasons} 句理由；B 沒有標`);
 });
 
 test("roomclient", () => {
