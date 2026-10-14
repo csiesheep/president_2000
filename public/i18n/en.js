@@ -300,7 +300,7 @@ export default {
         "After the reveal, check: if anyone has 2 cards on an issue, that issue is settled. If several issues qualify in the same round, they are settled in track order, from the top slot down.",
         "Settling an issue: compare each player's total CP from the cards on that issue; the highest wins, and ties go by the priority above. The winner gains 1 momentum and places cubes without any check: 2 for the first issue settled, 3 for the second, 4 for the third. They go on empty swing blocks (same-camp or cross-camp, never non-voter) in any counties, wherever the candidate stands, and may all go in the same county.",
         "Then that issue card goes back to the lowest empty slot of the issue track, keeping its cubes, and all the cards on that issue are discarded.",
-        "The Forum ends when every issue is settled or every card has been turned over. Any issue still unsettled goes to whoever has the highest CP total on it, settled in the track's original order.",
+        "The Forum ends when every issue is settled or every card has been turned over. Any issue still unsettled goes to whoever has the highest CP total on it, settled in the track's original order. An issue nobody played a card on (0 to 0 to 0) is not settled: nobody wins it, and its issue card goes back into the remaining empty slots in its original order, keeping its cubes.",
       ] },
       "When the Forum ends, make the first strategic-voting count (see the Strategic Voting section), which this time moves only half of the swing blocks in each county and has no endorsement step. Then turn 7 begins. The early deck and its discard pile are set aside, and are used only if the late cards run short.",
     ] },
