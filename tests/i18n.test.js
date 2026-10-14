@@ -103,6 +103,7 @@ c9("英文字串裡沒有中文字（語言切換鈕 nav.lang 除外，它寫的
 const TALKING = !!(zh.talk && typeof zh.talk === "object");
 const c14 = (name, fn) => check(name, () => (TALKING ? fn() : "TODO: 桌邊話還沒開始（#14）"));
 const TALK_MAX = { zh: 32, en: 100 };  // orchestrator ruling (#14): one bubble on a 390-wide phone
+const INTERNAL = new Set(["value", "gain", "lead"]); // the bots' own scores, not for players
 const holes = (str) => [...String(str).matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
 let PARAMS = null; // key → Set of params present on every occurrence
 function sampleParams() {
@@ -136,7 +137,8 @@ c14("佔位字 {…} 只用 bot 每次都會帶的參數（從四局 bot 對打�
   const bad = [];
   for (const [lang, t] of [["zh", zh], ["en", en]]) for (const k of BOTS.WHY) {
     const allowed = P[k] || new Set();
-    for (const h of holes(t.talk[k])) if (!allowed.has(h)) bad.push(`${lang}.${k} 用了 {${h}}（bot 每次都帶的：${[...allowed].join(",") || "無"}${P[k] ? "" : "；這個 key 四局裡沒出現過"}）`);
+    for (const h of holes(t.talk[k])) if (INTERNAL.has(h)) bad.push(`${lang}.${k} 用了 {${h}}：那是 bot 內部的估值，不是給玩家看的數字`);
+    else if (!allowed.has(h)) bad.push(`${lang}.${k} 用了 {${h}}（bot 每次都帶的：${[...allowed].join(",") || "無"}${P[k] ? "" : "；這個 key 四局裡沒出現過"}）`);
   }
   if (bad.length) return bad.slice(0, 5).join("；");
   return ok(true, `${Object.keys(P).length} 個 key 取樣到；${BOTS.WHY.filter((k) => !P[k]).join("、") || "全部都有"}沒出現過`);
