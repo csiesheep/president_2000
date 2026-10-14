@@ -11,9 +11,10 @@
 // M1 scope (#1): the ordinary turn (turns 1–5, 7–8) from initiative to saving,
 // 16 choice-free event effects and local cards as events; #4 adds 46 more
 // (5 choice-free, 41 that need a choice); #5 the last 8 (興票案 and the
-// 本回合 flags, with st.active), so all 70 exist. The debate (turn 6),
-// the strategic-vote step and election day are later issues: the engine stops
-// at phase "debate" after turn 5 and "election" after turn 8.
+// 本回合 flags, with st.active), so all 70 exist. #6 adds the debate (turn 6,
+// phase "debate") with the first strategic vote and the early set-aside.
+// Election day and the second strategic vote are a later issue: the engine
+// stops at phase "election" after turn 8.
 import { COUNTIES, REGIONS, REGION_EDGES, START_COUNTY, START_MOMENTUM, START_MEDIA, BAG_SEED, BOSS_THRESHOLD, ISSUES, TURNS, SEATS, CAMP, countyIndex } from "./board.js";
 import { EVENTS, localCards, HAND, CANDIDATE_CARDS, REST_CUBES } from "./cards.js";
 
