@@ -143,6 +143,16 @@ c14("佔位字 {…} 只用 bot 每次都會帶的參數（從四局 bot 對打�
   if (bad.length) return bad.slice(0, 5).join("；");
   return ok(true, `${Object.keys(P).length} 個 key 取樣到；${BOTS.WHY.filter((k) => !P[k]).join("、") || "全部都有"}沒出現過`);
 });
+// The room server's error codes (#13 handover, copied by hand; not read from src/roomcore.js).
+const ERROR_CODES = ["bad_message", "bad_seat", "seat_taken", "started", "not_host", "bad_level", "not_seated",
+  "not_started", "not_your_turn", "illegal_move", "engine_error", "no_room"];
+c14("房間的錯誤碼：12 個都有中英說明（errors）", () => {
+  for (const [lang, t] of [["zh", zh], ["en", en]]) {
+    const miss = ERROR_CODES.filter((k) => !t.errors || !String(t.errors[k] || "").trim());
+    if (miss.length) return `${lang} 缺錯誤說明：${miss.join("、")}`;
+  }
+  return ok(true, `${ERROR_CODES.length} 個錯誤碼`);
+});
 c14(`一句話放得進手機上的泡泡：中文 ≤ ${TALK_MAX.zh} 字、英文 ≤ ${TALK_MAX.en} 字元（佔位字不算）`, () => {
   const long = [];
   for (const [lang, t] of [["zh", zh], ["en", en]]) for (const k of BOTS.WHY) {
