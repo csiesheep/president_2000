@@ -57,6 +57,34 @@ const SPEC = {
   hand: { dealEarly: 5, dealLate: 6, play: 4, saveEarly: 1, saveLate: 2 },
   must: ["yang_exposes"],
   cpRange: [2, 4],
+  // §14.3 row by row: id: "owner deck cp icon". Transcribed by script from the rulebook's tables
+  // (vault e487d8e); the card name was used only to attach the product's id to each row.
+  eventTable: {
+    taiwan_son: "chen early 3 clean", new_middle: "chen early 3 cross", alternation: "chen early 2 clean",
+    sweep_black_gold: "chen early 3 clean", future_resolution: "chen early 2 cross", lu_running_mate: "chen early 2 econ",
+    lo_propaganda: "chen early 2 clean", hsieh_kaohsiung: "chen early 3 econ", dpp_counties: "chen early 4 econ",
+    three_three_three: "chen early 3 econ", no_nuke4: "chen early 2 econ", lin_chairman: "chen early 2 clean",
+    lee_yuan_tseh: "chen late 4 clean", advisory_group: "chen late 3 econ", million_rally: "chen late 4 cross",
+    dump_lien_save_chen: "chen late 3 clean", hsu_wen_long: "chen late 2 econ", chang_yung_fa: "chen late 2 econ",
+    south_rally: "chen early 3 econ", chang_chiu: "chen early 2 clean", diligent: "soong early 4 econ",
+    walk_everywhere: "soong early 3 econ", chang_running_mate: "soong early 3 cross", poll_lead: "soong early 2 clean",
+    million_signatures: "soong early 2 clean", hakka_vote: "soong early 2 econ", east_coast: "soong early 2 econ",
+    veterans_village: "soong early 3 cross", quake_bond: "soong early 3 econ", li_ao_endorses: "soong early 2 cross",
+    provincial_staff: "soong early 3 econ", lee_authorized: "soong early 2 clean", dump_lien_save_soong: "soong late 3 cross",
+    new_party_backs_soong: "soong late 3 cross", chang_doctors: "soong late 2 econ", soong_friends: "soong late 2 econ",
+    kneel_for_votes: "soong late 3 clean", provincial_build: "soong early 3 econ", military_civil: "soong early 2 econ",
+    hsu_hsin_liang: "soong early 2 cross", expel_soong: "lien early 3 clean", yang_exposes: "lien early 4 clean",
+    shifting_story: "lien early 3 clean", party_machine: "lien early 4 econ", party_assets_ads: "lien early 3 econ",
+    lien_siew: "lien early 3 econ", hand_in_hand: "lien early 2 econ", lee_campaigns: "lien early 3 cross",
+    lee_attacks_soong: "lien early 3 clean", stability: "lien early 3 cross", local_factions: "lien early 2 econ",
+    farmers_association: "lien early 2 econ", ma_campaigns: "lien early 2 clean", party_unity: "lien early 3 cross",
+    massive_ads: "lien late 4 econ", ma_leaks_polls: "lien late 3 clean", lee_alarm: "lien late 3 cross",
+    party_congress: "lien late 2 econ", members_return: "lien early 3 econ", econ_cabinet: "lien early 2 econ",
+    kmt_anniversary: "lien early 2 cross", poll_published: "ext early 2 clean", strait_tension: "ext early 3 cross",
+    white_paper: "ext late 3 cross", zhu_rongji: "ext late 4 cross", us_congress: "ext late 2 cross",
+    stock_crash: "ext late 2 econ", lee_secret_help: "ext late 3 clean", tvbs_poll: "ext early 2 clean",
+    pla_drill_rumor: "ext early 3 cross",
+  },
   // Region adjacency for movement: the rulebook (§7.1) has no table; copied from
   // the design simulator vault sim/sim.js REG_ADJ (the owner's file).
   regionEdges: [[0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [4, 5], [3, 6], [4, 6]],
@@ -134,6 +162,20 @@ check("事件牌 id 唯一、CP 在 2–4、議題圖示合法", () => {
   const badIcon = C.EVENTS.filter((e) => !["cross", "clean", "econ"].includes(e.icon)).map((e) => e.id);
   if (badIcon.length) return "議題圖示不合法: " + badIcon.join(",");
   return ok(true, `${ids.size} 個 id`);
+});
+check("事件牌逐張：歸屬、前後期、CP、議題照 §14.3", () => {
+  const want = SPEC.eventTable, byId = Object.fromEntries(C.EVENTS.map((e) => [e.id, e]));
+  const r0 = eq(Object.keys(want).length, SPEC.events.total, "表的列數（抄寫檢查）"); if (r0 !== true) return r0;
+  const bad = [];
+  for (const [id, w] of Object.entries(want)) {
+    const e = byId[id];
+    if (!e) { bad.push(`${id} 不在 cards.js`); continue; }
+    const got = `${e.owner} ${e.deck} ${e.cp} ${e.icon}`;
+    if (got !== w) bad.push(`${id}（${e.name}）期望 ${w} 實際 ${got}`);
+  }
+  const extra = C.EVENTS.filter((e) => !(e.id in want)).map((e) => e.id);
+  if (extra.length) bad.push("規則書沒有的事件：" + extra.join(","));
+  return bad.length ? bad.join("；") : ok(true, `${Object.keys(want).length} 張逐張相符`);
 });
 check("必觸發牌只有楊吉雄爆料；條件牌指向存在的牌", () => {
   const must = C.EVENTS.filter((e) => e.must).map((e) => e.id);
