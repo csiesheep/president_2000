@@ -204,7 +204,9 @@ check("view 藏別人的手牌，露自己的", () => {
   if (!Array.isArray(v.hands[1]) || v.hands[1].length !== 7) return "自己的手牌沒露出";
   if (typeof v.hands[0] !== "number" || typeof v.hands[2] !== "number") return "別人的手牌露出了: " + JSON.stringify([v.hands[0], v.hands[2]]);
   if ("rng" in v || "endorseDeck" in v) return "rng 或背書牌庫露出了";
-  return ok(true, "自己 7 張，別人只有數量");
+  // The seed replays every shuffle: with it, a client can rebuild every deck and hand.
+  if ("seed" in v) return "seed 露出了：拿它重放洗牌就看得到所有牌庫與手牌";
+  return ok(true, "自己 7 張，別人只有數量；rng、seed、背書牌庫都不在");
 });
 
 // ---------------------------------------------------------------- group 2
@@ -826,7 +828,10 @@ function fuzz(label, seeds, opts, end) {
       for (const s of seats) if (!E.legalMoves(st, s).length) return `${where}：seat ${s} 要動卻沒有合法動作`;
       const seat = seats[Math.floor(R() * seats.length)], ms = E.legalMoves(st, seat), m = ms[Math.floor(R() * ms.length)];
       if (st.phase === "order") {
-        if (st.hands.some((h) => h.length !== 7)) return `${where}：手牌 ${st.hands.map((h) => h.length).join("/")}`;
+        // Short of 7 only when every card is out: startTurn 7 has no early discards to
+        // reshuffle, so turn 8 can run dry (36 late cards minus removed and saved).
+        const deck = st.turn <= 5 ? st.decks.early : st.decks.late;
+        if (st.hands.some((h) => h.length > 7) || (st.hands.some((h) => h.length < 7) && (deck.length || st.decks.discard.length))) return `${where}：手牌 ${st.hands.map((h) => h.length).join("/")}（牌庫還有 ${deck.length}、棄牌堆 ${st.decks.discard.length}）`;
         const c = D.conservation(st); if (c !== true) return `${where}：${c}`;
       }
       if (D.isPlayDecision(ms)) { const c = D.conservation(st); if (c !== true) return `${where} 出牌前：${c}`; }
