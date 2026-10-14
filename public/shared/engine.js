@@ -9,7 +9,8 @@
 // leaders) are recomputed from the state fields on every use, never cached.
 //
 // M1 scope (#1): the ordinary turn (turns 1–5, 7–8) from initiative to saving,
-// 16 choice-free event effects and local cards as events. The debate (turn 6),
+// 16 choice-free event effects and local cards as events; #4 adds 46 more
+// (5 choice-free, 41 that need a choice). The debate (turn 6),
 // the strategic-vote step and election day are later issues: the engine stops
 // at phase "debate" after turn 5 and "election" after turn 8.
 import { COUNTIES, REGIONS, REGION_EDGES, START_COUNTY, START_MOMENTUM, START_MEDIA, BAG_SEED, BOSS_THRESHOLD, ISSUES, TURNS, SEATS, CAMP, countyIndex } from "./board.js";
