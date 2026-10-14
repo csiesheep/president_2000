@@ -85,9 +85,13 @@ c9("名詞表與 bot 三級的名字兩邊都有（樁腳／總幹事／操盤�
   const r = eq(BOT_LEVELS.map((k) => zh.bots[k]).join("/"), "樁腳/總幹事/操盤手", "中文 bot 名字（owner 定）"); if (r !== true) return r;
   return ok(true, `${TERMS.length} 個名詞、3 級 bot`);
 });
-c9("英文字串裡沒有中文字", () => {
-  const bad = strings(en).filter((s) => CJK.test(s));
-  return bad.length ? "英文裡有中文：" + bad.slice(0, 5).map((s) => JSON.stringify(s.slice(0, 40))).join("；") : ok(true, `${strings(en).length} 條英文`);
+// The language switch names the other language in its own script (orchestrator 裁決, #9): on
+// the English page it reads 中文, the one Chinese string English carries.
+c9("英文字串裡沒有中文字（語言切換鈕 nav.lang 除外，它寫的是中文）", () => {
+  const bad = strings({ ...en, nav: { ...en.nav, lang: "" } }).filter((s) => CJK.test(s));
+  if (bad.length) return "英文裡有中文：" + bad.slice(0, 5).map((s) => JSON.stringify(s.slice(0, 40))).join("；");
+  const r = eq(en.nav && en.nav.lang, "中文", "英文頁的語言切換鈕"); if (r !== true) return r;
+  return ok(true, `${strings(en).length} 條英文`);
 });
 
 test("i18n", () => {
