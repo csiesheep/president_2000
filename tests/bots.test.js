@@ -117,7 +117,7 @@ cb("不偷看：別人的手牌與留牌、牌庫與棄牌堆、背書卡順序�
         for (const pile of piles) pile.splice(0, pile.length, ...pool.splice(0, pile.length));
         if (alt.debate) for (const p of others) if (alt.debate.picks[p]) alt.debate.picks[p] = alt.savedDebate[p][0] || alt.debate.picks[p];
         alt.endorseDeck.reverse();
-        alt.rng = (alt.rng ^ 0x5bd1e995) >>> 0; alt.seed = alt.seed + 1;
+        alt.rng = (~alt.rng) >>> 0; alt.seed = alt.seed + 1; // every bit of the RNG differs
         for (const lv of [1, 2, 3]) {
           const a = BOTS.chooseMove(st, seat, lv, D.rng(n)), b = BOTS.chooseMove(alt, seat, lv, D.rng(n));
           if (!same(a.move, b.move)) return `seed ${seed + 50} 第 ${st.turn} 回合 ${st.phase} ${NAMES[seat]} 等級 ${lv}：看不到的東西換了，決定也變了（${JSON.stringify(a.move)} → ${JSON.stringify(b.move)}）`;
