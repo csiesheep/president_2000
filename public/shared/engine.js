@@ -9,7 +9,8 @@
 // leaders) are recomputed from the state fields on every use, never cached.
 //
 // M1 scope (#1): the ordinary turn (turns 1–5, 7–8) from initiative to saving,
-// 16 choice-free event effects and local cards as events. The debate (turn 6),
+// 16 choice-free event effects and local cards as events; #4 adds 46 more
+// (5 choice-free, 41 that need a choice). The debate (turn 6),
 // the strategic-vote step and election day are later issues: the engine stops
 // at phase "debate" after turn 5 and "election" after turn 8.
 import { COUNTIES, REGIONS, REGION_EDGES, START_COUNTY, START_MOMENTUM, START_MEDIA, BAG_SEED, BOSS_THRESHOLD, ISSUES, TURNS, SEATS, CAMP, countyIndex } from "./board.js";
@@ -263,12 +264,203 @@ const EFFECTS = {
   white_paper: (st) => { addIssue(st, "cross", CHEN, 1); addMom(st, CHEN, 1); },
   us_congress: (st) => { addIssue(st, "cross", CHEN, 1); addIssue(st, "cross", LIEN, 1); },
   stock_crash: (st) => { addIssue(st, "econ", LIEN, 1); for (let p = 0; p < 3; p++) addMom(st, p, -1); },
+  // v0.3 (#4): the five new cards that need no choice
+  chang_chiu: (st) => { st.bag[CHEN] += 3; addMom(st, CHEN, 1); },
+  provincial_build: (st) => addIssue(st, "econ", SOONG, 2),
+  econ_cabinet: (st) => { addIssue(st, "econ", LIEN, 1); st.bag[LIEN] += 2; },
+  kmt_anniversary: (st) => { addMom(st, LIEN, 1); addIssue(st, "cross", LIEN, 1); },
+  pla_drill_rumor: (st) => { addIssue(st, "cross", LIEN, 1); addIssue(st, "cross", SOONG, 1); addMom(st, CHEN, -1); },
 };
+
+// ------------------------------------------------------------------ events that need a choice (#4)
+//
+// An effect is a program: a queue of steps run in the order of the card text
+// (#4 裁決 1). Automatic steps (momentum, issue, bag, a named region's media)
+// resolve at once; a choice step asks its `seat` (#4 裁決 4: the card's owner,
+// or for 外力 cubes the seat whose cubes they are; TVBS 民調's tie goes to the
+// player) until it has made `left` picks or has no legal pick left, which skips
+// it (#4 裁決 3, 8). The queue lives in st.pending.fx, so it is plain data.
+//
+// Choice steps (op): place (an empty floating block, own camp `fill` or the
+// other camp `cross`; never grey — 裁決 5), remove (a target's cube, back to
+// supply), convert (an empty grey block becomes an empty green one — 裁決 9),
+// media (own media cube; `target` removes one of the target's), tvbs.
+// `pool` limits the counties (or regions) offered; `pick` is "distinct" (a
+// county or region picked once is used, success or not — 裁決 2), "same"
+// (every pick in the first one's county or region — 裁決 7, 14) or "free".
+// `check`: place — §8.1 (cross always, own camp on bosses / opposing candidate
+// unless the region's media leader); remove — one support check per cube (#4
+// 裁決 6, Q5 default). `then`: steps run in the picked county right after each
+// pick. `fallback`: steps run instead when the step had no pick at all.
+// Event cubes ignore the candidate's position and media cubes never check
+// (裁決 5, 7).
+const countiesIn = (...regions) => COUNTIES.map((c, k) => k).filter((k) => regions.includes(REGIONS[regionOf(k)]));
+const ks = (...names) => names.map((n) => { const k = countyIndex(n); if (k < 0) throw new Error("engine: no county " + n); return k; });
+const rs = (...names) => names.map((n) => REGIONS.indexOf(n));
+const step = (op, seat, left, o = {}) => ({ op, seat, left, pool: o.pool ?? null, pick: o.pick ?? "distinct", check: !!o.check, own: !!o.own, target: o.target ?? -1, then: o.then ?? null, fallback: o.fallback ?? null, used: [], picked: 0 });
+const place = (seat, n, o) => step("place", seat, n, o);
+const placeAt = (seat, county, n, o = {}) => step("place", seat, n, { ...o, pool: ks(county), pick: "same" });
+const removeFrom = (seat, target, n, o = {}) => step("remove", seat, n, { ...o, target });
+const media = (seat, n, o) => step("media", seat, n, o);
+const mom = (p, n) => ({ op: "mom", p, n });
+const iss = (name, p, n) => ({ op: "issue", name, p, n });
+const bag = (p, n) => ({ op: "bag", p, n });
+const mediaAt = (region, p, n) => ({ op: "mediaAt", r: REGIONS.indexOf(region), p, n });
+
+// §14.3 text → program. `by` is the seat resolving the event.
+const PROGRAMS = {
+  // 陳
+  taiwan_son: () => [place(CHEN, 3, { pool: countiesIn("雲嘉南", "高屏") })],
+  future_resolution: () => [iss("cross", CHEN, 1), step("convert", CHEN, 1)],
+  lu_running_mate: () => [placeAt(CHEN, "桃園縣", 2)],
+  lo_propaganda: () => [media(CHEN, 2, { pick: "same" })],
+  hsieh_kaohsiung: () => [placeAt(CHEN, "高雄市", 2), mediaAt("高屏", CHEN, 1)],
+  dpp_counties: () => [place(CHEN, 3, { check: true, pool: ks("台北縣", "桃園縣", "新竹縣", "台中縣", "台中市", "台南縣", "台南市", "高雄縣", "屏東縣", "宜蘭縣", "嘉義市") })],
+  three_three_three: () => [iss("econ", CHEN, 2), place(CHEN, 1, { own: true, check: true })], // 裁決 10
+  advisory_group: () => [iss("clean", CHEN, 1), iss("econ", CHEN, 1), media(CHEN, 1, { pool: rs("中彰投", "北北基") })],
+  million_rally: () => [place(CHEN, 3), mom(CHEN, 1)],
+  dump_lien_save_chen: () => swap(CHEN, LIEN),
+  hsu_wen_long: () => [placeAt(CHEN, "台南縣", 1), placeAt(CHEN, "台南市", 1)],
+  chang_yung_fa: () => [media(CHEN, 1), bag(CHEN, 2)],
+  south_rally: () => [place(CHEN, 2, { pool: countiesIn("高屏") })],
+  // 宋
+  diligent: () => [place(SOONG, 3)],
+  hakka_vote: () => [placeAt(SOONG, "新竹縣", 1), placeAt(SOONG, "苗栗縣", 1)],
+  east_coast: () => [placeAt(SOONG, "花蓮縣", 1), placeAt(SOONG, "台東縣", 1)],
+  veterans_village: () => [place(SOONG, 2, { check: true, then: [removeFrom(SOONG, LIEN, 1)] })], // 裁決 11
+  quake_bond: () => [placeAt(SOONG, "南投縣", 1), placeAt(SOONG, "台中縣", 1)],
+  li_ao_endorses: () => ["台北市", "新竹市"].flatMap((n) => [removeFrom(SOONG, LIEN, 1, { pool: ks(n) }), placeAt(SOONG, n, 1)]),
+  dump_lien_save_soong: () => swap(SOONG, LIEN),
+  new_party_backs_soong: () => [place(SOONG, 2, { pool: countiesIn("北北基") })],
+  chang_doctors: () => [media(SOONG, 1), bag(SOONG, 2)],
+  soong_friends: () => [mom(SOONG, 1), place(SOONG, 1, { own: true })],
+  kneel_for_votes: () => [mom(SOONG, 2), place(SOONG, 2, { check: true })],
+  military_civil: () => [place(SOONG, 2, { check: true }), bag(SOONG, 1)],
+  hsu_hsin_liang: () => [removeFrom(SOONG, CHEN, 1), mom(SOONG, 1)],
+  // 連
+  expel_soong: () => [media(LIEN, 2, { target: SOONG }), mom(SOONG, 1)], // 裁決 15
+  party_machine: () => [place(LIEN, 3)],
+  party_assets_ads: () => [media(LIEN, 2)],
+  lee_campaigns: () => [place(LIEN, 2)],
+  lee_attacks_soong: () => [removeFrom(LIEN, SOONG, 2, { pick: "same" }), mom(SOONG, 1)], // 裁決 14
+  farmers_association: () => [placeAt(LIEN, "雲林縣", 1), placeAt(LIEN, "彰化縣", 1)],
+  ma_campaigns: () => [placeAt(LIEN, "台北市", 2, { check: true })],
+  party_unity: () => swap(LIEN, SOONG),
+  massive_ads: () => [media(LIEN, 3)],
+  ma_leaks_polls: () => [place(LIEN, 2, { check: true }), mom(SOONG, 1), mom(CHEN, 1)],
+  lee_alarm: () => [place(LIEN, 3, { check: true })],
+  members_return: () => [removeFrom(LIEN, SOONG, 2, { check: true })],
+  // 外力 (裁決 4: 陳's cubes are placed by 陳, whoever played the card)
+  zhu_rongji: () => [place(CHEN, 3), mom(CHEN, 1)],
+  lee_secret_help: () => [place(CHEN, 2), mom(LIEN, -1)],
+  tvbs_poll: (by) => [step("tvbs", by, 1)],
+};
+
+// 棄連保扁、棄連保宋、黨內整合: in one county, the target −1 (checked, Q5
+// default) and then the player +1 (§8.1). With no target cube anywhere the
+// −1 does nothing and the +1 goes to any county.
+function swap(seat, target) {
+  return [removeFrom(seat, target, 1, { check: true, then: [place(seat, 1, { check: true })], fallback: [place(seat, 1, { check: true })] })];
+}
+
+// The picks step s offers now.
+function stepMoves(st, s) {
+  const out = [];
+  const open = (key) => !(s.pick === "distinct" && s.used.includes(key)) && (!s.pool || s.pool.includes(key));
+  if (s.op === "place" || s.op === "remove" || s.op === "convert") {
+    for (let k = 0; k < COUNTIES.length; k++) {
+      if (!open(k)) continue;
+      if (s.op === "place") {
+        if (emptyOf(st, k, CAMP[s.seat])) out.push({ type: "fill", county: k });
+        if (!s.own && emptyOf(st, k, otherCamp(s.seat))) out.push({ type: "cross", county: k });
+      } else if (s.op === "remove") {
+        for (const t of ["G", "B", "N"]) if (st.counties[k].blocks.some((b) => b.o === s.target && b.t === t)) out.push({ type: "remove", county: k, target: s.target, t });
+      } else if (emptyOf(st, k, "N")) out.push({ type: "convert", county: k });
+    }
+  } else if (s.op === "media") {
+    for (let r = 0; r < REGIONS.length; r++) {
+      if (!open(r)) continue;
+      if (s.target < 0) out.push({ type: "media", region: r });
+      else if (st.media[r][s.target] > 0) out.push({ type: "media", region: r, target: s.target });
+    }
+  } else if (s.op === "tvbs") {
+    const min = Math.min(...st.mom);
+    for (let p = 0; p < 3; p++) if (st.mom[p] === min) out.push({ type: "pick", seat: p });
+  }
+  return out;
+}
+
+// Start card id's program for `by`. Returns true when a choice is now pending
+// (st.pending.stage "effect"); `after` says how the play goes on when the
+// program is done: "kind" (外力 / 必觸發: the CP action) or "finish".
+function startProgram(st, id, by, after) {
+  st.pending.fx = { card: id, by, after, queue: PROGRAMS[id](by) };
+  st.pending.stage = "effect";
+  return runProgram(st);
+}
+
+// Resolve automatic steps and skip choice steps with nothing to pick, up to
+// the next real choice. Returns true when one is pending; otherwise the
+// program is gone from the state and the caller continues the play.
+function runProgram(st) {
+  const fx = st.pending.fx, q = fx.queue;
+  while (q.length) {
+    const s = q[0];
+    if (s.op === "mom") { addMom(st, s.p, s.n); q.shift(); continue; }
+    if (s.op === "issue") { addIssue(st, s.name, s.p, s.n); q.shift(); continue; }
+    if (s.op === "bag") { st.bag[s.p] += s.n; q.shift(); continue; }
+    if (s.op === "mediaAt") { st.media[s.r][s.p] = Math.max(0, st.media[s.r][s.p] + s.n); q.shift(); continue; }
+    if (s.left <= 0) { q.shift(); continue; }
+    const ms = stepMoves(st, s);
+    if (s.op === "tvbs" && ms.length === 1) { addMom(st, ms[0].seat, 1); q.shift(); continue; }
+    if (!ms.length) { q.shift(); if (!s.picked && s.fallback) q.unshift(...s.fallback); continue; }
+    return true;
+  }
+  delete st.pending.fx;
+  return false;
+}
+
+function effectMoves(st) { return stepMoves(st, st.pending.fx.queue[0]); }
+
+function applyEffect(st, seat, m) {
+  const pd = st.pending, q = pd.fx.queue, s = q[0];
+  let key;
+  if (s.op === "place") {
+    key = m.county;
+    const needs = s.check && (m.type === "cross" || fillNeedsCheck(st, seat, key));
+    if (!needs || supportCheck(st, seat)) putCube(st,seat, key, m.type === "fill" ? CAMP[seat] : otherCamp(seat));
+  } else if (s.op === "remove") {
+    key = m.county;
+    if (!s.check || supportCheck(st, seat)) st.counties[key].blocks.find((b) => b.o === m.target && b.t === m.t).o = -1;
+  } else if (s.op === "convert") {
+    key = m.county;
+    st.counties[key].blocks.find((b) => b.o < 0 && b.t === "N").t = "G";
+  } else if (s.op === "media") {
+    key = m.region;
+    if (m.target == null) st.media[key][seat]++; else st.media[key][m.target]--;
+  } else if (s.op === "tvbs") {
+    addMom(st, m.seat, 1);
+  }
+  st.log.push({ t: "fx", card: pd.fx.card, seat, move: m });
+  s.left--; s.picked++;
+  if (s.pick === "distinct") s.used.push(key);
+  else if (s.pick === "same") s.pool = [key];
+  if (s.left <= 0) q.shift();
+  if (s.then) q.unshift(...s.then.map((t) => ({ ...clone(t), pool: [key] })));
+  const after = pd.fx.after;
+  if (!runProgram(st)) afterProgram(st, after);
+}
+
+// The program is done: the CP action for 外力 / 必觸發, otherwise the play ends.
+function afterProgram(st, after) {
+  if (after === "kind") { st.pending.stage = "kind"; return; }
+  finishPlay(st);
+}
 
 export function effectImplemented(id) {
   const c = CARD[id];
   if (!c) return false;
-  return c.owner === "local" || Object.prototype.hasOwnProperty.call(EFFECTS, id);
+  return c.owner === "local" || Object.prototype.hasOwnProperty.call(EFFECTS, id) || Object.prototype.hasOwnProperty.call(PROGRAMS, id);
 }
 
 // May `seat` resolve card c's event text as its own (own card, conditions met)?
@@ -281,10 +473,14 @@ function ownEventAllowed(st, seat, c) {
   return true;
 }
 
-function resolveEffect(st, id, by) {
+// Resolve card id's event for `by`. Returns true when the effect now waits on
+// a choice (pending stage "effect"); the play then goes on with `after`.
+function resolveEffect(st, id, by, after) {
   st.flags.played[id] = true;
-  if (EFFECTS[id]) { EFFECTS[id](st); st.log.push({ t: "effect", card: id, by }); }
-  else st.log.push({ t: "effect", card: id, by, unimplemented: true });
+  if (EFFECTS[id]) { EFFECTS[id](st); st.log.push({ t: "effect", card: id, by }); return false; }
+  if (PROGRAMS[id]) { st.log.push({ t: "effect", card: id, by }); return startProgram(st, id, by, after); }
+  st.log.push({ t: "effect", card: id, by, unimplemented: true });
+  return false;
 }
 
 // ------------------------------------------------------------------ queries
@@ -294,6 +490,7 @@ export function mustAct(st) {
   if (st.phase === "action") {
     const pd = st.pending;
     if (!pd) return [st.actor];
+    if (pd.stage === "effect") return [pd.fx.queue[0].seat]; // #4 裁決 4: whoever makes this choice
     return [pd.stage === "trigger" ? ownerSeat(pd.card) : pd.seat];
   }
   if (st.phase === "momentum") return st.pending ? [st.pending.seat] : [];
@@ -318,6 +515,7 @@ export function legalMoves(st, seat) {
   if (!pd) return playMoves(st, seat);
   switch (pd.stage) {
     case "trigger": return [{ type: "trigger" }, { type: "pass" }];
+    case "effect": return effectMoves(st);
     case "local": return localMoves(st, seat, CARD[pd.card]);
     case "kind": return ["campaign", "ads", "issue"].map((kind) => ({ type: "action", kind }));
     case "campaign": return campaignMoves(st, seat, pd);
@@ -415,8 +613,9 @@ function issueMoves(st, seat, pd) {
 
 // §5.4, §10: keep 1 (turns 1–5) or 2 (turns 7–8) of the cards left in hand;
 // a hand at or under that keeps everything. Only a turn with a candidate card
-// leaves one card over, and it goes to the discard pile (applySave; #2 Q2,
-// orchestrator default after the design simulator, pending owner ruling).
+// leaves one card over, and it goes to the discard pile (applySave). owner
+// 裁決(#2, comment 6163533701): "出過候選人牌的那一回合少出一張手牌，留牌後
+// 多剩 1 張：那一張進棄牌堆（§5.4、§6.3）。"
 function saveMoves(st, seat) {
   const h = st.hands[seat];
   const n = st.turn <= 5 ? HAND.saveEarly : HAND.saveLate;
@@ -474,6 +673,7 @@ function applyAction(st, seat, m) {
   if (!pd) return applyPlay(st, seat, m);
   switch (pd.stage) {
     case "trigger": return applyTrigger(st, m);
+    case "effect": return applyEffect(st, seat, m);
     case "local": return applyLocal(st, seat, m);
     case "kind": pd.stage = m.kind; pd.ops = 0; pd.moved = false; pd.placed = 0; return;
     case "campaign": return applyCampaign(st, seat, pd, m);
@@ -507,19 +707,19 @@ function applyPlay(st, seat, m) {
     st.log.push({ t: "effect", card: id, by: seat, none: true });
     return finishPlay(st);
   }
-  resolveEffect(st, id, seat);
-  if (c.owner === "ext" || c.must) return; // 裁決 3: effect first, then the CP action
-  finishPlay(st); // own event: no CP action
+  const cpAfter = c.owner === "ext" || c.must; // 裁決 3: effect first, then the CP action
+  if (resolveEffect(st, id, seat, cpAfter ? "kind" : "finish")) return;
+  afterProgram(st, cpAfter ? "kind" : "finish"); // own event: no CP action
 }
 
 function applyLocal(st, seat, m) {
   const k = m.county;
   const ok = m.type === "cross" || fillNeedsCheck(st, seat, k) ? supportCheck(st, seat) : true;
-  if (ok) place(st, seat, k, m.type === "fill" ? CAMP[seat] : otherCamp(seat));
+  if (ok) putCube(st,seat, k, m.type === "fill" ? CAMP[seat] : otherCamp(seat));
   finishPlay(st);
 }
 
-function place(st, seat, k, t) {
+function putCube(st,seat, k, t) {
   const b = st.counties[k].blocks.find((x) => x.o < 0 && x.t === t);
   b.o = seat;
 }
@@ -540,9 +740,9 @@ function applyCampaign(st, seat, pd, m) {
   pd.ops++;
   st.pos[seat] = k; // the piece stops at the county of the last operation
   if (m.type === "fill") {
-    if (!fillNeedsCheck(st, seat, k) || supportCheck(st, seat)) place(st, seat, k, CAMP[seat]);
+    if (!fillNeedsCheck(st, seat, k) || supportCheck(st, seat)) putCube(st,seat, k, CAMP[seat]);
   } else if (m.type === "cross") {
-    if (supportCheck(st, seat)) place(st, seat, k, otherCamp(seat));
+    if (supportCheck(st, seat)) putCube(st,seat, k, otherCamp(seat));
   } else if (m.type === "steal") {
     if (supportCheck(st, seat)) {
       // 裁決 8 / §4: the block returns to its printed colour
@@ -597,8 +797,8 @@ function applyTrigger(st, m) {
   if (m.type === "trigger") {
     st.mom[q] -= 1;
     st.log.push({ t: "trigger", seat: q, card: pd.card });
-    resolveEffect(st, pd.card, q);
     pd.triggered = true; // 裁決 10: a triggered card leaves the game
+    if (resolveEffect(st, pd.card, q, "finish")) return; // §6.2: the owner makes the choices
   }
   finishPlay(st);
 }
