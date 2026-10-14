@@ -24,7 +24,7 @@ const cnt = (st, k, p) => st.counties[k].blocks.filter((b) => b.o === p).length;
 function describe(b, seat, m, a) {
   const pd = b.pending;
   switch (m.type) {
-    case "order": return [{ k: "order", seat, pos: m.pos }];
+    case "order": return [{ k: "order", seat, pos: m.pos, election: b.phase === "election" }];
     case "candidate": return [{ k: "cand", seat }];
     case "play": return [{ k: "play", seat, card: m.card, mode: m.mode, block: !!m.block }];
     case "trigger": return [{ k: "trigger", seat, card: pd.card }];

@@ -58,6 +58,7 @@ export default {
       p: {
         moveHead: "移動", back: "← 收起", notNow: "現在不能打這張牌。",
         order: "你有主動權：選這回合你排第幾個行動。",
+        orderElection: "你有主動權：選投票日你第幾個催票，順序依座位順時針接下去。",
         play: "第 {n} / 4 次出牌：選一張手牌，或用候選人牌。",
         pickCard: "點下面的手牌看牌面與打法。", pickCardDebate: "點下面的留牌，選哪一張要翻開。", pickCardElection: "點下面的留牌，選要先催哪一張。",
         trigger: "{card} 是你的牌，對手拿去當 CP 用了。花 1 動能觸發它的事件嗎？",
@@ -74,7 +75,7 @@ export default {
         canvass: "選一張留牌來催票：在牌上的縣市做 3 次檢定。", canvassPlace: "催票成功：{county}。選一件事（這張還剩 {left} 次檢定）。", canvassRate: "每次檢定約 {p}%。",
       },
       o: {
-        order: "排第 {n} 個行動", candidate: "候選人牌：{cp} CP", playEvent: "{card}：當事件打出", playCp: "{card}：拿 {cp} CP 做行動", playBlock: "{card}：拿 CP，並花 2 動能封鎖",
+        order: "排第 {n} 個行動", orderElection: "第 {n} 個催票", candidate: "候選人牌：{cp} CP", playEvent: "{card}：當事件打出", playCp: "{card}：拿 {cp} CP 做行動", playBlock: "{card}：拿 CP，並花 2 動能封鎖",
         trigger: "觸發（花 1 動能）", pass: "不觸發",
         kind: { campaign: "競選 · 填塊或搶塊", ads: "廣告 · 每 1 CP 抽一次，成功率約 {p}%", adsNoRate: "廣告 · 每 1 CP 抽一次", issue: "議題 · 押方塊（第 1 顆 1 CP，之後每顆 2 CP）" },
         move: "移到 {county}（{cost} CP）", fill: "{county} · 填 1 塊", cross: "{county} · 跨營填 1 塊", steal: "{county} · 搶{who} 1 顆（{kind}）",
@@ -91,7 +92,7 @@ export default {
         open: "未結算", settled: "已結算 · {who}贏，放 {n} 顆", yours: "你已選", picked: "已選", total: "合計 {n}", sums: "CP 合計：宋 {a} · 連 {b} · 陳 {c}",
       },
       f: {
-        turn: "—— 第 {n} 回合 · 主動權 {who} ——", order: "{who}排第 {n} 個行動", playEvent: "{who}把「{card}」當事件打出", playCp: "{who}拿「{card}」做 CP", block: "，並封鎖", cand: "{who}用了候選人牌",
+        turn: "—— 第 {n} 回合 · 主動權 {who} ——", order: "{who}排第 {n} 個行動", orderElection: "{who}選了第 {n} 個催票", playEvent: "{who}把「{card}」當事件打出", playCp: "{who}拿「{card}」做 CP", block: "，並封鎖", cand: "{who}用了候選人牌",
         trigger: "{who}觸發了「{card}」",
         fillOk: "{who}在{county}填 1 塊", fillFail: "{who}想在{county}填塊，檢定沒過", crossOk: "{who}在{county}跨營填 1 塊", crossFail: "{who}想在{county}跨營填塊，檢定沒過",
         stealOk: "{who}在{county}搶走{target} 1 顆", stealFail: "{who}想在{county}搶{target}的方塊，檢定沒過",

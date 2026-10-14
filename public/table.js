@@ -111,7 +111,7 @@ export function labelMove(v, m, lang) {
   const suffix = ck === "none" ? tr("o.noCheck") : ck === "check" && rate != null ? tr("o.check", { p: rate }) : "";
   const cpOf = (id) => CARD[id].cp;
   switch (m.type) {
-    case "order": return tr("o.order", { n: m.pos + 1 });
+    case "order": return tr(v.phase === "election" ? "o.orderElection" : "o.order", { n: m.pos + 1 });
     case "candidate": return tr("o.candidate", { cp: CANDIDATE_CARDS[SEATS[seat]].cp });
     case "play": {
       const name = x.card(m.card);
@@ -297,7 +297,7 @@ function prompt(v, ch, x) {
   }
   if (v.phase === "election") {
     const e = v.election;
-    if (e.stage === "order") return `<p class="pr">${t("p.order")}</p>`;
+    if (e.stage === "order") return `<p class="pr">${t("p.orderElection")}</p>`;
     if (e.choose) {
       const k = e.county, r = bagRate(v, me);
       return `<p class="pr"><b>${esc(x.card(e.card))}</b> · ${t("p.canvassPlace", { county: x.county(k), left: e.left })}${r != null ? " " + t("p.canvassRate", { p: r }) : ""}</p>`;
@@ -423,7 +423,7 @@ export function feedLine(e, v, x) {
   const tr = x.tr, who = (p) => x.short(p);
   switch (e.k) {
     case "turn": return tr("f.turn", { n: e.turn, who: who(e.initiative) });
-    case "order": return tr("f.order", { who: who(e.seat), n: e.pos + 1 });
+    case "order": return tr(e.election ? "f.orderElection" : "f.order", { who: who(e.seat), n: e.pos + 1 });
     case "play": return tr(e.mode === "event" ? "f.playEvent" : "f.playCp", { who: who(e.seat), card: x.card(e.card) }) + (e.block ? tr("f.block") : "");
     case "cand": return tr("f.cand", { who: who(e.seat) });
     case "trigger": return tr("f.trigger", { who: who(e.seat), card: x.card(e.card) });

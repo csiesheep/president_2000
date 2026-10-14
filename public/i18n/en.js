@@ -59,6 +59,7 @@ export default {
       p: {
         moveHead: "Move", back: "← Close", notNow: "You cannot play this card right now.",
         order: "You hold the initiative: pick where you act in the order this turn.",
+        orderElection: "You hold the initiative: pick where you canvass in the order on election day; the others follow in seat order.",
         play: "Card {n} of 4: pick a card from your hand, or use your candidate card.",
         pickCard: "Tap a card below to see it and how to play it.", pickCardDebate: "Tap a card below to choose which one to turn over.", pickCardElection: "Tap a card below to choose which one to canvass first.",
         trigger: "{card} is your card, and an opponent played it for CP. Spend 1 momentum to trigger its event?",
@@ -75,7 +76,7 @@ export default {
         canvass: "Pick a card from your pile to canvass: three support checks in the county on the card.", canvassPlace: "A success in {county}. Pick one thing to do ({left} checks left on this card).", canvassRate: "Each check is about {p}%.",
       },
       o: {
-        order: "Act in position {n}", candidate: "Candidate card: {cp} CP", playEvent: "{card}: play as an event", playCp: "{card}: use {cp} CP for an action", playBlock: "{card}: use CP, and spend 2 momentum to block",
+        order: "Act in position {n}", orderElection: "Canvass in position {n}", candidate: "Candidate card: {cp} CP", playEvent: "{card}: play as an event", playCp: "{card}: use {cp} CP for an action", playBlock: "{card}: use CP, and spend 2 momentum to block",
         trigger: "Trigger (spend 1 momentum)", pass: "Don't trigger",
         kind: { campaign: "Campaign · fill or take blocks", ads: "Advertising · a check per CP, about {p}% each", adsNoRate: "Advertising · a check per CP", issue: "Issue · put cubes on an issue (1 CP for the first, 2 CP for each after)" },
         move: "Move to {county} ({cost} CP)", fill: "{county} · fill 1 block", cross: "{county} · cross-camp fill 1 block", steal: "{county} · take 1 {who} cube ({kind})",
@@ -92,7 +93,7 @@ export default {
         open: "Not settled", settled: "Settled · {who} wins, {n} cubes", yours: "you picked", picked: "picked", total: "total {n}", sums: "CP totals: Soong {a} · Lien {b} · Chen {c}",
       },
       f: {
-        turn: "—— Turn {n} · initiative: {who} ——", order: "{who} acts in position {n}", playEvent: "{who} plays {card} as an event", playCp: "{who} uses {card} for CP", block: ", and blocks it", cand: "{who} uses the candidate card",
+        turn: "—— Turn {n} · initiative: {who} ——", order: "{who} acts in position {n}", orderElection: "{who} picks position {n} to canvass", playEvent: "{who} plays {card} as an event", playCp: "{who} uses {card} for CP", block: ", and blocks it", cand: "{who} uses the candidate card",
         trigger: "{who} triggers {card}",
         fillOk: "{who} fills 1 block in {county}", fillFail: "{who} tries to fill in {county}, but the check fails", crossOk: "{who} cross-camp fills 1 block in {county}", crossFail: "{who} tries a cross-camp fill in {county}, but the check fails",
         stealOk: "{who} takes 1 {target} cube in {county}", stealFail: "{who} tries to take a {target} cube in {county}, but the check fails",

@@ -22,7 +22,9 @@ if (typeof document !== "undefined") {
 
   document.documentElement.lang = T.lang;
   for (const el of document.querySelectorAll("[data-i18n]")) {
-    const v = path(T, el.dataset.i18n);
+    let v = path(T, el.dataset.i18n);
+    // The big "2000" above is its own element: the name line keeps only what follows it.
+    if (el.dataset.i18n === "title" && typeof v === "string") v = v.replace(/^2000\s*[：:]\s*/, "");
     if (typeof v === "string") el.textContent = v;
   }
   const langLink = $("#lang"), gLang = $("#glang");
