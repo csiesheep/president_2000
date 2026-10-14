@@ -145,6 +145,69 @@ cb("強弱：一個操盤手對兩個樁腳，操盤手輪流坐三個位子各 
   return wins >= 9 ? ok(true, msg) : `${msg}，不到 9`;
 });
 
+// ---- 軍師（#17）: the advisor is the 操盤手 sitting in your seat, fed only what your seat sees.
+//   advise(view, legal, level = 3, rng = a fixed generator) → { move, why }
+// view is E.view(st, seat) (view.seat says whose), legal is E.legalMoves(st, seat). chooseMove(st,
+// seat, level, rng) must give the same answer as advise(E.view(st, seat), E.legalMoves(st, seat),
+// level, rng) for the same rng, so the advisor in a room (where the page holds only the view)
+// plays exactly like the bot. Reports 尚未實作 until bots.js exports advise.
+const ADVISE = READY && typeof BOTS.advise === "function";
+const c17 = (name, fn) => check(name, () => (ADVISE ? fn() : "TODO: public/shared/bots.js 還沒有 advise（#17）"));
+section("17 軍師");
+c17("軍師與操盤手一樣：每一個決定，advise(view, legal, 3, rng) 與 chooseMove(st, seat, 3, rng) 給同一步、同一個 why（三局、每個座位、每個階段）", () => {
+  let checked = 0;
+  const phases = new Set();
+  for (let seed = 1; seed <= 3; seed++) {
+    let st = E.createGame(seed + 700);
+    for (let n = 0; n < 4000 && st.phase !== "end"; n++) {
+      const seat = E.mustAct(st)[0];
+      const view = E.view(st, seat), legal = E.legalMoves(st, seat);
+      const a = BOTS.advise(view, legal, 3, D.rng(n + 1)), b = BOTS.chooseMove(st, seat, 3, D.rng(n + 1));
+      if (!a || !same(a.move, b.move) || !same(a.why, b.why)) return `seed ${seed + 700} 第 ${st.turn} 回合 ${st.phase} ${NAMES[seat]}：軍師 ${JSON.stringify(a && a.move)}（${a && a.why && a.why.key}），操盤手 ${JSON.stringify(b.move)}（${b.why.key}）`;
+      checked++; phases.add(st.phase);
+      st = E.apply(st, seat, b.move);
+    }
+  }
+  const r = nonEmpty(checked, "比對過的決定"); if (r !== true) return r;
+  return ok(true, `${checked} 個決定一樣（階段：${[...phases].join("、")}）`);
+});
+c17("軍師只用看得到的：把 view 存成 JSON 再讀回來（像房間頁收到的那樣），建議不變；不改傳進去的 view 與 legal", () => {
+  let checked = 0;
+  let st = E.createGame(733);
+  for (let n = 0; n < 4000 && st.phase !== "end"; n++) {
+    const seat = E.mustAct(st)[0];
+    const view = E.view(st, seat), legal = E.legalMoves(st, seat);
+    if (n % 7 === 0) {
+      const vj = JSON.stringify(view), lj = JSON.stringify(legal);
+      const a = BOTS.advise(view, legal, 3, D.rng(n));
+      if (JSON.stringify(view) !== vj || JSON.stringify(legal) !== lj) return `第 ${st.turn} 回合 ${st.phase}：advise 改了傳進去的 view 或 legal`;
+      const b = BOTS.advise(JSON.parse(vj), JSON.parse(lj), 3, D.rng(n));
+      if (!same(a.move, b.move)) return `第 ${st.turn} 回合 ${st.phase}：JSON 來回之後建議不一樣`;
+      if (!legal.some((m) => same(m, a.move))) return `第 ${st.turn} 回合 ${st.phase}：建議不是合法的步 ${JSON.stringify(a.move)}`;
+      checked++;
+    }
+    st = E.apply(st, seat, BOTS.chooseMove(st, seat, 3, D.rng(n)).move);
+  }
+  const r = nonEmpty(checked, "比對過的決定"); if (r !== true) return r;
+  return ok(true, `${checked} 個決定`);
+});
+c17("同一個局面，建議永遠一樣：不給 rng 時，advise(view, legal) 呼叫兩次給同一步；跟 advise(view, legal, 3) 也一樣", () => {
+  let checked = 0;
+  let st = E.createGame(744);
+  for (let n = 0; n < 4000 && st.phase !== "end"; n++) {
+    const seat = E.mustAct(st)[0];
+    if (n % 5 === 0) {
+      const view = E.view(st, seat), legal = E.legalMoves(st, seat);
+      const a = BOTS.advise(view, legal), b = BOTS.advise(view, legal), c = BOTS.advise(view, legal, 3);
+      if (!same(a.move, b.move) || !same(a.move, c.move)) return `第 ${st.turn} 回合 ${st.phase}：同一個局面給了不同的建議`;
+      checked++;
+    }
+    st = E.apply(st, seat, BOTS.chooseMove(st, seat, 3, D.rng(n)).move);
+  }
+  const r = nonEmpty(checked, "比對過的決定"); if (r !== true) return r;
+  return ok(true, `${checked} 個決定`);
+});
+
 test("bots", () => {
   const s = summary();
   for (const p of R.pass) console.log(`  ✓ ${p.label}${p.msg ? " — " + p.msg : ""}`);
