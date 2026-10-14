@@ -972,8 +972,10 @@ choiceGroup("事件 · 指定縣市（照文字順序；沒有空的游離塊就
   { id: "east_coast", by: SOONG, arrange: (s) => { s.counties[ci("花蓮縣")].blocks.find((b) => b.o === LIEN).o = -1; }, steps: [["probe", SOONG, offers(["fill", "cross"], ["花蓮縣"], "花東原鄉可選的縣市（台東沒有空塊）")], [SOONG, F("花蓮縣")]], want: { cubes: { "花蓮縣": [0, 1, 0] } } },
   { id: "quake_bond", by: SOONG, steps: [["probe", SOONG, offers(["fill", "cross"], ["台中縣"], "災區情誼可選的縣市（南投沒有空塊）")], [SOONG, F("台中縣")]], want: { cubes: { "台中縣": [0, 1, 0] } } },
   { id: "farmers_association", by: LIEN, steps: [["probe", LIEN, offers(["fill", "cross"], ["雲林縣"], "第一個縣市")], [LIEN, F("雲林縣")], [LIEN, F("彰化縣")]], want: { cubes: { "雲林縣": [0, 0, 1], "彰化縣": [0, 0, 1] } } },
-  // 需檢定：台北市宋 5 顆是樁腳主，連填藍要檢定；袋中只有宋 → 兩次都失敗。
-  { id: "ma_campaigns", by: LIEN, steps: [[LIEN, F("台北市")], [LIEN, F("台北市")]], want: { bag: [0, -2, 0], checks: 2 } },
+  // 需檢定：開局連在北北基有媒體優勢（連 1、其他 0），§8.1 免除樁腳主檢定 → 兩顆都放上、不檢定。
+  { id: "ma_campaigns", by: LIEN, steps: [[LIEN, F("台北市")], [LIEN, F("台北市")]], want: { cubes: { "台北市": [0, 0, 2] } } },
+  // 把北北基媒體清掉：台北市宋 5 顆是樁腳主，連填藍要檢定；袋中只有宋 → 兩次都失敗。
+  { id: "ma_campaigns", by: LIEN, arrange: (s) => { s.media[ri("北北基")] = [0, 0, 0]; }, steps: [[LIEN, F("台北市")], [LIEN, F("台北市")]], want: { bag: [0, -2, 0], checks: 2 } },
   // 台北市：連 −1（不檢定）再宋 +1；新竹市沒有連的方塊：只有宋 +1。
   { id: "li_ao_endorses", by: SOONG, steps: [[SOONG, RM("台北市", LIEN, "B")], [SOONG, F("台北市")], ["probe", SOONG, (ms) => (ms.some((m) => m.type === "remove") ? "新竹市沒有連的方塊，卻還問移除" : offers(["fill", "cross"], ["新竹市"], "第二個縣市")(ms))], [SOONG, F("新竹市")]], want: { cubes: { "台北市": [0, 1, -1], "新竹市": [0, 1, 0] } } },
 ]);
@@ -999,8 +1001,8 @@ choiceGroup("事件 · 任選縣市（各 +1 的縣市不重複；選過的縣�
   { id: "party_machine", by: LIEN, steps: [[LIEN, F("台北縣")], [LIEN, F("桃園縣")], [LIEN, X("高雄市")]], want: { cubes: { "台北縣": [0, 0, 1], "桃園縣": [0, 0, 1], "高雄市": [0, 0, 1] } } },
   { id: "lee_campaigns", by: LIEN, steps: [[LIEN, F("桃園縣")], [LIEN, F("台中縣")]], want: { cubes: { "桃園縣": [0, 0, 1], "台中縣": [0, 0, 1] } } },
   { id: "ma_leaks_polls", by: LIEN, opts: { startTurn: 8 }, steps: [[LIEN, X("台南縣")], [LIEN, F("桃園縣")]], want: { cubes: { "桃園縣": [0, 0, 1] }, mom: [1, 1, 0], bag: [0, -1, 0], checks: 1 } },
-  // 跨營填台南縣失敗；桃園填藍不檢定；台北縣填藍有宋這個樁腳主 → 檢定失敗。
-  { id: "lee_alarm", by: LIEN, steps: [[LIEN, X("台南縣")], [LIEN, F("桃園縣")], [LIEN, F("台北縣")]], want: { cubes: { "桃園縣": [0, 0, 1] }, bag: [0, -2, 0], checks: 2 } },
+  // 跨營填台南縣失敗；桃園填藍不檢定；北北基媒體先清掉，台北縣填藍有宋這個樁腳主 → 檢定失敗。
+  { id: "lee_alarm", by: LIEN, arrange: (s) => { s.media[ri("北北基")] = [0, 0, 0]; }, steps: [[LIEN, X("台南縣")], [LIEN, F("桃園縣")], [LIEN, F("台北縣")]], want: { cubes: { "桃園縣": [0, 0, 1] }, bag: [0, -2, 0], checks: 2 } },
   // 每個縣市：宋 +1（需檢定）之後，同縣市連有方塊就 −1（不檢定）。
   { id: "veterans_village", by: SOONG, steps: [
     [SOONG, X("台北縣")],
