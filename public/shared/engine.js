@@ -46,9 +46,11 @@ function withRng(st, fn) {
   return out;
 }
 
-// Every card gets a county for election-day canvassing (§14.2): events by
-// block-weighted draw, locals their printed county. (Phase 0; the rulebook's
-// "every county at least once" is left to the election-day issue, #1 §七.)
+// Every card has a county for election-day canvassing (§14.2). Since #7 all
+// 70 events and the locals carry a printed county in cards.js (24 counties,
+// every one at least once; group 0 guards it), so this loop skips them all.
+// The block-weighted draw stays only as a fallback for a card without one;
+// the RNG calls are unchanged (it draws nothing when every card has a county).
 function assignCounties(rng, cards) {
   const total = COUNTIES.reduce((s, c) => s + c[2] + c[3] + c[4], 0);
   for (const card of cards) {
