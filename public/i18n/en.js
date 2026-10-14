@@ -41,7 +41,7 @@ export default {
       setup: {
         kicker: "SOLO VS. BOTS", title: "Whose campaign will you run?", sub: "The other two seats are played by the computer.",
         pick: "Pick", picked: "Picked", level: "Bot level",
-        levelNote: { 1: "The Canvasser only fills blocks: no taking, triggering or blocking.", 2: "The Campaign chief counts strategic voting, takes blocks, triggers and blocks.", 3: "The Strategist also saves cards for the Policy Forum and cuts issue leads to a tie." },
+        levelNote: { 1: "The Volunteer only fills blocks: no taking, triggering or blocking.", 2: "The Campaign chief counts strategic voting, takes blocks, triggers and blocks.", 3: "The Strategist also saves cards for the Policy Forum and cuts issue leads to a tie." },
         start: "Start the campaign", note: "Nine turns. Progress is kept in this tab; a reload brings you back to the same screen.", home: "← Home",
       },
       menu: { quit: "Abandon this game", confirm: "Abandon this game and go back to setup?", skip: "Click to skip the animation" },
@@ -407,7 +407,7 @@ export default {
     media: "Media",
     issue: "Issue",
   },
-  bots: { 1: "Canvasser", 2: "Campaign chief", 3: "Strategist" },
+  bots: { 1: "Volunteer", 2: "Campaign chief", 3: "Strategist" },
   // Table talk: what the bot's campaign staff say, in "we", about this move only. One key per WHY in bots.js.
   talk: {
     only_move: "There's only one move left, so we take it.",
