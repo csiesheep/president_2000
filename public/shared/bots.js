@@ -1,7 +1,11 @@
 // The bots (M2, #10): three levels for solo play and for filling a room seat.
 //
 //   chooseMove(st, seat, level, rng) → { move, why }
+//   advise(view, legal, level = 3, rng = fixed) → { move, why }   (軍師, #17)
 //
+// chooseMove is advise(E.view(st, seat), E.legalMoves(st, seat), level, rng):
+// the bot and the advisor are the same player, and the advisor in a room,
+// where the page holds only the view, plays exactly like the bot.
 // `move` is one of E.legalMoves(st, seat), returned as that very object; `why`
 // is { key, …params } with key in WHY and every param a number or a string
 // (table talk is written from the key, #10 §二). level 1 樁腳, 2 總幹事, 3 操盤手.
@@ -13,8 +17,8 @@
 // pending play and its effect queue, the debate board (another seat's pick
 // only as "made or not"), this seat's own hand and saved piles, and the other
 // piles as counts. Nothing reads another seat's cards, the decks, the
-// endorsement deck, st.rng or st.seed. `see()` below is the only reader of st
-// and lists what it takes. The bots never look ahead with E.apply, so no
+// endorsement deck, st.rng or st.seed — the bot is given only the view, so it
+// cannot. `see()` below is the only reader of the view and lists what it takes. The bots never look ahead with E.apply, so no
 // hidden state is ever needed; every estimate is the model below.
 //
 // The heuristics start from the design simulator (vault sim/sim.js), rewritten
@@ -129,8 +133,13 @@ const r2 = (x) => Math.round(x * 100) / 100;
 
 // ------------------------------------------------------------------ what a seat sees
 
-// The only reader of st. Everything taken here is in E.view(st, seat).
-function see(st, seat) {
+// The only reader of the position: `st` here is a seat's view, E.view(st, seat)
+// (also after a JSON round trip). Every value is copied, so the bot's estimates
+// never touch the caller's view. In a view another seat's piles are counts,
+// the decks are counts, and another seat's debate pick is true / null.
+const count = (h) => (Array.isArray(h) ? h.length : h);
+function see(st) {
+  const seat = st.seat;
   return {
     seat,
     turn: st.turn, phase: st.phase, step: st.step, initiative: st.initiative,
@@ -155,16 +164,16 @@ function see(st, seat) {
     hand: st.hands[seat].slice(),
     savedDebate: st.savedDebate[seat].slice(),
     savedElection: st.savedElection[seat].slice(),
-    pileCounts: st.savedDebate.map((h) => h.length),
+    pileCounts: st.savedDebate.map(count),
   };
 }
 
 // ------------------------------------------------------------------ the bot
 
 class Bot {
-  constructor(st, seat, level, rng) {
-    this.v = see(st, seat);
-    this.p = seat; this.lv = level; this.rng = rng;
+  constructor(view, level, rng) {
+    this.v = see(view);
+    this.p = view.seat; this.lv = level; this.rng = rng;
     const t = this.v.turn;
     this.flow = level === 1 ? null : level >= 3 && t >= 9 ? EXACT : level >= 3 && t >= 7 ? SHARP : SOFT;
     this.pc = this.v.counties.map((_, k) => this.projCounty(k));
@@ -1052,13 +1061,40 @@ const EV = {
 
 // ------------------------------------------------------------------ entry
 
+// The 操盤手 (or any level) sitting in view.seat, told only what that seat
+// sees: view = E.view(st, seat), legal = E.legalMoves(st, seat). The 軍師
+// (#17) calls this on the page; a room's page holds only the view. Neither
+// argument is changed, and a view that went through JSON gives the same
+// advice. Without an rng it uses a fresh generator with a fixed seed, so the
+// same position always gets the same advice.
+export function advise(view, legal, level = 3, rng = fixedRng()) {
+  const seat = view.seat;
+  if (!legal.length) throw new Error(`bots: seat ${seat} has nothing to do in phase ${view.phase}`);
+  if (legal.length === 1) return { move: legal[0], why: { key: "only_move" } };
+  const bot = new Bot(view, level === 1 || level === 2 ? level : 3, rng);
+  if (view.flags && typeof view.flags.yangReturned === "number") bot.yang = view.flags.yangReturned; // public: 爆料's count
+  const out = bot.decide(legal);
+  if (!out || !out.move || !legal.includes(out.move)) throw new Error(`bots: no decision in phase ${view.phase} (${view.pending ? view.pending.stage : "-"})`);
+  return out;
+}
+
+// The bot is the advisor fed the seat's view: it cannot read what the view hides.
+// (A forced move skips building the view; advise answers it the same way.)
 export function chooseMove(st, seat, level, rng) {
   const legal = E.legalMoves(st, seat);
-  if (!legal.length) throw new Error(`bots: seat ${seat} has nothing to do in phase ${st.phase}`);
   if (legal.length === 1) return { move: legal[0], why: { key: "only_move" } };
-  const bot = new Bot(st, seat, level === 1 || level === 2 ? level : 3, rng);
-  if (st.flags && typeof st.flags.yangReturned === "number") bot.yang = st.flags.yangReturned; // public: 爆料's count
-  const out = bot.decide(legal);
-  if (!out || !out.move || !legal.includes(out.move)) throw new Error(`bots: no decision in phase ${st.phase} (${st.pending ? st.pending.stage : "-"})`);
-  return out;
+  return advise(E.view(st, seat), legal, level, rng);
+}
+
+// mulberry32 with a fixed seed: advise()'s rng when the caller gives none.
+const ADVISE_SEED = 2000;
+function fixedRng() {
+  let a = ADVISE_SEED >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
