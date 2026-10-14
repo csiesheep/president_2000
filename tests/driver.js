@@ -155,11 +155,14 @@ export const issue = (st, name) => {
 export const lastCheck = (st) => [...st.log].reverse().find((e) => e.t === "check");
 export const checks = (st) => st.log.filter((e) => e.t === "check").length;
 
-// Every card in exactly one place: decks, discard, removed, hands, saved piles, and st.active (a
-// 本回合 event stays on the table until the turn ends, #5).
+// Every card in exactly one place: decks, discard, removed, hands, saved piles, st.active (a
+// 本回合 event stays on the table until the turn ends, #5), decks.earlyDiscard (the early discard
+// pile set aside after turn 6) and st.debate.placed (cards revealed onto the debate board, #6).
 export function conservation(st) {
   if (!Array.isArray(st.removed)) return "state 沒有 removed 陣列";
-  const where = [st.decks.early, st.decks.late, st.decks.discard, st.removed, ...st.hands, ...st.savedDebate, ...st.savedElection, ...(Array.isArray(st.active) ? [st.active] : [])];
+  const where = [st.decks.early, st.decks.late, st.decks.discard, st.removed, ...st.hands, ...st.savedDebate, ...st.savedElection, ...(Array.isArray(st.active) ? [st.active] : []),
+    ...(Array.isArray(st.decks.earlyDiscard) ? [st.decks.earlyDiscard] : []),
+    ...(st.debate && st.debate.placed ? Object.values(st.debate.placed).flat() : [])];
   const seen = new Map();
   for (const arr of where) for (const id of arr) seen.set(id, (seen.get(id) || 0) + 1);
   const dup = [...seen].filter(([, n]) => n > 1).map(([id]) => id);

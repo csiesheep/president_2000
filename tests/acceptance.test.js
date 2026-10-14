@@ -267,6 +267,22 @@ check("view 藏別人的手牌，露自己的", () => {
 // ---------------------------------------------------------------- group 2
 section("2 規則書要求");
 const READY = D.ready();
+// The debate (#6) is reached by quiet play; whether it has decisions yet decides some checks below.
+// The debate is reached by quiet play of turns 1–5 (seed 4), then arranged at its start: piles
+// (savedDebate), the issue order (st.issues = the original track), the initiative (tie priority),
+// and a board cleared except for the counties the scenario names, so every 棄保 flow can be worked
+// out by hand from §九 and §十一. Placements by debate winners go to counties that end full, so
+// they cause no flow of their own.
+const toDebate = (seed = 4) => {
+  let st = E.createGame(seed);
+  st = D.act(st, st.initiative, { type: "order", pos: 0 });
+  return D.playUntil(st, (s) => s.phase === "debate" || s.turn > 6, null, D.quiet);
+};
+const debateReady = () => {
+  const st = toDebate();
+  return st.phase === "debate" && E.mustAct(st).length > 0 && E.legalMoves(st, E.mustAct(st)[0]).some((m) => m.type === "reveal");
+};
+const DEBATE_READY = READY && (() => { try { return debateReady(); } catch { return false; } })();
 const c2 = (name, fn) => check(name, () => (READY ? fn() : "TODO: engine.apply 還不能結算動作（#1）"));
 const { CHEN, SOONG, LIEN, ci, ri } = D;
 const zeros7 = () => Array.from({ length: 7 }, () => [0, 0, 0]);
@@ -364,7 +380,7 @@ c2("行動階段 · 第一階段照持有者排的順序，之後每階段起手
   const r = eq(seq.join(), want.join(), "12 次出牌的席"); if (r !== true) return r;
   return ok(true, `順序 ${order.join("")}：${seq.join("")}`);
 });
-c2("牌庫 · 前期發 5、後期發 6，整局不洗牌、每張牌只在一個地方；第 5 回合留牌後停在政見發表會；第 7–8 回合用後期牌庫（§5.1、§10、§14.1）", () => {
+c2("牌庫 · 前期發 5、後期發 6，整局不洗牌、每張牌只在一個地方；第 5 回合留牌後進政見發表會；第 7–8 回合用後期牌庫（§5.1、§10、§14.1）", () => {
   // 75 = 5 回合 × 3 人 × 5 張、36 = 2 回合 × 3 人 × 6 張：不洗牌時，第 t 回合發完前期牌庫正好剩 75 − 15t。
   let st = E.createGame(4), turns = 0;
   for (let n = 0; n < 6000 && st.phase !== "debate"; n++) {
@@ -379,7 +395,7 @@ c2("牌庫 · 前期發 5、後期發 6，整局不洗牌、每張牌只在一�
     st = E.apply(st, seat, D.quiet(st, seat, E.legalMoves(st, seat)));
   }
   let r = eq(`${st.phase} ${turns} ${st.decks.early.length}`, "debate 5 0", "走完第 5 回合（前期牌庫剛好發完）"); if (r !== true) return r;
-  r = eq(E.mustAct(st).length, 0, "政見發表會（還沒做）時要動的人數"); if (r !== true) return r;
+  r = eq(E.mustAct(st).length, DEBATE_READY ? 3 : 0, DEBATE_READY ? "政見發表會開始時要翻牌的人數" : "政見發表會（還沒做）時要動的人數"); if (r !== true) return r;
   let late = E.createGame(4, { startTurn: 7 });
   r = eq(late.turn, 7, "startTurn 7 的回合"); if (r !== true) return r;
   const notLate = late.hands.flat().filter((id) => DECK_OF[id] !== "late");
@@ -1326,8 +1342,175 @@ check("事件 · 70 張的效果都做了（最後 8 張是興票案與本回合
   if (!last8.some((id) => E.effectImplemented(id))) return `TODO: 事件效果已實作 ${C.EVENTS.length - missing.length}/${C.EVENTS.length}（#5）`;
   return missing.length ? "還沒做的效果：" + missing.join(",") : ok(true, `${C.EVENTS.length} 張全部做了`);
 });
-check("政見發表會（第 6 回合）", () => "TODO: §九");
-check("兩段棄保結算（差距 ≥ 2；一半／全部）", () => "TODO: §十一");
+// ---- 政見發表會與第一段棄保（#6）
+const c6 = (name, fn) => c2(name, () => (DEBATE_READY ? fn() : "TODO: 政見發表會還沒做（#6）"));
+// Put exactly these five cards into a seat's debate pile, swapping each in from wherever it is.
+function setPile(st, seat, ids) {
+  const pile = st.savedDebate[seat];
+  ids.forEach((id, k) => {
+    if (pile[k] === id) return;
+    const spots = [st.decks.early, st.decks.late, st.decks.discard, ...st.hands, ...st.savedDebate];
+    for (const arr of spots) {
+      const j = arr.indexOf(id);
+      if (j >= 0) { [arr[j], pile[k]] = [pile[k], arr[j]]; return; }
+    }
+    throw new Error(`找不到 ${id}（移出遊戲了？）`);
+  });
+}
+function clearBoard(st) { for (const c of st.counties) for (const b of c.blocks) b.o = -1; }
+function setCounty(st, name, cubes) {   // cubes: { G: [p, …], B: [p, …] } in block order
+  const bl = st.counties[ci(name)].blocks;
+  for (const t of ["G", "B", "N"]) { const want = (cubes[t] || []).slice(); for (const b of bl) if (b.t === t) b.o = want.length ? want.shift() : -1; }
+}
+const reveal = (st, seat, card, issue) => D.act(st, seat, issue ? { type: "reveal", card, issue } : { type: "reveal", card });
+// One round: each [seat, card, issue?] in the order given (the reveal is simultaneous; order must not matter).
+const round = (st, plays) => { for (const [seat, card, issue] of plays) st = reveal(st, seat, card, issue || C.EVENTS.find((e) => e.id === card)?.icon); return st; };
+const LOCAL3 = C.localCards().find((c) => c.cp === 3 && c.deck === "early").id;
+const cubesOf = (st) => Object.fromEntries(B.COUNTIES.map((c, k) => [c[0], [0, 1, 2].map((p) => st.counties[k].blocks.filter((b) => b.o === p).length)]).filter(([, v]) => v.some(Boolean)));
+const cubesStr = (o) => Object.keys(o).sort().map((k) => `${k} ${o[k].join("/")}`).join("；") || "全空";
+function debateScene(st) {
+  clearBoard(st);
+  setCounty(st, "台中縣", { G: [CHEN], B: [SOONG, SOONG, SOONG, LIEN] });   // 藍空 2：宋 3 連 1 差 2 → 一半 1 流向宋；綠空 1 → 一半 0
+  setCounty(st, "高雄市", { G: [CHEN, CHEN], B: [SOONG, SOONG, LIEN] });    // 綠空 2 → 一半 1 流向陳；藍差 1 → 不流
+  setCounty(st, "台北市", { B: [SOONG, SOONG, SOONG, SOONG, LIEN] });       // 藍空 5：宋 4 連 1 → 一半 2 流向宋；陳 0 → 綠不流
+  setCounty(st, "屏東縣", {});                                              // 陳 0：綠空 2 不流；藍 0/0 不流
+  const want = { "台中縣": [1, 4, 1], "高雄市": [3, 2, 1], "台北市": [0, 6, 1] };
+  return want;
+}
+
+c6("政見發表會 · 第 5 回合留牌後進第 6 回合：三人同時從自己的政見發表會堆選一張翻；有圖示的牌只能放在該議題，地方牌可選議題（§九）", () => {
+  const st = toDebate();
+  let r = eq(`${st.turn} ${st.phase} ${JSON.stringify(E.mustAct(st))}`, "6 debate [0,1,2]", "第 6 回合開始"); if (r !== true) return r;
+  for (const s of [0, 1, 2]) {
+    const pile = st.savedDebate[s], ms = E.legalMoves(st, s).filter((m) => m.type === "reveal");
+    const want = pile.map((id) => (C.EVENTS.find((e) => e.id === id) ? 1 : 3)).reduce((a, b) => a + b, 0);
+    r = eq(ms.length, want, `seat ${s} 的翻牌選項數（堆裡 ${pile.length} 張；地方牌 3 個議題、其他 1 個）`); if (r !== true) return r;
+    const bad = ms.filter((m) => { const e = C.EVENTS.find((x) => x.id === m.card); return !pile.includes(m.card) || (e && m.issue !== e.icon); });
+    if (bad.length) return `seat ${s} 的翻牌選項不對：${JSON.stringify(bad.slice(0, 3))}`;
+  }
+  return ok(true, "三人同時翻牌；有圖示放自己的議題，地方牌三選一");
+});
+
+c6("政見發表會 · 同時翻牌：一人選好之後，別人的 view 看不到他選了哪張（§九）", () => {
+  let st = toDebate();
+  const card = st.savedDebate[CHEN][0];
+  const before = JSON.stringify({ ...E.view(st, SOONG), cards: null });
+  const m = E.legalMoves(st, CHEN).find((x) => x.type === "reveal" && x.card === card);
+  st = E.apply(st, CHEN, m);
+  const after = JSON.stringify({ ...E.view(st, SOONG), cards: null });
+  if (after.includes(JSON.stringify(card)) && !before.includes(JSON.stringify(card))) return `陳選了 ${card}，宋的 view 看得到`;
+  const r = eq(JSON.stringify(E.mustAct(st)), "[1,2]", "陳選好之後還要選的席"); if (r !== true) return r;
+  return ok(true, "選好的牌在三人都選完之前不露出");
+});
+
+c6("政見發表會 · 情境 A：同一輪兩個議題到 2 張時照原軌道順序結算（2、3 顆）；平手由主動權持有者優先；翻到已結算議題的牌沒有效果；結算完 4 顆；議題依結算順序回到最低的空槽，方塊保留；之後第一段棄保動一半（§九、§十一）", () => {
+  let st = toDebate();
+  setPile(st, CHEN, ["dpp_counties", "lu_running_mate", "future_resolution", "taiwan_son", "alternation"]);
+  setPile(st, SOONG, ["diligent", "hakka_vote", "poll_lead", "veterans_village", "million_signatures"]);
+  setPile(st, LIEN, ["stability", "lee_campaigns", "ma_campaigns", LOCAL3, "party_machine"]);
+  st.initiative = SOONG;   // 平手順序：宋 → 連 → 陳
+  const byName = Object.fromEntries(st.issues.map((i) => [i.name, i]));
+  st.issues = ["cross", "clean", "econ"].map((n) => byName[n]);
+  setIssue(st, "cross", [1, 0, 0]); setIssue(st, "clean", [0, 2, 0]); setIssue(st, "econ", [0, 0, 3]);
+  const want = debateScene(st);
+  const mom0 = st.mom.slice();
+  // 第 1 輪：經濟 陳 4、宋 4；兩岸 連 3
+  st = round(st, [[CHEN, "dpp_counties"], [SOONG, "diligent"], [LIEN, "stability"]]);
+  if (E.legalMoves(st, CHEN).some((m) => m.type === "fill" || m.type === "cross")) return "第 1 輪沒有人有 2 張，卻開始放方塊";
+  // 第 2 輪：經濟 陳 2、宋 2（6 比 6）；兩岸 連 3（6）→ 兩岸先結算（原軌道第一）連放 2；經濟平手由宋（持有者）放 3
+  st = round(st, [[CHEN, "lu_running_mate"], [SOONG, "hakka_vote"], [LIEN, "lee_campaigns"]]);
+  let r = eq(JSON.stringify(E.mustAct(st)), JSON.stringify([LIEN]), "第 2 輪之後先放方塊的人（兩岸在原軌道第一）"); if (r !== true) return r;
+  st = D.act(st, LIEN, F("新竹市")); st = D.act(st, LIEN, F("新竹市"));
+  r = eq(JSON.stringify(E.mustAct(st)), JSON.stringify([SOONG]), "接著放方塊的人（經濟 6 比 6，持有者宋優先）"); if (r !== true) return r;
+  for (let k = 0; k < 3; k++) st = D.act(st, SOONG, F("苗栗縣"));
+  // 第 3 輪：陳的台灣前途決議文（兩岸，已結算 → 沒有效果）；清廉 宋 2、連 2
+  st = round(st, [[CHEN, "future_resolution"], [SOONG, "poll_lead"], [LIEN, "ma_campaigns"]]);
+  // 第 4 輪：清廉 陳 3；宋的外省眷村（兩岸，已結算）；連的地方牌只能選清廉（兩岸、經濟都結算了）→ 連 2 張 2+3 = 5 → 連放 4
+  const opts = E.legalMoves(st, LIEN).filter((m) => m.type === "reveal" && m.card === LOCAL3).map((m) => m.issue).join();
+  r = eq(opts, "clean", "第 4 輪連的地方牌可選的議題"); if (r !== true) return r;
+  st = round(st, [[CHEN, "taiwan_son"], [SOONG, "veterans_village"], [LIEN, LOCAL3, "clean"]]);
+  r = eq(JSON.stringify(E.mustAct(st)), JSON.stringify([LIEN]), "第 4 輪之後放方塊的人（清廉 陳 3、宋 2、連 5）"); if (r !== true) return r;
+  for (const k of ["澎湖縣", "金馬", "台東縣", "新竹縣"]) st = D.act(st, LIEN, F(k));
+  // 三個議題都結算了 → 發表會結束、第一段棄保、進第 7 回合
+  r = eq(`${st.turn} ${st.phase}`, "7 order", "三個議題都結算之後"); if (r !== true) return r;
+  r = eq(st.issues.map((i) => `${i.name}=${i.cubes.join("/")}`).join(" "), "clean=0/2/0 econ=0/0/3 cross=1/0/0", "議題軌道（清廉第三個結算 → 第一槽）"); if (r !== true) return r;
+  r = eq(st.mom.map((x, p) => x - mom0[p]).join(), "0,1,2", "動能變化（每個議題的贏家 +1）"); if (r !== true) return r;
+  const expect = { ...want, "新竹市": [0, 0, 2], "苗栗縣": [0, 3, 0], "澎湖縣": [0, 0, 1], "金馬": [0, 0, 1], "台東縣": [0, 0, 1], "新竹縣": [0, 0, 1] };
+  r = eq(cubesStr(cubesOf(st)), cubesStr(expect), "第一段棄保之後的盤面"); if (r !== true) return r;
+  return ok(true, "兩岸 → 連 2、經濟（平手）→ 宋 3、清廉 → 連 4；軌道 清廉/經濟/兩岸；棄保一半：台中縣宋 +1、高雄市陳 +1、台北市宋 +2");
+});
+
+c6("政見發表會 · 情境 B：平手時從持有者順時針比（宋持有，陳連平手 → 連）；牌出完時沒結算的議題依原軌道順序給 CP 總和最高者（0 比 0 比 0 也照主動權順序）（§九）", () => {
+  let st = toDebate();
+  setPile(st, CHEN, ["dpp_counties", "lu_running_mate", "hsieh_kaohsiung", "three_three_three", "no_nuke4"]);
+  setPile(st, SOONG, ["hakka_vote", "east_coast", "diligent", "quake_bond", "provincial_build"]);
+  setPile(st, LIEN, ["party_machine", "farmers_association", "lien_siew", "hand_in_hand", "local_factions"]);
+  st.initiative = SOONG;
+  const byName = Object.fromEntries(st.issues.map((i) => [i.name, i]));
+  st.issues = ["cross", "clean", "econ"].map((n) => byName[n]);
+  const want = debateScene(st);
+  const mom0 = st.mom.slice();
+  st = round(st, [[CHEN, "dpp_counties"], [SOONG, "hakka_vote"], [LIEN, "party_machine"]]);
+  // 第 2 輪：經濟 陳 4+2、宋 2+2、連 4+2 → 陳連 6 平手，持有者宋之後順時針是連 → 連放 2
+  st = round(st, [[CHEN, "lu_running_mate"], [SOONG, "east_coast"], [LIEN, "farmers_association"]]);
+  let r = eq(JSON.stringify(E.mustAct(st)), JSON.stringify([LIEN]), "經濟 陳 6、宋 4、連 6 之後放方塊的人"); if (r !== true) return r;
+  st = D.act(st, LIEN, F("新竹市")); st = D.act(st, LIEN, F("新竹市"));
+  // 第 3–5 輪全是經濟（已結算）→ 沒有效果
+  st = round(st, [[CHEN, "hsieh_kaohsiung"], [SOONG, "diligent"], [LIEN, "lien_siew"]]);
+  st = round(st, [[CHEN, "three_three_three"], [SOONG, "quake_bond"], [LIEN, "hand_in_hand"]]);
+  st = round(st, [[CHEN, "no_nuke4"], [SOONG, "provincial_build"], [LIEN, "local_factions"]]);
+  // 牌出完：兩岸（原軌道第一）0/0/0 → 持有者宋放 3；清廉 0/0/0 → 宋放 4
+  r = eq(JSON.stringify(E.mustAct(st)), JSON.stringify([SOONG]), "牌出完後放兩岸那 3 顆的人"); if (r !== true) return r;
+  for (let k = 0; k < 3; k++) st = D.act(st, SOONG, F("苗栗縣"));
+  r = eq(JSON.stringify(E.mustAct(st)), JSON.stringify([SOONG]), "接著放清廉那 4 顆的人"); if (r !== true) return r;
+  for (const k of ["澎湖縣", "金馬", "台東縣", "新竹縣"]) st = D.act(st, SOONG, F(k));
+  r = eq(`${st.turn} ${st.phase}`, "7 order", "發表會結束之後"); if (r !== true) return r;
+  r = eq(st.issues.map((i) => i.name).join(), "clean,cross,econ", "議題軌道（經濟第一個結算 → 第三槽）"); if (r !== true) return r;
+  r = eq(st.mom.map((x, p) => x - mom0[p]).join(), "0,2,1", "動能變化"); if (r !== true) return r;
+  const expect = { ...want, "新竹市": [0, 0, 2], "苗栗縣": [0, 3, 0], "澎湖縣": [0, 1, 0], "金馬": [0, 1, 0], "台東縣": [0, 1, 0], "新竹縣": [0, 1, 0] };
+  r = eq(cubesStr(cubesOf(st)), cubesStr(expect), "第一段棄保之後的盤面"); if (r !== true) return r;
+  return ok(true, "陳連平手 → 連；沒人出牌的兩岸、清廉給持有者宋；軌道 清廉/兩岸/經濟");
+});
+
+c6("政見發表會 · 發表會的牌全部進前期棄牌堆；第 6 回合結束時前期牌放到一旁（decks.earlyDiscard），第 7 回合的棄牌堆是空的（§14.1）", () => {
+  let st = toDebate();
+  const debateCards = st.savedDebate.flat();
+  let r = nonEmpty(debateCards.length, "政見發表會堆裡的牌"); if (r !== true) return r;
+  st = D.playUntil(st, (s) => s.turn === 7 && s.phase === "order", D.rng(5), null);
+  if (!Array.isArray(st.decks.earlyDiscard)) return "state 沒有 decks.earlyDiscard（第 6 回合結束時放到一旁的前期棄牌堆）";
+  const missing = debateCards.filter((id) => !st.decks.earlyDiscard.includes(id));
+  if (missing.length) return "發表會的牌沒有進前期棄牌堆：" + missing.join(",");
+  r = eq(`${st.decks.discard.length} ${st.savedDebate.flat().length} ${st.hands.map((h) => h.length).join("/")}`, "0 0 6/6/6", "第 7 回合開始 棄牌堆、政見發表會堆、手牌"); if (r !== true) return r;
+  const c = D.conservation(st); if (c !== true) return c;
+  return ok(true, `${debateCards.length} 張發表會的牌都在前期棄牌堆；第 7 回合棄牌堆 0`);
+});
+
+c6("牌庫 · 後期不夠發時先洗後期棄牌堆，還不夠再洗前期放一旁的棄牌堆（§14.1 的保險）", () => {
+  let st = toDebate();
+  st = D.playUntil(st, (s) => s.turn === 7 && s.phase === "save", D.rng(6), (s, seat, ms) => (s.phase === "debate" ? ms[0] : D.quiet(s, seat, ms)));
+  // 讓第 8 回合不夠發：後期牌庫抽掉 15 張（移出遊戲），只剩 3 張＋後期棄牌堆
+  const pulled = st.decks.late.splice(0, 15); st.removed.push(...pulled);
+  const latePool = st.decks.late.length + st.decks.discard.length + st.hands.reduce((a, h) => a + Math.max(0, h.length - 2), 0);
+  const early0 = st.decks.earlyDiscard.length;
+  for (const s of [0, 1, 2]) if (E.mustAct(st).includes(s)) st = D.act(st, s, { type: "save" });
+  let r = eq(`${st.turn} ${st.phase} ${st.hands.map((h) => h.length).join("/")}`, "8 order 6/6/6", "第 8 回合開始"); if (r !== true) return r;
+  const earlyInHand = st.hands.flat().filter((id) => DECK_OF[id] === "early").length;
+  if (latePool >= 18) return `佈置失敗：後期還有 ${latePool} 張可發，測不到前期的保險`;
+  r = eq(`${earlyInHand > 0} ${early0 - st.decks.earlyDiscard.length >= 18 - latePool}`, "true true", "手上有前期牌、前期棄牌堆少了至少差額"); if (r !== true) return r;
+  const c = D.conservation(st); if (c !== true) return c;
+  return ok(true, `後期只有 ${latePool} 張，從前期放一旁的棄牌堆補到 18`);
+});
+
+c6("行動階段 · 沒牌又已出過候選人牌的人跳過那一個階段，不卡住（§14.1）", () => {
+  let st = D.firstActor(CHEN);
+  st.decks.early.push(...st.hands[SOONG].splice(0)); st.candidateUsed[SOONG] = true;
+  st = D.act(st, CHEN, { type: "candidate" }); st = D.act(st, CHEN, { type: "action", kind: "campaign" }); st = D.act(st, CHEN, { type: "done" });
+  let r = eq(JSON.stringify(E.mustAct(st)), JSON.stringify([LIEN]), "陳出完之後（宋沒牌、候選人牌用過）要動的人"); if (r !== true) return r;
+  st = D.playUntil(st, (s) => s.phase === "order" && s.turn === 2, D.rng(8), null);
+  const c = D.conservation(st); if (c !== true) return c;
+  return ok(true, "宋每個階段都被跳過，回合照常走完");
+});
+check("棄保 · 第二段（投票日，動全部游離塊）", () => "TODO: §十一、§十二（#7）");
 check("投票日七步", () => "TODO: §十二");
 
 // ---- 引擎約定：fuzz、重放、view（M1）
@@ -1362,7 +1545,7 @@ function fuzz(label, seeds, opts, end) {
   }
   return ok(true, `${seeds} 局、${steps} 步、支持檢定 ${nChecks} 次、效果未實作而跳過的事件 ${unimpl} 次`);
 }
-c2("fuzz · 隨機合法動作走完第 1–5 回合：不丟錯、不卡、盤面與牌守恆（M1）", () => fuzz("1–5", 25, undefined, "debate"));
+c2("fuzz · 隨機合法動作從第 1 回合走（政見發表會做好之後一路走到投票日之前）：不丟錯、不卡、盤面與牌守恆（M1）", () => (DEBATE_READY ? fuzz("1–8", 25, undefined, "election") : fuzz("1–5", 25, undefined, "debate")));
 c2("fuzz · 隨機合法動作走完第 7–8 回合（startTurn 7）（M1）", () => fuzz("7–8", 25, { startTurn: 7 }, "election"));
 check("fuzz · 隨機合法動作走完 9 回合", () => "TODO: 政見發表會、棄保、投票日之後（M1 收尾）");
 c2("約定 · 可重放：同種子、同一串動作走到同一個狀態；apply 不改傳入的狀態", () => {
