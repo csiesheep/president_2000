@@ -1,7 +1,9 @@
-// The 96 cards as data: 60 events (rulebook §14.3) and 36 local cards
+// The 111 cards as data: 70 events (rulebook v0.3 §14.3) and 41 local cards
 // (§14.2). Chinese card text lives here; the writer edits it as a cross-owner
 // change (TEAM.md). Effects are keyed by id and implemented in engine.js
-// (M1); Phase 0 carries the data only.
+// (M1); a card without an entry there is data only (effectImplemented false).
+// v0.3 (#2) added 10 early events, marked "v0.3" below; their effects are a
+// later issue. Existing ids never change or get renumbered.
 //
 // owner: chen | soong | lien | ext (外力)   deck: early (第 1–5 回合) | late (第 7–8)
 // icon: cross 兩岸 | clean 清廉 | econ 經濟民生
@@ -10,7 +12,7 @@
 // turnMax / lawful: 民調領先 (turns 1–3) / 法定競選期 (turn 8)
 
 export const EVENTS = [
-  // 陳水扁 (18)
+  // 陳水扁 (20)
   { id: "taiwan_son", owner: "chen", deck: "early", cp: 3, icon: "clean", name: "台灣之子", text: "陳在雲嘉南或高屏任 3 個縣市各 +1 免檢定" },
   { id: "new_middle", owner: "chen", deck: "early", cp: 3, icon: "cross", name: "新中間路線", text: "兩岸議題陳 +2；本回合外力事件不移除陳的方塊" },
   { id: "alternation", owner: "chen", deck: "early", cp: 2, icon: "clean", name: "政黨輪替", text: "陳動能 +2" },
@@ -29,7 +31,10 @@ export const EVENTS = [
   { id: "dump_lien_save_chen", owner: "chen", deck: "late", cp: 3, icon: "clean", name: "棄連保扁", text: "任一縣市：連 −1、陳 +1（需檢定）" },
   { id: "hsu_wen_long", owner: "chen", deck: "late", cp: 2, icon: "econ", name: "許文龍挺扁", text: "台南縣、台南市各 +1 免檢定" },
   { id: "chang_yung_fa", owner: "chen", deck: "late", cp: 2, icon: "econ", name: "張榮發挺扁", text: "任一區媒體陳 +1 免檢定；袋中 +2 陳方塊" },
-  // 宋楚瑜 (17)
+  // v0.3
+  { id: "south_rally", owner: "chen", deck: "early", cp: 3, icon: "econ", name: "南部大造勢", text: "陳在高屏任 2 個縣市各 +1 免檢定" },
+  { id: "chang_chiu", owner: "chen", deck: "early", cp: 2, icon: "clean", name: "張俊雄邱義仁", text: "袋中 +3 陳方塊；陳動能 +1" },
+  // 宋楚瑜 (20)
   { id: "diligent", owner: "soong", deck: "early", cp: 4, icon: "econ", name: "勤政愛民", text: "宋在任 3 個縣市各 +1 免檢定" },
   { id: "walk_everywhere", owner: "soong", deck: "early", cp: 3, icon: "econ", name: "走透透", text: "宋本回合放方塊全部免檢定" },
   { id: "chang_running_mate", owner: "soong", deck: "early", cp: 3, icon: "cross", name: "張昭雄搭檔", text: "宋本回合跨營填免檢定（上限 2 顆）" },
@@ -47,7 +52,11 @@ export const EVENTS = [
   { id: "chang_doctors", owner: "soong", deck: "late", cp: 2, icon: "econ", name: "張昭雄的醫界", text: "任一區媒體宋 +1；袋中 +2 宋方塊" },
   { id: "soong_friends", owner: "soong", deck: "late", cp: 2, icon: "econ", name: "宋友會", text: "宋動能 +1；宋在任 1 個空的藍營游離塊放方塊免檢定" },
   { id: "kneel_for_votes", owner: "soong", deck: "late", cp: 3, icon: "clean", name: "跪票", text: "宋動能 +2；宋在任 2 個縣市各 +1 需檢定" },
-  // 連戰 (18)
+  // v0.3
+  { id: "provincial_build", owner: "soong", deck: "early", cp: 3, icon: "econ", name: "省政建設", text: "經濟議題宋 +2" },
+  { id: "military_civil", owner: "soong", deck: "early", cp: 2, icon: "econ", name: "軍公教警", text: "宋在任 2 個縣市各 +1 需檢定；袋中 +1 宋方塊" },
+  { id: "hsu_hsin_liang", owner: "soong", deck: "early", cp: 2, icon: "cross", name: "許信良參選", text: "陳在任一縣市 −1（宋選）；宋動能 +1" },
+  // 連戰 (21)
   { id: "expel_soong", owner: "lien", deck: "early", cp: 3, icon: "clean", name: "開除宋楚瑜黨籍", text: "宋在任 2 個區各 −1 媒體；宋動能 +1" },
   { id: "yang_exposes", owner: "lien", deck: "early", cp: 4, icon: "clean", name: "楊吉雄爆料", text: "宋退回 4 顆盤上方塊到袋中（連選）；宋失去清廉議題全部方塊；宋動能歸零", must: true },
   { id: "shifting_story", owner: "lien", deck: "early", cp: 3, icon: "clean", name: "說法反覆", text: "僅在「李登輝授意說」出過後可當事件出：宋再退回 2 顆到袋中；連動能 +1", cond: "lee_authorized" },
@@ -66,7 +75,11 @@ export const EVENTS = [
   { id: "ma_leaks_polls", owner: "lien", deck: "late", cp: 3, icon: "clean", name: "馬英九公布民調", text: "法定競選期：連在任 2 個縣市各 +1 需檢定；宋、陳動能各 +1", lawful: true },
   { id: "lee_alarm", owner: "lien", deck: "late", cp: 3, icon: "cross", name: "李登輝告急", text: "連在任 3 個縣市各 +1 需檢定" },
   { id: "party_congress", owner: "lien", deck: "late", cp: 2, icon: "econ", name: "黨員大會", text: "袋中 +4 連方塊；連動能 +1" },
-  // 外力 (7)
+  // v0.3
+  { id: "members_return", owner: "lien", deck: "early", cp: 3, icon: "econ", name: "黨員歸隊", text: "任 2 個縣市：宋各 −1（每顆需檢定）" },
+  { id: "econ_cabinet", owner: "lien", deck: "early", cp: 2, icon: "econ", name: "經濟內閣", text: "經濟議題連 +1；袋中 +2 連方塊" },
+  { id: "kmt_anniversary", owner: "lien", deck: "early", cp: 2, icon: "cross", name: "國民黨黨慶", text: "連動能 +1；兩岸議題連 +1" },
+  // 外力 (9)
   { id: "poll_published", owner: "ext", deck: "early", cp: 2, icon: "clean", name: "民調公布", text: "第一槽議題的領先者動能 +1" },
   { id: "strait_tension", owner: "ext", deck: "early", cp: 3, icon: "cross", name: "兩岸緊張", text: "兩岸議題上每人 −1；陳動能 +1" },
   { id: "white_paper", owner: "ext", deck: "late", cp: 3, icon: "cross", name: "中共白皮書", text: "兩岸議題陳 +1；陳動能 +1" },
@@ -74,29 +87,47 @@ export const EVENTS = [
   { id: "us_congress", owner: "ext", deck: "late", cp: 2, icon: "cross", name: "美國國會譴責北京", text: "兩岸議題：陳 +1，連 +1" },
   { id: "stock_crash", owner: "ext", deck: "late", cp: 2, icon: "econ", name: "股市重挫", text: "經濟議題連 +1；所有人動能 −1" },
   { id: "lee_secret_help", owner: "ext", deck: "late", cp: 3, icon: "clean", name: "李登輝暗助", text: "陳在任 2 個縣市各 +1 免檢定；連動能 −1" },
+  // v0.3
+  { id: "tvbs_poll", owner: "ext", deck: "early", cp: 2, icon: "clean", name: "TVBS 民調", text: "動能最少者 +1（平手由出牌者選）" },
+  { id: "pla_drill_rumor", owner: "ext", deck: "early", cp: 3, icon: "cross", name: "中共軍演傳聞", text: "兩岸議題連 +1、宋 +1；陳動能 −1" },
 ];
 
-// Local cards: county and count (§14.2). 36 in all; the first 20 by this order
-// go to the early deck, the rest to the late deck; CP alternates 2/3 so that
-// 20 cards are 2 CP and 16 are 3 CP.
+// Local cards: county and count (§14.2), 41 in all.
+// local_0–local_35 are the v0.2 set and are generated exactly as before: the
+// first 20 by LOCAL_SPEC order go to the early deck, the rest to the late
+// deck; CP alternates 2/3 so that 20 are 2 CP and 16 are 3 CP. Do not change
+// LOCAL_SPEC or LOCAL_V02_EARLY: that would move or re-cost existing ids.
+// local_36–local_40 are v0.3's five extra early cards, listed one by one
+// (owner ruling in #2, comment 6163533701, after the §14.2 county table),
+// which make it early 25 / late 16, 2 CP 23 / 3 CP 18.
 export const LOCAL_SPEC = [
   ["台北縣", 6], ["台北市", 5], ["桃園縣", 3], ["台中縣", 3], ["高雄市", 3], ["彰化縣", 2], ["高雄縣", 2], ["台南縣", 2],
   ["台中市", 1], ["屏東縣", 1], ["雲林縣", 1], ["台南市", 1], ["苗栗縣", 1], ["南投縣", 1], ["嘉義縣", 1], ["新竹縣", 1], ["宜蘭縣", 1], ["花蓮縣", 1],
 ];
-export const DECK_SIZES = { early: 60, late: 36, earlyLocal: 20, lateLocal: 16 };
+const LOCAL_V02_EARLY = 20;
+// [county, cp], all early, ids local_36 onward in this order.
+export const LOCAL_V03_EXTRA = [["高雄縣", 2], ["台北市", 2], ["桃園縣", 3], ["台南市", 3], ["嘉義市", 2]];
+export const DECK_SIZES = { early: 75, late: 36, earlyLocal: 25, lateLocal: 16 };
 
+const LOCAL_TEXT = "出牌者在該縣市放 1 顆方塊（需檢定）";
 export function localCards() {
   const out = [];
   let i = 0;
   for (const [county, n] of LOCAL_SPEC) {
     for (let k = 0; k < n; k++, i++) {
-      out.push({ id: "local_" + i, owner: "local", deck: i < DECK_SIZES.earlyLocal ? "early" : "late",
-        cp: i % 9 < 5 ? 2 : 3, icon: null, name: "地方：" + county, county, text: "出牌者在該縣市放 1 顆方塊（需檢定）" });
+      out.push({ id: "local_" + i, owner: "local", deck: i < LOCAL_V02_EARLY ? "early" : "late",
+        cp: i % 9 < 5 ? 2 : 3, icon: null, name: "地方：" + county, county, text: LOCAL_TEXT });
     }
+  }
+  for (const [county, cp] of LOCAL_V03_EXTRA) {
+    out.push({ id: "local_" + i, owner: "local", deck: "early", cp, icon: null, name: "地方：" + county, county, text: LOCAL_TEXT });
+    i++;
   }
   return out;
 }
 
 export const REST_CUBES = { 2: 2, 3: 1, 4: 0 };
 export const CANDIDATE_CARDS = { chen: { cp: 5, rest: 0 }, soong: { cp: 5, rest: 0 }, lien: { cp: 3, rest: 2 } };
-export const HAND = { deal: 7, play: 4, saveEarly: 1, saveLate: 2 };
+// §5.1, §5.4, §10 (v0.3): deal to 5 on turns 1–5 and to 6 on turns 7–8, play
+// 4, keep the rest (1 / 2) face down; nothing is discarded in the normal case.
+export const HAND = { dealEarly: 5, dealLate: 6, play: 4, saveEarly: 1, saveLate: 2 };

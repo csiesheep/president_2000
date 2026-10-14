@@ -1,5 +1,6 @@
 // The engine: pure, seeded, runs in the browser (solo) and in the Durable
-// Object (rooms). Rules follow rulebook v0.2 as excerpted in issue #1, plus the
+// Object (rooms). Rules follow rulebook v0.2 as excerpted in issue #1 and the
+// v0.3 changes in #2 (hand 5/4/1/0 and 6/4/2/0, 75-card early deck), plus the
 // orchestrator's rulings there (cited as "裁決 N").
 //
 // Contract (issue #1 §五): createGame / legalMoves / apply / mustAct /
@@ -118,15 +119,18 @@ export function createGame(seed, opts = {}) {
   return beginTurn(st);
 }
 
-// §5.1: deal to 7 from the current deck (reshuffling the discard pile into it
-// when it runs out, §14.1), then the initiative check; the holder then picks
-// a position (phase "order").
+// §5.1, §10 (v0.3): deal to 5 (turns 1–5) or 6 (turns 7–8) from the current
+// deck, then the initiative check; the holder then picks a position (phase
+// "order"). The early deck holds 75 = 5 turns x 3 seats x 5 and the late deck
+// 36 = 2 x 3 x 6, so the normal flow never reshuffles; the reshuffle of the
+// discard pile (§14.1) stays as the safety net.
 function beginTurn(st) {
   st.turn += 1;
   const deckName = st.turn <= 5 ? "early" : "late";
+  const deal = st.turn <= 5 ? HAND.dealEarly : HAND.dealLate;
   withRng(st, (rng) => {
     for (let p = 0; p < 3; p++) {
-      while (st.hands[p].length < HAND.deal) {
+      while (st.hands[p].length < deal) {
         const deck = st.decks[deckName];
         if (!deck.length) {
           if (!st.decks.discard.length) break;
@@ -409,7 +413,10 @@ function issueMoves(st, seat, pd) {
   return out;
 }
 
-// §5.4, §10: keep 1 (turns 1–5) or 2 (turns 7–8) of the cards left in hand.
+// §5.4, §10: keep 1 (turns 1–5) or 2 (turns 7–8) of the cards left in hand;
+// a hand at or under that keeps everything. Only a turn with a candidate card
+// leaves one card over, and it goes to the discard pile (applySave; #2 Q2,
+// orchestrator default after the design simulator, pending owner ruling).
 function saveMoves(st, seat) {
   const h = st.hands[seat];
   const n = st.turn <= 5 ? HAND.saveEarly : HAND.saveLate;
