@@ -6,17 +6,20 @@
 <meta name="robots" content="noindex, nofollow">
 <title>規則 · 2000：總統的誕生</title>
 <link rel="canonical" href="https://games.csiesheep.com/president_2000/rules">
+<meta name="theme-color" content="#f7f4ee">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Anton&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="rulespage">
 <header class="bunting" aria-hidden="true"></header>
-<main class="wrap">
-  <p class="kicker">規則 · RULES</p>
-  <h1><span class="name">九個回合，一張選票</span></h1>
-  <p class="building">規則頁建設中。完整規則書在設計文件裡，M3 搬進來。</p>
-  <nav class="links"><a href="./">首頁</a></nav>
+<main class="wrap rules">
+  <div class="topbar"><a id="home" href="./">← 首頁</a><a id="lang" class="btn" href="rules?lang=en">EN</a></div>
+  <p class="kicker" id="kicker">規則 · RULES</p>
+  <h1><span class="name" id="title">九個回合，一張選票</span></h1>
+  <div id="content"></div>
+  <p class="credit" id="credit"></p>
 </main>
+<script type="module" src="rules.js"></script>
 </body>
 </html>

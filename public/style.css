@@ -27,3 +27,48 @@ h1 .name { font-size: 40px; font-weight: 900; line-height: 1.1; }
 .building { margin: 8px 0 0; padding: 10px 12px; border-left: 4px solid var(--red); background: #fff3cd; font-weight: 700; }
 .links { display: flex; gap: 14px; font-weight: 700; } .links a { color: var(--ink); }
 .credit { margin: 0; font-size: 11px; line-height: 1.5; color: #666; }
+
+/* Rules page */
+.wrap.rules { max-width: 960px; }
+.rules h1 .name { font-size: 30px; }
+.topbar { display: flex; justify-content: space-between; align-items: center; }
+.topbar a { color: var(--ink); font-weight: 700; font-size: 14px; text-decoration: none; }
+.topbar .btn { font-size: 12px; border: 2px solid var(--ink); border-radius: 4px; padding: 6px 10px; min-height: 32px; display: inline-flex; align-items: center; }
+.topbar a:hover { color: var(--red); }
+.toc { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.toc a { font-size: 12px; font-weight: 700; text-decoration: none; color: var(--ink); border: 2px solid var(--ink); border-radius: 4px; padding: 4px 10px; }
+.toc a:hover { background: var(--ink); color: var(--paper); }
+.rule, .cardsec { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 2px solid var(--ink); scroll-margin-top: 8px; }
+.rules h2 { margin: 0; font-size: 20px; font-weight: 900; }
+.rules h3 { margin: 12px 0 0; font-size: 17px; font-weight: 900; }
+.rules p { margin: 0; font-size: 14px; line-height: 1.7; }
+.rules ul { margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.7; }
+.rules li { margin: 2px 0; }
+.tablewrap { overflow-x: auto; max-width: 100%; border: 1px solid var(--line); border-radius: 4px; }
+.rules table { border-collapse: collapse; font-size: 13px; min-width: 100%; }
+.rules th, .rules td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.rules thead th { background: var(--grey); white-space: nowrap; }
+.rules tbody th { font-weight: 900; white-space: nowrap; }
+.rules tbody tr:last-child > * { border-bottom: 0; }
+.rules .note { color: var(--mute); font-size: 13px; }
+.grp { margin: 10px 0 0; padding: 4px 10px; color: #fff; border-radius: 4px; font-size: 13px; font-weight: 900; letter-spacing: 1px; background: #8a8a8a; }
+.grp.chen { background: var(--chen); } .grp.soong { background: var(--soong); } .grp.lien { background: var(--lien); } .grp.ext { background: var(--ink); }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.card { background: #fff; border: 2px solid var(--ink); border-radius: 6px; display: flex; flex-direction: column; overflow: hidden; position: relative; min-height: 250px; }
+.card.must { border-color: var(--red); border-width: 3px; }
+.card .band { min-height: 34px; display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 10px; color: #fff; font-size: 12px; font-weight: 900; letter-spacing: 1px; background: #8a8a8a; }
+.card.chen .band { background: var(--chen); } .card.soong .band { background: var(--soong); } .card.lien .band { background: var(--lien); } .card.ext .band { background: var(--ink); }
+.card .band .r { opacity: .9; text-align: right; }
+.card .flag { background: var(--red); padding: 2px 6px; border-radius: 3px; margin-right: 6px; opacity: 1; }
+.card .flag.alt { background: var(--ink); }
+.card .cp { position: absolute; left: 10px; top: 44px; min-width: 44px; height: 44px; padding: 0 6px; background: var(--ink); color: #fff; border-radius: 4px; display: flex; align-items: center; justify-content: center; font: 400 28px/1 var(--num); }
+.card .iss { position: absolute; right: 10px; top: 44px; width: 40px; height: 40px; border: 2px solid var(--ink); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 900; background: var(--paper); }
+.card .iss.none { border-style: dashed; color: #999; }
+.card .ttl { margin: 96px 12px 0; font-size: 20px; font-weight: 900; line-height: 1.2; }
+.card .txt { margin: 8px 12px 12px !important; font-size: 13px !important; line-height: 1.55 !important; color: #222; }
+.card .foot { margin-top: auto; border-top: 2px solid var(--ink); padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; color: var(--mute); background: var(--paper); }
+.card .dots { display: flex; gap: 3px; flex: none; }
+.card .dot { width: 10px; height: 10px; border-radius: 2px; background: var(--ink); }
+.card .dot.e { background: #fff; border: 1px solid var(--ink); }
+.rulespage .credit { margin-top: 18px; }
+@media (min-width: 700px) { .rules h1 .name { font-size: 40px; } .rules p, .rules ul { font-size: 15px; } .rules table { font-size: 14px; } }
