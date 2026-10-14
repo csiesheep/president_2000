@@ -423,13 +423,15 @@ function saveMoves(st, seat) {
 // ------------------------------------------------------------------ apply
 
 // A move matches a legal one when they agree on every field, with `block:
-// false` the same as no `block` and an absent `target` the same as null.
+// false` the same as no `block`, an absent `target` the same as null, and the
+// cards of a save as a set.
 function canon(m) {
   const o = {};
   for (const k of Object.keys(m).sort()) {
     const v = m[k];
     if (v === undefined || v === null) continue;
     if (k === "block" && v === false) continue;
+    if (k === "cards" && Array.isArray(v)) { o[k] = v.slice().sort(); continue; } // a save names a set
     o[k] = v;
   }
   return JSON.stringify(o);
