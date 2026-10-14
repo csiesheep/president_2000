@@ -269,6 +269,44 @@ c16("bot 的步：每則 state 的 botMoves 照順序套回去，剛好從人類
   const r = nonEmpty(moves, "bot 的步"); if (r !== true) return r;
   return ok(true, `${handles} 次 handle 共 ${moves} 個 bot 的步，逐步套回去都對得上`);
 });
+// The BE peer found that the check above only ever sees seat 2's own bot (#16): a timed-out move or
+// a taken-over seat left out of botMoves passed. These two walk those paths.
+const replay = (st0, out) => {
+  const states = out.filter((o) => o.msg.t === "state");
+  if (!states.length) return { err: "鬧鐘之後沒有任何 state" };
+  let s = st0;
+  for (const b of states[0].msg.botMoves || []) {
+    try { s = E.apply(s, b.seat, b.move); } catch (e) { return { err: `botMoves 套不回去：${JSON.stringify(b.move)}（${e.message}）` }; }
+  }
+  return { s, bm: states[0].msg.botMoves || [] };
+};
+c16("逾時代打與斷線接手的步也在 botMoves 裡：鬧鐘那次 handle 的 botMoves 從鬧鐘前套回去，剛好走到現在，而且有那個人類座位的步", () => {
+  // Timeout.
+  let { w } = twoHumans(51);
+  let bad = playHumans(w, D.rng(4), (x) => E.mustAct(x.room.st).some((s) => s in humanConn) && x.room.st.phase === "action");
+  if (bad) return bad;
+  let seat = E.mustAct(w.room.st).find((s) => s in humanConn);
+  if (seat === undefined) return "走不到人類要動的行動階段";
+  let st0 = E.clone(w.room.st);
+  let r = replay(st0, w.do({ type: "alarm" }, w.now + MIN));
+  if (r.err) return `逾時：${r.err}`;
+  if (!same(r.s, w.room.st)) return `逾時：鬧鐘那次的 ${r.bm.length} 個 botMoves 走不到現在的局面`;
+  if (!r.bm.some((b) => b.seat === seat)) return `逾時：botMoves 裡沒有 seat ${seat} 被代打的那一步（${JSON.stringify(r.bm.map((b) => b.seat))}）`;
+  const nTimeout = r.bm.length;
+  // Takeover after a disconnect.
+  ({ w } = twoHumans(61));
+  bad = playHumans(w, D.rng(5), (x) => E.mustAct(x.room.st).includes(1));
+  if (bad) return bad;
+  if (!E.mustAct(w.room.st).includes(1)) return "走不到 B（seat 1）要動的時候";
+  const t0 = w.now;
+  w.do({ type: "close", conn: "B" }, t0 + 1000);
+  st0 = E.clone(w.room.st);
+  r = replay(st0, w.do({ type: "alarm" }, t0 + 1000 + 15000));
+  if (r.err) return `接手：${r.err}`;
+  if (!same(r.s, w.room.st)) return `接手：鬧鐘那次的 ${r.bm.length} 個 botMoves 走不到現在的局面`;
+  if (!r.bm.some((b) => b.seat === 1)) return `接手：botMoves 裡沒有 seat 1 被接手的步（${JSON.stringify(r.bm.map((b) => b.seat))}）`;
+  return ok(true, `逾時那次 ${nTimeout} 步、接手那次 ${r.bm.length} 步，都套得回去`);
+});
 c16("倒數：連線中的人類要動時，每一則 state 都帶 deadline = 這個決定開始的時間 + 60 秒；沒有人類要動時是 null", () => {
   const { w } = twoHumans(95);
   const R1 = D.rng(12);
