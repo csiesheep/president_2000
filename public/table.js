@@ -166,18 +166,24 @@ function cardFace(id, x) {
     `<div class="foot"><span>${esc(x.d.terms.canvass)} ${esc(x.county(COUNTIES.findIndex((k) => k[0] === c.county)))}</span><span>${esc(fill(u.restCubes, { n: rest }))}</span></div></article>`;
 }
 
-function miniCard(id, x, cls, attr) {
+// 軍師 (#18): the one option the advisor picked wears a star (choices[i].advised, set by solo.js / roomclient.js).
+function starHTML(x) { return `<i class="star-adv" role="img" aria-label="${esc(x.d.ui.advisor.starLabel)}">★</i>`; }
+
+function miniCard(id, x, cls, attr, star = false) {
   const c = CARD[id], u = x.d.ui;
   const band = c.owner === "local" ? "local" : c.owner;
   const who = c.owner === "local" ? x.S.card.local : c.owner === "ext" ? u.owner.ext : x.S.cand[c.owner].short;
   const iss = c.icon ? u.issues[c.icon].short : "—";
-  return `<button type="button" class="hc ${band}${cls ? " " + cls : ""}" ${attr}>` +
-    `<span class="hn">${esc(x.card(id))}</span>` +
+  return `<button type="button" class="hc ${band}${cls ? " " + cls : ""}${star ? " adv" : ""}" ${attr}>` +
+    (star ? starHTML(x) : "") + `<span class="hn">${esc(x.card(id))}</span>` +
     `<span class="hm">${esc(c.owner === "local" ? who : u.kind.event + " · " + who)}${c.must ? ` <em>${esc(u.must)}</em>` : ""}</span>` +
     `<span class="hf"><b>${c.cp} ${esc(u.cpUnit)}</b><span class="hi">${esc(iss)}</span></span></button>`;
 }
 
-const btn = (c, cls = "") => `<button type="button" class="opt${cls ? " " + cls : ""}" data-move="${esc(JSON.stringify(c.move))}">${esc(c.label)}</button>`;
+const btn = (c, cls = "", x = null) => {
+  const adv = !!c.advised && x;
+  return `<button type="button" class="opt${cls ? " " + cls : ""}${adv ? " adv" : ""}" data-move="${esc(JSON.stringify(c.move))}">${adv ? starHTML(x) : ""}${esc(c.label)}</button>`;
+};
 
 // ---------------------------------------------------------------- the board
 
@@ -258,18 +264,18 @@ function groupedList(v, ch, x) {
   const moves = withCty.filter((c) => c.move.type === "move");
   const here = withCty.filter((c) => c.move.type !== "move");
   const out = [];
-  if (plain.length) out.push(`<div class="opts">${plain.map((c) => btn(c)).join("")}</div>`);
+  if (plain.length) out.push(`<div class="opts">${plain.map((c) => btn(c, "", x)).join("")}</div>`);
   const byRegion = (list) => {
     let s = "";
     for (let r = 0; r < REGIONS.length; r++) {
       const items = list.filter((c) => REGION_OF[cty(c)] === r).sort((a, b) => cty(a) - cty(b));
-      if (items.length) s += `<h4 class="t-gh">${esc(x.region(r))}</h4><div class="opts">${items.map((c) => btn(c)).join("")}</div>`;
+      if (items.length) s += `<h4 class="t-gh">${esc(x.region(r))}</h4><div class="opts">${items.map((c) => btn(c, "", x)).join("")}</div>`;
     }
     return s;
   };
   if (here.length) out.push(byRegion(here));
   if (moves.length) out.push(`<h4 class="t-gh mv">${esc(x.tr("p.moveHead"))}</h4>` + byRegion(moves));
-  if (done.length) out.push(`<div class="opts">${done.map((c) => btn(c, "ghost")).join("")}</div>`);
+  if (done.length) out.push(`<div class="opts">${done.map((c) => btn(c, "ghost", x)).join("")}</div>`);
   return out.join("");
 }
 
@@ -333,7 +339,7 @@ function sourceCards(v) {
 function savePanel(v, ch, x, o) {
   const n = v.turn <= 5 ? 1 : 2, hand = sourceCards(v);
   const dest = x.tr(v.turn <= 5 ? "p.destDebate" : "p.destElection");
-  if (ch.length === 1) return `<p class="pr">${esc(x.tr("p.saveAll", { n, dest }))}</p><div class="opts">${btn(ch[0])}</div>`;
+  if (ch.length === 1) return `<p class="pr">${esc(x.tr("p.saveAll", { n, dest }))}</p><div class="opts">${btn(ch[0], "", x)}</div>`;
   const picks = (o.picks || []).filter((id) => hand.includes(id));
   const want = (ch[0].move.cards || []).length;
   const match = ch.find((c) => c.move.cards.length === picks.length && c.move.cards.every((id) => picks.includes(id)));
@@ -341,7 +347,7 @@ function savePanel(v, ch, x, o) {
   return `<p class="pr">${esc(x.tr("p.save", { n: want, dest }))}</p>` +
     `<p class="ct">${esc(x.tr("p.saveRest"))}</p>` +
     `<p class="pick">${esc(names || x.tr("p.saveNone"))}</p>` +
-    `<div class="opts">${match ? btn({ move: match.move, label: x.tr("p.saveGo") }) : `<button type="button" class="opt" disabled>${esc(x.tr("p.saveGo"))}</button>`}</div>`;
+    `<div class="opts">${match ? btn({ move: match.move, label: x.tr("p.saveGo"), advised: match.advised }, "", x) : `<button type="button" class="opt" disabled>${esc(x.tr("p.saveGo"))}</button>`}</div>`;
 }
 
 function panelHTML(v, ch, x, o) {
@@ -358,7 +364,7 @@ function panelHTML(v, ch, x, o) {
     if (!sel && cards.length === 1 && !ch.some((c) => c.move.type === "candidate")) sel = cards[0];
     const cand = ch.filter((c) => c.move.type === "candidate");
     if (sel) return sheetHTML(v, ch, x, sel);
-    return prompt(v, ch, x) + (cand.length ? `<div class="opts">${cand.map((c) => btn(c)).join("")}</div>` : "") +
+    return prompt(v, ch, x) + (cand.length ? `<div class="opts">${cand.map((c) => btn(c, "", x)).join("")}</div>` : "") +
       `<p class="ct">${esc(x.tr(v.phase === "debate" ? "p.pickCardDebate" : v.phase === "election" ? "p.pickCardElection" : "p.pickCard"))}</p>`;
   }
   return prompt(v, ch, x) + groupedList(v, ch, x);
@@ -367,7 +373,7 @@ function panelHTML(v, ch, x, o) {
 function sheetHTML(v, ch, x, sel) {
   const moves = ch.filter((c) => c.move.card === sel);
   return `<div class="sheet"><button type="button" class="back" data-sel="">${esc(x.tr("p.back"))}</button>${cardFace(sel, x)}` +
-    (moves.length ? `<div class="opts">${moves.map((c) => btn(c)).join("")}</div>` : `<p class="ct">${esc(x.tr("p.notNow"))}</p>`) + `</div>`;
+    (moves.length ? `<div class="opts">${moves.map((c) => btn(c, "", x)).join("")}</div>` : `<p class="ct">${esc(x.tr("p.notNow"))}</p>`) + `</div>`;
 }
 
 // ---------------------------------------------------------------- hand bar
@@ -376,14 +382,15 @@ function handHTML(v, ch, x, o) {
   const me = v.seat, hand = sourceCards(v);
   const savePhase = v.phase === "save" && ch.length > 1;
   const picks = o.picks || [];
+  const adv = ch.find((c) => c.advised), advCards = adv ? new Set(adv.move.cards || (adv.move.card ? [adv.move.card] : [])) : new Set();
   const playable = new Set(ch.filter((c) => c.move.card).map((c) => c.move.card));
   const kept = v.turn <= 5 ? v.savedDebate[me] : v.savedElection[me];
   const keptN = Array.isArray(kept) ? kept.length : kept;
   const title = v.phase === "debate" ? x.tr("hand.titleDebate", { n: hand.length }) : v.phase === "election" ? x.tr("hand.titleElection", { n: hand.length }) : x.tr("hand.title", { n: hand.length }) + (keptN && v.phase !== "end" ? " · " + x.tr("hand.kept", { n: keptN, dest: x.tr(v.turn <= 5 ? "p.destDebate" : "p.destElection") }) : "");
   const cards = hand.map((id) => {
-    if (savePhase) return miniCard(id, x, picks.includes(id) ? "sel" : "", `data-pick="${esc(id)}" aria-pressed="${picks.includes(id)}"`);
+    if (savePhase) return miniCard(id, x, picks.includes(id) ? "sel" : "", `data-pick="${esc(id)}" aria-pressed="${picks.includes(id)}"`, advCards.has(id));
     const cls = (o.sel === id ? "sel " : "") + (ch.length && !playable.has(id) ? "dis" : "");
-    return miniCard(id, x, cls.trim(), `data-sel="${esc(id)}"`);
+    return miniCard(id, x, cls.trim(), `data-sel="${esc(id)}"`, advCards.has(id));
   }).join("");
   return `<footer class="t-hand"><div class="hh"><span>${esc(title)}</span><a href="rules${x.lang === "en" ? "?lang=en" : ""}" target="_blank" rel="noopener">${esc(x.d.nav.rules)}</a></div>` +
     `<div class="hs">${cards || `<span class="none">${esc(x.tr("hand.none"))}</span>`}</div></footer>`;
@@ -534,13 +541,29 @@ function endHTML(v, x, o) {
 
 // ---------------------------------------------------------------- the whole table
 
+// The advisor's switch above the table, and (when it is on and the seat is to act) its reason.
+// o.advisor = { on, why }: absent → no switch; why is the advise() reason.
+function advisorBar(x, o) {
+  const A = x.d.ui.advisor, on = !!o.advisor.on;
+  return `<div class="t-adv"><button type="button" class="advsw${on ? " on" : ""}" data-advisor="${on ? "off" : "on"}" aria-pressed="${on}">` +
+    `<span class="sw" aria-hidden="true"></span><b>${esc(A.label)}</b><em>${esc(on ? A.on : A.off)}</em></button>` +
+    `<span class="advn">${esc(A.note)}</span></div>`;
+}
+function adviceLine(x, o) {
+  const why = o.advisor && o.advisor.on && o.advisor.why;
+  if (!why || why.key === "only_move") return "";
+  const say = sayLine(why, null, x);
+  return say ? `<p class="advice"><b>${esc(x.d.ui.advisor.prefix)}</b> ${esc(say)}</p>` : "";
+}
+
 export function tableHTML(view, choices, lang, opts = {}) {
   const x = bind(lang), v = view, o = opts;
+  const bar = o.advisor ? advisorBar(x, o) : "";
   const open = o.open || [v.pos ? REGION_OF[v.pos[v.seat]] : 0];
   if (v.phase === "end") {
     return `<div class="tbl end" data-phase="end">${headerHTML(v, choices, x, o)}${endHTML(v, x, o)}${trackHTML(v, x)}${mapHTML(v, x, open)}${feedHTML(v, x, o)}</div>`;
   }
-  return `<div class="tbl" data-phase="${esc(v.phase)}">${headerHTML(v, choices, x, o)}${trackHTML(v, x)}${oppHTML(v, x)}` +
-    `<section class="t-act${choices.length ? " mine" : ""}" id="act">${panelHTML(v, choices, x, o)}</section>` +
+  return `<div class="tbl${bar ? " hasbar" : ""}" data-phase="${esc(v.phase)}">${bar}${headerHTML(v, choices, x, o)}${trackHTML(v, x)}${oppHTML(v, x)}` +
+    `<section class="t-act${choices.length ? " mine" : ""}" id="act">${choices.length ? adviceLine(x, o) : ""}${panelHTML(v, choices, x, o)}</section>` +
     `${v.phase === "debate" ? debateHTML(v, x) : ""}${mapHTML(v, x, open)}${feedHTML(v, x, o)}${handHTML(v, choices, x, o)}</div>`;
 }

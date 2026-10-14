@@ -7,11 +7,12 @@
 //   p2000.room.<CODE>   { token, name }   what a reload needs to sit down again in the same seat
 //   p2000.room.name     the last name typed, to prefill the forms
 //   p2000.room.level    the bot level the host last picked
+//   p2000.advisor       whether the advisor switch is on (shared with the solo page)
 import * as RC from "./roomclient.js";
 import { COUNTIES } from "./shared/board.js";
 import { esc } from "./table.js";
 
-const NAME_KEY = "p2000.room.name", LEVEL_KEY = "p2000.room.level", roomKey = (code) => "p2000.room." + code;
+const ADV_KEY = "p2000.advisor", NAME_KEY = "p2000.room.name", LEVEL_KEY = "p2000.room.level", roomKey = (code) => "p2000.room." + code;
 const BACKOFF_MAX = 30; // seconds: 1, 2, 4, 8, 16, 30, 30, …
 
 export function mount({ T, lang, qs, store, $ }) {
@@ -56,7 +57,7 @@ export function mount({ T, lang, qs, store, $ }) {
   });
 
   // ---- the room
-  let roomCode = null, name = "", client = RC.newClient(), sock = null, attempts = 0, retry = null, tick = null, terminal = false, gone = false;
+  let roomCode = null, name = "", client = RC.setAdvisor(RC.newClient(), store.get(ADV_KEY) === true), sock = null, attempts = 0, retry = null, tick = null, terminal = false, gone = false;
   let ui = { open: null, sel: null, picks: [], level: [1, 2, 3].includes(store.get(LEVEL_KEY)) ? store.get(LEVEL_KEY) : 2 };
 
   const say = (text) => { banner.textContent = text || ""; banner.hidden = !text; };
@@ -141,6 +142,7 @@ export function mount({ T, lang, qs, store, $ }) {
     const d = t.dataset;
     if (d.msg) { const m = JSON.parse(d.msg); ui.sel = null; ui.picks = []; send(m); if (m.t === "move") window.scrollTo({ top: 0 }); }
     else if (d.move) { ui.sel = null; ui.picks = []; send({ t: "move", move: JSON.parse(d.move) }); window.scrollTo({ top: 0 }); }
+    else if (d.advisor != null) { client = RC.setAdvisor(client, d.advisor === "on"); store.set(ADV_KEY, client.advisor); draw(); }
     else if (d.level != null) { ui.level = +d.level; store.set(LEVEL_KEY, ui.level); draw(); }
     else if (d.copy) {
       const link = location.origin + location.pathname + "?room=" + roomCode;

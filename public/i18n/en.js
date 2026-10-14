@@ -29,6 +29,8 @@ export default {
     cpCount: "{cp} CP ×{n}",
     cpUnit: "CP",
     restCubes: "Rest cubes {n}",
+    // The advisor (#18): the switch above the table, the star on its pick, the line before its reason
+    advisor: { label: "Advisor", on: "On", off: "Off", prefix: "Advisor:", starLabel: "Advisor's pick", note: "Marks the move your strategist would make, using only what you can see." },
     solo: {
       land: { solo: "Play solo vs. bots", room: "Host a room", join: "Join a room", soon: "Coming soon", kicker: "The 10th presidential election" },
       cand: {

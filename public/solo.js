@@ -4,7 +4,7 @@
 // state, rng the bots' own generator state (a number, so a stored session replays the same),
 // feed the record the table shows. Every function returns a new session; none mutates its input.
 import * as E from "./shared/engine.js";
-import { chooseMove } from "./shared/bots.js";
+import { chooseMove, advise } from "./shared/bots.js";
 import { COUNTIES } from "./shared/board.js";
 import { tableHTML, labelMove } from "./table.js";
 
@@ -98,10 +98,26 @@ export function advance(session) {
   return s;
 }
 
-export function choices(session, lang) {
+// 軍師 (#18): the switch lives in the session, so a reload keeps it. The advice is bots.advise on
+// what this seat sees and may do, nothing more.
+export function setAdvisor(session, on) {
+  return { ...session, advisor: !!on };
+}
+
+// → { choices, why }: the labelled legal moves; with the advisor on, the one it picked is marked advised.
+function decide(session, lang) {
   const { st, seat } = session;
-  const v = E.view(st, seat);
-  return E.legalMoves(st, seat).map((m) => ({ move: m, label: labelMove(v, m, lang) }));
+  const v = E.view(st, seat), legal = E.legalMoves(st, seat);
+  const list = legal.map((m) => ({ move: m, label: labelMove(v, m, lang) }));
+  if (!session.advisor || !list.length || session.st.phase === "end") return { choices: list, why: null };
+  const { move: pick, why } = advise(v, legal);
+  const key = JSON.stringify(pick), at = legal.findIndex((m) => JSON.stringify(m) === key);
+  if (at >= 0) list[at] = { ...list[at], advised: true };
+  return { choices: list, why };
+}
+
+export function choices(session, lang) {
+  return decide(session, lang).choices;
 }
 
 export function act(session, m) {
@@ -115,5 +131,6 @@ export function openRegion(session) {
 
 export function screen(session, lang, opts = {}) {
   const v = E.view(session.st, session.seat);
-  return tableHTML(v, choices(session, lang), lang, { feed: session.feed, wait: botsToMove(session), ...opts });
+  const d = decide(session, lang);
+  return tableHTML(v, d.choices, lang, { feed: session.feed, wait: botsToMove(session), advisor: { on: !!session.advisor, why: d.why }, ...opts });
 }
