@@ -23,7 +23,7 @@ function block(b) {
 const SECTION_ORDER = ["chen", "soong", "lien", "ext"];
 const BAND = { chen: "chen", soong: "soong", lien: "lien", ext: "ext", local: "local" };
 
-function dots(n, max = 3) {
+function dots(n, max = 2) {
   return Array.from({ length: max }, (_, i) => `<span class="dot${i < n ? "" : " e"}"></span>`).join("");
 }
 
@@ -32,7 +32,7 @@ function eventCard(e, lang) {
   const name = lang === "en" ? en.cards[e.id].name : e.name;
   const body = lang === "en" ? en.cards[e.id].text : e.text;
   const issue = u.issues[e.icon];
-  const rest = (REST_CUBES[e.cp] ?? 0) + (e.owner === "lien" ? 1 : 0);
+  const rest = REST_CUBES[e.cp] ?? 0;
   const flags = [e.must ? `<span class="flag">${esc(u.must)}</span>` : "", e.cond ? `<span class="flag alt">${esc(u.conditional)}</span>` : ""].join("");
   return `<article class="card ${BAND[e.owner]}${e.must ? " must" : ""}">` +
     `<div class="band"><span>${esc(u.owner[e.owner])}</span><span class="r">${flags}${esc(u.kind.event)} · ${esc(u.deck[e.deck])}</span></div>` +
@@ -100,6 +100,9 @@ if (typeof document !== "undefined") {
   set("#credit", (el) => { el.textContent = t.credit; });
   set("#content", (el) => {
     el.innerHTML = rulesHTML(lang);
-    if (location.hash) document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
+    const jump = () => { if (location.hash) document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView(); };
+    jump();
+    document.fonts?.ready.then(jump);
+    window.addEventListener("load", jump);
   });
 }
