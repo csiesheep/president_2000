@@ -130,6 +130,7 @@ export default {
       lobby: {
         kicker: "競選總部", code: "房間代碼 · ROOM", copy: "複製連結", copied: "已複製",
         share: "把代碼或連結傳給朋友，他們就能入座。",
+        sitAria: "入座：{who}", moveAria: "換到這裡：{who}",
         sit: "入座", moveTo: "換到這裡", you: "你", host: "房主", offline: "斷線", bot: "Bot", empty: "空位 · 等人加入", guest: "玩家",
         start: "開局 · {bot}", startBig: "開局 · 空位由 bot 接手",
         pickSeat: "先選一個座位入座。房主入座後才能開局。", hostUnseated: "房主入座後才能開局。", waitHost: "等房主開局。",
@@ -137,8 +138,10 @@ export default {
       },
       game: {
         wait: "等 {who}", hint: "還沒輪到你。可以先看地圖和手牌。",
+        left: "（剩 {n} 秒）", waitAgain: "等房主再開一局。",
         noSeat: "這個房間已經開局，你沒有座位。可以回首頁另開一間，或加入別的房間。",
       },
+      chat: { title: "桌邊 · TABLE TALK", none: "還沒有人說話。", label: "說點什麼", ph: "說點什麼…", send: "送出" },
       conn: {
         connecting: "連線中…", retry: "連線中斷，{n} 秒後重試…", retrying: "重新連線中…",
         leave: "離開房間", leaveConfirm: "離開這個房間？你的位子會由 bot 接手。",
@@ -467,6 +470,8 @@ export default {
     not_your_turn: "還沒輪到你，請等其他人行動完。",
     illegal_move: "這一步不合規則，請換一個選擇。",
     engine_error: "這一步沒有處理成功，請稍後再試，或重新整理頁面。",
+    empty_chat: "空白的話不會送出，請先打幾個字。",
+    not_ended: "這一局還沒結束，結束後房主才能再開一局。",
     no_room: "沒有這個房間代碼，請確認後再加入。",
   },
 };

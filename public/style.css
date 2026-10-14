@@ -279,3 +279,26 @@ button.btn:hover, a.btn:hover { background: var(--ink); color: var(--paper); }
 .hc.adv { outline: 3px solid #ffd34d; }
 .hc.adv .hn { padding-right: 18px; }
 .hc.adv.sel { outline-color: var(--red); }
+
+/* Room extras (#19): table talk (chat + the bots' teams), the move clock, the rematch. */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.t-chat { margin-top: 16px; display: flex; flex-direction: column; gap: 6px; }
+.lobby + .t-chat { margin-top: 20px; }
+.chatlog { list-style: none; margin: 0; padding: 6px 0; max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; border-top: 3px solid var(--ink); border-bottom: 1px solid var(--line); }
+.chatlog li { font-size: 14px; line-height: 1.45; padding: 2px 0 2px 8px; border-left: 4px solid var(--line); overflow-wrap: anywhere; }
+.chatlog li.s0 { border-left-color: var(--chen); } .chatlog li.s1 { border-left-color: var(--soong); } .chatlog li.s2 { border-left-color: var(--lien); }
+.chatlog li b { font-weight: 900; }
+.chatlog li.me b { text-decoration: underline; text-decoration-thickness: 2px; }
+.chatlog li.bt { background: #f0ece2; font-size: 12px; }
+.chatlog li.bt .say { font-style: italic; color: var(--mute); }
+.chatlog li.none { border-left-color: transparent; color: var(--mute); font-size: 13px; }
+.chatf { display: flex; gap: 8px; }
+.chatf .fi { flex: 1; min-width: 0; }
+.chatf .send { flex: none; min-height: 48px; padding: 0 16px; font-size: 14px; background: var(--ink); color: var(--paper); }
+.clock { font-weight: 900; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.clock.low { color: var(--red); animation: clockpulse 1s steps(2, end) infinite; }
+@keyframes clockpulse { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .clock.low { animation: none; } }
+.t-end .opts .wait { margin: 0; font-weight: 700; }
+.t-ttl .yrow { display: flex; align-items: center; gap: 6px; margin-top: 2px; font-size: 12px; }
+.t-ttl .yrow .you { margin-top: 0; }
