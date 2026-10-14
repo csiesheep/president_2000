@@ -131,16 +131,16 @@ export function firstActor(seat, opts) {
   throw new Error(`500 個種子都沒有讓 seat ${seat} 拿到主動權`);
 }
 
-// Put card `id` into `seat`'s hand by swapping it with hand[0] wherever it is
+// Put card `id` into `seat`'s hand by swapping it with hand[slot] wherever it is
 // (decks, discard, another hand, a saved pile), so every card is still in
-// exactly one place.
-export function giveCard(st, seat, id) {
+// exactly one place. Give two cards to one seat with two different slots.
+export function giveCard(st, seat, id, slot = 0) {
   const hand = st.hands[seat];
   if (hand.includes(id)) return st;
   const spots = [st.decks.early, st.decks.late, st.decks.discard, ...st.hands, ...st.savedDebate, ...st.savedElection];
   for (const arr of spots) {
     const k = arr.indexOf(id);
-    if (k >= 0) { arr[k] = hand[0]; hand[0] = id; return st; }
+    if (k >= 0) { arr[k] = hand[slot]; hand[slot] = id; return st; }
   }
   throw new Error(`找不到牌 ${id}（移出遊戲的牌拿不回來）`);
 }
@@ -155,10 +155,11 @@ export const issue = (st, name) => {
 export const lastCheck = (st) => [...st.log].reverse().find((e) => e.t === "check");
 export const checks = (st) => st.log.filter((e) => e.t === "check").length;
 
-// Every card in exactly one place: decks, discard, removed, hands, saved piles.
+// Every card in exactly one place: decks, discard, removed, hands, saved piles, and st.active (a
+// 本回合 event stays on the table until the turn ends, #5).
 export function conservation(st) {
   if (!Array.isArray(st.removed)) return "state 沒有 removed 陣列";
-  const where = [st.decks.early, st.decks.late, st.decks.discard, st.removed, ...st.hands, ...st.savedDebate, ...st.savedElection];
+  const where = [st.decks.early, st.decks.late, st.decks.discard, st.removed, ...st.hands, ...st.savedDebate, ...st.savedElection, ...(Array.isArray(st.active) ? [st.active] : [])];
   const seen = new Map();
   for (const arr of where) for (const id of arr) seen.set(id, (seen.get(id) || 0) + 1);
   const dup = [...seen].filter(([, n]) => n > 1).map(([id]) => id);
