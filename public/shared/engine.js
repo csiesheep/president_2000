@@ -101,8 +101,10 @@ export function createGame(seed, opts = {}) {
       early: shuffle(rng, cards.filter((c) => c.deck === "early").map((c) => c.id)),
       late: shuffle(rng, cards.filter((c) => c.deck === "late").map((c) => c.id)),
       discard: [],
+      earlyDiscard: [], // #6: the early discard pile, set aside at the end of turn 6
     },
     removed: [],
+    debate: null, // #6: the debate board while turn 6 is on (startDebate)
     active: [], // #5: 本回合 cards still in effect this turn
     cards: byId,
     hands: [[], [], []],
@@ -129,6 +131,11 @@ export function createGame(seed, opts = {}) {
 // "order"). The early deck holds 75 = 5 turns x 3 seats x 5 and the late deck
 // 36 = 2 x 3 x 6, so the normal flow never reshuffles; the reshuffle of the
 // discard pile (§14.1) stays as the safety net.
+//
+// #6 (§14.1, 裁決 11): in turns 7–8 a dry late deck takes, in this order, the
+// late discard pile, then the early discard pile set aside after turn 6
+// (decks.earlyDiscard), then whatever is left of the early deck. Only when all
+// of those are empty does a hand stay short.
 function beginTurn(st) {
   st.turn += 1;
   const deckName = st.turn <= 5 ? "early" : "late";
@@ -138,9 +145,16 @@ function beginTurn(st) {
       while (st.hands[p].length < deal) {
         const deck = st.decks[deckName];
         if (!deck.length) {
-          if (!st.decks.discard.length) break;
-          st.log.push({ t: "reshuffle", deck: deckName, n: st.decks.discard.length });
-          deck.push(...shuffle(rng, st.decks.discard.splice(0)));
+          if (st.decks.discard.length) {
+            st.log.push({ t: "reshuffle", deck: deckName, n: st.decks.discard.length });
+            deck.push(...shuffle(rng, st.decks.discard.splice(0)));
+          } else if (deckName === "late" && st.decks.earlyDiscard.length) {
+            st.log.push({ t: "reshuffle", deck: deckName, from: "earlyDiscard", n: st.decks.earlyDiscard.length });
+            deck.push(...shuffle(rng, st.decks.earlyDiscard.splice(0)));
+          } else if (deckName === "late" && st.decks.early.length) {
+            st.hands[p].push(st.decks.early.pop());
+            continue;
+          } else break;
         }
         st.hands[p].push(deck.pop());
       }
@@ -558,6 +572,7 @@ export function mustAct(st) {
   }
   if (st.phase === "momentum") return st.pending ? [st.pending.seat] : [];
   if (st.phase === "save") return [0, 1, 2].filter((p) => !st.saved[p]);
+  if (st.phase === "debate") return debateMustAct(st);
   return [];
 }
 
@@ -567,6 +582,7 @@ export function legalMoves(st, seat) {
   if (!mustAct(st).includes(seat)) return [];
   if (st.phase === "order") return [0, 1, 2].map((pos) => ({ type: "order", pos }));
   if (st.phase === "save") return saveMoves(st, seat);
+  if (st.phase === "debate") return debateMoves(st, seat);
   if (st.phase === "momentum") {
     const pd = st.pending;
     if (pd.stage === "swap") return [{ type: "swap", slot: 0 }, { type: "swap", slot: 1 }, { type: "noswap" }];
@@ -718,6 +734,7 @@ export function apply(st0, seat, move) {
     case "action": applyAction(st, seat, m); break;
     case "momentum": applyMomentum(st, seat, m); break;
     case "save": applySave(st, seat, m); break;
+    case "debate": applyDebate(st, seat, m); break;
     default: throw new Error("apply: nothing to do in phase " + st.phase);
   }
   return st;
@@ -728,7 +745,22 @@ function applyOrder(st, m) {
   const p = st.initiative;
   st.order = [0, 1, 2].map((i) => (p - m.pos + i + 3) % 3);
   st.log.push({ t: "order", seat: p, pos: m.pos, order: st.order.slice() });
-  st.phase = "action"; st.step = 0; st.idx = 0; st.actor = st.order[0]; st.pending = null;
+  st.phase = "action"; st.step = 0; st.idx = 0; st.pending = null;
+  nextActor(st);
+}
+
+// §5.2: the seat whose play it is, rotating one seat per action phase. #6
+// 裁決 12 (§14.1): a seat with no card in hand and its candidate card spent
+// has nothing to play, so its turn in that action phase is skipped.
+function nextActor(st) {
+  for (;;) {
+    if (st.step === HAND.play) return startMomentum(st);
+    const a = st.order[(st.step + st.idx) % 3];
+    if (st.hands[a].length || !st.candidateUsed[a]) { st.actor = a; return; }
+    st.log.push({ t: "skip", seat: a, step: st.step });
+    st.idx++;
+    if (st.idx === 3) { st.idx = 0; st.step++; }
+  }
 }
 
 function applyAction(st, seat, m) {
@@ -886,8 +918,7 @@ function finishPlay(st) {
   st.pending = null;
   st.idx++;
   if (st.idx === 3) { st.idx = 0; st.step++; }
-  if (st.step === HAND.play) return startMomentum(st);
-  st.actor = st.order[(st.step + st.idx) % 3]; // §5.2: the starter rotates one seat per action phase
+  nextActor(st);
 }
 
 // ------------------------------------------------------------------ momentum (§5.3)
@@ -919,7 +950,10 @@ function momentumFinish(st) {
   st.log.push({ t: "momentum", step: "done", mom: st.mom.slice() });
   st.pending = null; st.mstep = null;
   st.phase = "save";
-  st.saved = [false, false, false];
+  // #6 裁決 12: a seat with no card left has nothing to keep and is skipped.
+  st.saved = st.hands.map((h) => h.length === 0);
+  for (let p = 0; p < 3; p++) if (st.saved[p]) st.log.push({ t: "save", seat: p, n: 0, skipped: true });
+  if (st.saved.every(Boolean)) endSave(st);
 }
 
 function applyMomentum(st, seat, m) {
@@ -962,12 +996,177 @@ function applySave(st, seat, m) {
   st.hands[seat] = [];
   st.saved[seat] = true;
   st.log.push({ t: "save", seat, n: m.cards.length }); // no card ids: saved face down
-  if (!st.saved.every(Boolean)) return;
+  if (st.saved.every(Boolean)) endSave(st);
+}
+
+// Everyone has saved: the rest area goes into the bag and the turn ends.
+function endSave(st) {
   for (let p = 0; p < 3; p++) { st.bag[p] += st.rest[p]; st.rest[p] = 0; }
   endTurnFlags(st); // #5 裁決 6: after saving, before the next deal
-  if (st.turn === 5) { st.phase = "debate"; return; }
+  if (st.turn === 5) return startDebate(st);
   if (st.turn === 8) { st.phase = "election"; return; }
   beginTurn(st);
+}
+
+// ------------------------------------------------------------------ the debate (turn 6, §九, #6)
+//
+// No deal and no action phase. The initiative is checked as in §5.1 but its
+// holder picks no position (裁決 2): it only breaks ties, the holder first and
+// then clockwise (陳 → 宋 → 連 → 陳). Each round every seat whose debate pile
+// still has a card picks one face down (裁決 3; the pick stays in savedDebate
+// and the other seats' views see only that a pick was made); once all have
+// picked, the cards are revealed together onto st.debate.placed[issue][seat].
+// A card with an icon goes to its issue; a local card to an unsettled issue of
+// the player's choice; a card on a settled issue does nothing and is discarded
+// (裁決 5). Then every unsettled issue where some seat has 2 cards is settled,
+// in track order (裁決 4); its winner (highest CP total, ties by the priority
+// above) gets +1 momentum and places 2 / 3 / 4 cubes free of checks on empty
+// floating blocks anywhere (裁決 6), one move at a time. When every issue is
+// settled or every pile is empty, the unsettled issues are settled in track
+// order (裁決 8, Q7 default: 0/0/0 is a tie too). The issues go back to the
+// track, the first settled in slot 3 (裁決 7); every debate card goes to the
+// discard pile, the first strategic vote moves half (§十一, 裁決 9), the early
+// discard pile is set aside (裁決 10) and turn 7 begins.
+//
+// Nothing is copied out of the state at the start: the piles, st.issues (its
+// order is the original track order until the debate ends), st.initiative and
+// the board are read when they are used (contract, #6 §五).
+
+function startDebate(st) {
+  st.turn = 6;
+  st.phase = "debate"; st.step = 0; st.idx = 0; st.actor = -1; st.pending = null; st.mstep = null;
+  st.saved = [false, false, false];
+  st.debate = { picks: [null, null, null], placed: Object.fromEntries(ISSUES.map((n) => [n, [[], [], []]])), settled: [], queue: [], award: null };
+  withRng(st, (rng) => { st.initiative = initiativeCheck(st, rng); });
+  st.log.push({ t: "turn", turn: st.turn, initiative: st.initiative });
+  if (st.savedDebate.every((pile) => !pile.length)) advanceDebate(st); // nothing to reveal at all
+  return st;
+}
+
+const tiePriority = (st) => { const h = st.initiative >= 0 ? st.initiative : 0; return [0, 1, 2].map((i) => (h + i) % 3); };
+const unsettled = (st) => st.issues.map((i) => i.name).filter((n) => !st.debate.settled.includes(n));
+
+function debateMustAct(st) {
+  const d = st.debate;
+  if (!d) return [];
+  if (d.award) return [d.award.seat];
+  return [0, 1, 2].filter((p) => st.savedDebate[p].length && !d.picks[p]);
+}
+
+function debateMoves(st, seat) {
+  const d = st.debate;
+  if (d.award) return awardMoves(st, seat);
+  const open = unsettled(st), out = [];
+  for (const id of st.savedDebate[seat]) {
+    const c = CARD[id];
+    if (c.icon) out.push({ type: "reveal", card: id, issue: c.icon });
+    else for (const name of open) out.push({ type: "reveal", card: id, issue: name });
+  }
+  return out;
+}
+
+// 裁決 6: any empty floating block, own camp (fill) or the other camp (cross); never grey.
+function awardMoves(st, seat) {
+  const out = [];
+  for (let k = 0; k < COUNTIES.length; k++) {
+    if (emptyOf(st, k, CAMP[seat])) out.push({ type: "fill", county: k });
+    if (emptyOf(st, k, otherCamp(seat))) out.push({ type: "cross", county: k });
+  }
+  return out;
+}
+
+function applyDebate(st, seat, m) {
+  const d = st.debate;
+  if (d.award) {
+    putCube(st, seat, m.county, m.type === "fill" ? CAMP[seat] : otherCamp(seat));
+    st.log.push({ t: "debate", step: "place", seat, move: m });
+    d.award.left--;
+    if (d.award.left <= 0 || !awardMoves(st, seat).length) d.award = null;
+    return advanceDebate(st);
+  }
+  d.picks[seat] = { card: m.card, issue: m.issue };
+  st.log.push({ t: "debate", step: "pick", seat }); // no card: picked face down
+  if (debateMustAct(st).length) return;
+  // everyone has picked: reveal together
+  const shown = [];
+  for (let p = 0; p < 3; p++) {
+    const pk = d.picks[p];
+    if (!pk) continue;
+    const pile = st.savedDebate[p];
+    pile.splice(pile.indexOf(pk.card), 1);
+    const dead = d.settled.includes(pk.issue);
+    if (dead) st.decks.discard.push(pk.card); // 裁決 5: no effect
+    else d.placed[pk.issue][p].push(pk.card);
+    shown.push({ seat: p, card: pk.card, issue: pk.issue, dead });
+  }
+  d.picks = [null, null, null];
+  st.log.push({ t: "debate", step: "reveal", cards: shown });
+  // 裁決 4: every issue now at 2 cards for someone, in track order
+  d.queue = unsettled(st).filter((n) => d.placed[n].some((cards) => cards.length >= 2));
+  advanceDebate(st);
+}
+
+// Settle what is queued, one award at a time; then end the debate or open the next round.
+function advanceDebate(st) {
+  const d = st.debate;
+  while (!d.award) {
+    if (d.queue.length) { settleIssue(st, d.queue.shift()); continue; }
+    const open = unsettled(st);
+    if (!open.length) return endDebate(st);
+    if (st.savedDebate.every((pile) => !pile.length)) { d.queue = open; continue; } // 裁決 8
+    return; // next round
+  }
+}
+
+function settleIssue(st, name) {
+  const d = st.debate;
+  const sums = [0, 1, 2].map((p) => d.placed[name][p].reduce((s, id) => s + CARD[id].cp, 0));
+  let win = -1;
+  for (const p of tiePriority(st)) if (win < 0 || sums[p] > sums[win]) win = p;
+  const n = 2 + d.settled.length; // §九 5: 2, 3, 4 by the order of settling
+  d.settled.push(name);
+  addMom(st, win, 1);
+  for (const cards of d.placed[name]) st.decks.discard.push(...cards.splice(0));
+  st.log.push({ t: "debate", step: "settle", issue: name, cp: sums, seat: win, cubes: n });
+  if (awardMoves(st, win).length) d.award = { seat: win, left: n, issue: name };
+}
+
+function endDebate(st) {
+  const d = st.debate;
+  // 裁決 7: the first settled goes back to the lowest slot
+  const byName = Object.fromEntries(st.issues.map((i) => [i.name, i]));
+  st.issues = d.settled.slice().reverse().map((n) => byName[n]);
+  // 裁決 10: what is left of the piles goes to the (early) discard pile
+  for (const pile of st.savedDebate) st.decks.discard.push(...pile.splice(0));
+  for (const name of Object.keys(d.placed)) for (const cards of d.placed[name]) st.decks.discard.push(...cards.splice(0));
+  st.debate = null;
+  st.log.push({ t: "debate", step: "end", issues: st.issues.map((i) => i.name) });
+  strategicVote(st, true); // §九 7: the first strategic vote, half
+  // §14.1, 裁決 10: the early discard pile is set aside; turn 7 starts a late one
+  st.decks.earlyDiscard.push(...st.decks.discard.splice(0));
+  endTurnFlags(st);
+  beginTurn(st);
+}
+
+// §十一: in every county, the empty blue floating blocks go to whichever of
+// 宋 / 連 leads there by 2 or more cubes; the empty green ones go to 陳 if he
+// has a cube there. `half` (turn 6, 裁決 9): only half of each colour's empty
+// blocks move, rounded down. Grey blocks never move.
+function strategicVote(st, half) {
+  const moved = [];
+  for (let k = 0; k < COUNTIES.length; k++) {
+    const blocks = st.counties[k].blocks;
+    const s = cubesIn(st, k, SOONG), l = cubesIn(st, k, LIEN), c = cubesIn(st, k, CHEN);
+    const flow = (t, to) => {
+      const free = blocks.filter((b) => b.o < 0 && b.t === t);
+      const n = half ? Math.floor(free.length / 2) : free.length;
+      for (const b of free.slice(0, n)) b.o = to;
+      if (n) moved.push({ county: k, seat: to, n });
+    };
+    if (Math.abs(s - l) >= 2) flow("B", s > l ? SOONG : LIEN);
+    if (c >= 1) flow("G", CHEN);
+  }
+  st.log.push({ t: "strategic", half, moved });
 }
 
 // ------------------------------------------------------------------ view
@@ -982,7 +1181,9 @@ export function view(st, seat) {
   v.hands = st.hands.map((h, p) => (p === seat ? h.slice() : h.length));
   v.savedDebate = st.savedDebate.map((h, p) => (p === seat ? h.slice() : h.length));
   v.savedElection = st.savedElection.map((h, p) => (p === seat ? h.slice() : h.length));
-  v.decks = { early: st.decks.early.length, late: st.decks.late.length, discard: st.decks.discard.length };
+  v.decks = { early: st.decks.early.length, late: st.decks.late.length, discard: st.decks.discard.length, earlyDiscard: st.decks.earlyDiscard.length };
+  // #6 裁決 3: a debate pick is face down until all have picked; others see only that it was made.
+  if (st.debate) v.debate.picks = st.debate.picks.map((pk, p) => (p === seat ? pk : pk ? true : null));
   delete v.endorseDeck;
   v.seat = seat;
   return v;
