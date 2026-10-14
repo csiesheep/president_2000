@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>2000：總統的誕生 · 2000: Taiwan Decides</title>
-<meta name="description" content="三人卡牌選戰，改編自 2000 年台灣總統大選。建設中。">
+<meta name="description" content="三人卡牌選戰，改編自 2000 年台灣總統大選。可以單人對戰電腦。">
 <link rel="canonical" href="https://games.csiesheep.com/president_2000/">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
@@ -14,18 +14,27 @@
 </head>
 <body>
 <header class="bunting" aria-hidden="true"></header>
-<main class="wrap">
-  <p class="kicker">第十任總統副總統選舉</p>
+<main class="wrap" id="land">
+  <div class="topbar"><span></span><a id="lang" class="btn" href="?lang=en">EN</a></div>
+  <p class="kicker" data-i18n="ui.solo.land.kicker">第十任總統副總統選舉</p>
   <h1><span class="year">2000</span><span class="name" data-i18n="title">總統的誕生</span></h1>
   <p class="tag" data-i18n="tagline">九個回合，一張選票。三位候選人、一座島，和決定一切的分裂。</p>
-  <ul class="flags" aria-label="候選人">
-    <li class="soong"><b>1</b>宋楚瑜</li>
-    <li class="lien"><b>2</b>連戰</li>
-    <li class="chen"><b>5</b>陳水扁</li>
+  <ul class="flags" aria-hidden="true">
+    <li class="soong"><b>1</b><span data-i18n="ui.solo.cand.soong.name">宋楚瑜</span></li>
+    <li class="lien"><b>2</b><span data-i18n="ui.solo.cand.lien.name">連戰</span></li>
+    <li class="chen"><b>5</b><span data-i18n="ui.solo.cand.chen.name">陳水扁</span></li>
   </ul>
-  <p class="building" data-i18n="building">建設中。先做引擎，再做牌桌。</p>
-  <nav class="links"><a href="rules" data-i18n="rules">規則</a><a href="https://games.csiesheep.com/" data-i18n="hub">csiesheep games</a></nav>
-  <p class="credit">同人作品，非官方。靈感來自 Christian Leonhard 與 Jason Matthews 設計的 <em>1960: The Making of the President</em>；規則與機制不受著作權保護，本作為獨立實作、自創名稱與美術。</p>
+  <div class="cta">
+    <a id="play" class="big" href="?play" data-i18n="ui.solo.land.solo">單人對戰 AI</a>
+    <span class="big off" aria-disabled="true"><span data-i18n="ui.solo.land.room">開房</span><small data-i18n="ui.solo.land.soon">即將推出</small></span>
+    <span class="big off" aria-disabled="true"><span data-i18n="ui.solo.land.join">加入</span><small data-i18n="ui.solo.land.soon">即將推出</small></span>
+  </div>
+  <nav class="links"><a id="rules" href="rules" data-i18n="nav.rules">規則</a><a href="https://games.csiesheep.com/" data-i18n="nav.hub">csiesheep games</a></nav>
+  <p class="credit" data-i18n="credit">同人作品，非官方。靈感來自 Christian Leonhard 與 Jason Matthews 設計的 <em>1960: The Making of the President</em>；規則與機制不受著作權保護，本作為獨立實作、自創名稱與美術。</p>
+</main>
+<main class="wrap game" id="solo" hidden>
+  <div class="topbar"><a id="home" href="./">←</a><span class="tb"><button type="button" id="quit" class="btn"></button><a id="glang" class="btn" href="?play&amp;lang=en">EN</a></span></div>
+  <div id="stage"></div>
 </main>
 <script type="module" src="app.js"></script>
 </body>
