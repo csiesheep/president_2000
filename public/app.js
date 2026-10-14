@@ -10,7 +10,7 @@ if (typeof document !== "undefined") {
   const qs = new URLSearchParams(location.search);
   const code = qs.get("lang") === "en" ? "en" : "zh-Hant";
   const T = code === "en" ? en : zh, S = T.ui.solo;
-  const KEY = "p2000.solo.session", SETUP = "p2000.solo.setup";
+  const KEY = "p2000.solo.session", SETUP = "p2000.solo.setup", ADV = "p2000.advisor";
   const $ = (sel) => document.querySelector(sel);
   const store = {
     get(k) { try { return JSON.parse(sessionStorage.getItem(k)); } catch { return null; } },
@@ -95,9 +95,12 @@ if (typeof document !== "undefined") {
       else if (d.start) {
         const p = store.get(SETUP) || { seat: 0, level: 2 };
         const seed = crypto.getRandomValues(new Uint32Array(1))[0];
-        session = Solo.advance(Solo.newSolo({ seat: p.seat, level: p.level, seed }));
+        session = Solo.setAdvisor(Solo.advance(Solo.newSolo({ seat: p.seat, level: p.level, seed })), store.get(ADV) === true);
         ui = { open: null, sel: null, picks: [] };
         save(); pump(); window.scrollTo(0, 0);
+      } else if (d.advisor != null) {
+        session = Solo.setAdvisor(session, d.advisor === "on"); store.set(ADV, session.advisor);
+        save(); draw();
       } else if (d.move) {
         session = Solo.act(session, JSON.parse(d.move));
         ui.sel = null; ui.picks = [];

@@ -224,6 +224,8 @@ button.btn:hover, a.btn:hover { background: var(--ink); color: var(--paper); }
   .tbl > .t-map { grid-column: 2; grid-row: 4 / span 4; }
   .tbl.end > .t-end { grid-column: 1; grid-row: 2 / span 3; }
   .tbl.end > .t-map { grid-row: 2 / span 3; }
+  .tbl > .t-adv { grid-column: 1 / -1; }
+  .tbl.hasbar > .t-map { grid-row: 5 / span 4; }
   .t-hand { margin: 0; border-radius: 4px; }
 }
 
@@ -255,3 +257,25 @@ button.btn:hover, a.btn:hover { background: var(--ink); color: var(--paper); }
 .t-feed .say { display: block; font-size: 12px; color: var(--mute); font-style: italic; }
 .t-feed li:not(.sys) .say { padding-top: 1px; }
 @media (min-width: 900px) { .wrap.game:has(.rform), .wrap.game:has(.lobby) { max-width: 560px; } }
+
+/* The advisor (#18): a switch above the table, a star on its pick, a line with its reason. */
+.t-adv { display: flex; align-items: center; gap: 4px 10px; flex-wrap: wrap; }
+.advsw { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px 0 8px; font: 700 14px/1 var(--disp); color: var(--ink); background: #fff; border: 2px solid var(--ink); border-radius: 4px; cursor: pointer; }
+.advsw .sw { position: relative; width: 34px; height: 20px; border: 2px solid var(--ink); border-radius: 10px; background: var(--grey); }
+.advsw .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--ink); }
+.advsw.on { background: var(--ink); color: var(--paper); }
+.advsw.on .sw { background: var(--red); border-color: var(--paper); }
+.advsw.on .sw::after { left: 16px; background: var(--paper); }
+.advsw em { font-style: normal; font-weight: 900; font-size: 12px; opacity: .8; }
+.advn { flex: 1 1 160px; font-size: 11px; color: var(--mute); line-height: 1.4; }
+.advice { margin: 0; padding: 6px 8px; font-size: 13px; line-height: 1.5; background: #fff3c4; border-left: 4px solid var(--red); border-radius: 2px; }
+.advice b { font-weight: 900; }
+.star-adv { font-style: normal; color: var(--red); font-weight: 900; margin-right: 6px; }
+.opt.adv { border-color: var(--red); background: #fff8dc; }
+.opt.adv:hover { background: var(--ink); }
+.opt.adv:hover .star-adv { color: #ffd34d; }
+.hc { position: relative; }
+.hc.adv .star-adv { position: absolute; top: -2px; right: 4px; margin: 0; font-size: 18px; line-height: 1; }
+.hc.adv { outline: 3px solid #ffd34d; }
+.hc.adv .hn { padding-right: 18px; }
+.hc.adv.sel { outline-color: var(--red); }

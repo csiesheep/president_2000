@@ -16,6 +16,7 @@ import * as E from "./shared/engine.js";
 import { SEATS } from "./shared/board.js";
 import { tableHTML, labelMove, esc } from "./table.js";
 import { fromLog } from "./solo.js";
+import { advise } from "./shared/bots.js";
 import en from "./i18n/en.js";
 import zh from "./i18n/zh-Hant.js";
 
@@ -26,7 +27,7 @@ const dict = (lang) => (lang === "en" ? en : zh);
 const fill = (s, vars = {}) => s.replace(/\{(\w+)\}/g, (_, k) => (k in vars ? vars[k] : "{" + k + "}"));
 
 export function newClient() {
-  return { v: 1, token: null, seat: null, room: null, state: null, error: null, feed: [], snap: null };
+  return { v: 1, token: null, seat: null, room: null, state: null, error: null, feed: [], snap: null, advisor: false };
 }
 
 // ------------------------------------------------------------------ the record
@@ -136,11 +137,27 @@ export function receive(client, msg) {
 
 // ------------------------------------------------------------------ what can be clicked
 
+// 軍師 (#18): the switch is the client's own (the server never hears of it). The advice is
+// bots.advise on the view and the legal moves the server sent, so it knows nothing a seat does not see.
+export function setAdvisor(client, on) {
+  return { ...client, advisor: !!on };
+}
+
+// → { choices, why } for the seat's current decision; the advised one is marked when the switch is on.
+function decide(client, lang) {
+  const { view, legal } = client.state;
+  const list = legal.map((m) => ({ move: m, label: labelMove(view, m, lang) }));
+  if (!client.advisor || !list.length || view.phase === "end") return { choices: list, why: null };
+  const { move: pick, why } = advise(view, legal);
+  const key = JSON.stringify(pick), at = legal.findIndex((m) => JSON.stringify(m) === key);
+  if (at >= 0) list[at] = { ...list[at], advised: true };
+  return { choices: list, why };
+}
+
 export function actions(client, lang) {
   const T = dict(lang), U = T.ui.room;
   if (client.state) {
-    const v = client.state.view;
-    return client.state.legal.map((m) => ({ label: labelMove(v, m, lang), data: { t: "move", move: m } }));
+    return decide(client, lang).choices.map((c) => ({ label: c.label, data: { t: "move", move: c.move }, ...(c.advised ? { advised: true } : {}) }));
   }
   const room = client.room;
   if (!room || room.started) return [];
@@ -206,13 +223,14 @@ function waitingHTML(text) {
 export function screen(client, lang, opts = {}) {
   const T = dict(lang), U = T.ui.room;
   if (client.state) {
-    const { view, legal } = client.state;
-    const choices = legal.map((m) => ({ move: m, label: labelMove(view, m, lang) }));
+    const { view } = client.state;
+    const d = decide(client, lang), choices = d.choices;
     const names = [0, 1, 2].map((p) => { const s = client.room && client.room.seats[p]; return s && s.kind === "human" ? s.name : ""; });
     const wait = acting(view).filter((p) => p !== view.seat);
     const body = tableHTML(view, choices, lang, {
       feed: client.feed, wait: wait.length ? wait : [0, 1, 2].filter((p) => p !== view.seat),
       names, waitLabel: U.game.wait, waitHint: U.game.hint, noAgain: true,
+      advisor: { on: !!client.advisor, why: d.why },
       open: opts.open, sel: opts.sel, picks: opts.picks,
     });
     return errorHTML(client, T) + body;

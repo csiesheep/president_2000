@@ -28,6 +28,8 @@ export default {
     cpCount: "{cp} CP ×{n}",
     cpUnit: "CP",
     restCubes: "休息方塊 {n}",
+    // 軍師 (#18): 牌桌上方的軍師開關、★ 標記，與理由前的一句
+    advisor: { label: "軍師", on: "開", off: "關", prefix: "軍師：", starLabel: "軍師推薦", note: "標出操盤手會走的那一步，只用你看得到的畫面。" },
     solo: {
       land: { solo: "單人對戰 AI", room: "開房", join: "加入", soon: "即將推出", kicker: "第十任總統副總統選舉" },
       cand: {
