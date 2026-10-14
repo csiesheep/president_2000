@@ -28,6 +28,7 @@ import { existsSync } from "node:fs";
 import { R, section, check, eq, ok, nonEmpty, summary } from "./harness.js";
 import * as E from "../public/shared/engine.js";
 import * as D from "./driver.js";
+import * as BOTS from "../public/shared/bots.js";
 
 const FILE = new URL("../src/roomcore.js", import.meta.url);
 let RC = null, IMPORT_ERR = null;
@@ -224,6 +225,130 @@ c13("可重放：同一串事件、同一個時間，送出去的訊息一模一
   const a = run(), b = run();
   if (a.startsWith && !a.startsWith("[")) return a;
   return a === b ? ok(true, `${a.length} 字元的訊息一樣`) : "同一串事件送出的訊息不一樣";
+});
+
+// ---- bot 的步與倒數（#16）. Every state message also carries
+//   botMoves: [{ seat, move, why }]  every move a bot made in this handle, in order (bot seats,
+//                                    taken-over seats, timed-out moves); [] if none. why is the
+//                                    bot's { key, …params }, so the page can show the table talk
+//                                    and say what the bot did
+//   deadline: ms | null              the earliest time a connected human's pending decision times
+//                                    out (the same in every seat's message); null if none
+// Reports 尚未實作 until a state message has a `botMoves` field.
+const BOTMOVES = (() => {
+  if (!RC) return false;
+  try { const { w } = twoHumans(91); return Object.values(w.inbox).flat().some((m) => m.t === "state" && "botMoves" in m); } catch { return false; }
+})();
+const c16 = (name, fn) => c13(name, () => (BOTMOVES ? fn() : "TODO: state 訊息還沒有 botMoves（#16）"));
+c16("bot 的步：每則 state 的 botMoves 照順序套回去，剛好從人類那一步之後走到現在的局面；why.key 在 WHY 裡；每個人收到的一樣", () => {
+  const { w } = twoHumans(93, 2);
+  const why = new Set(BOTS.WHY);
+  let handles = 0, moves = 0;
+  const R1 = D.rng(11);
+  for (let n = 0; n < 400 && w.room.st.phase !== "end"; n++) {
+    const must = E.mustAct(w.room.st).filter((s) => s in humanConn);
+    if (!must.length) return "沒有人類要動";
+    const seat = must[0], st = w.last(humanConn[seat], "state");
+    const before = E.clone(w.room.st), move = st.legal[Math.floor(R1() * st.legal.length)];
+    const out = w.msg(humanConn[seat], { t: "move", move }, w.now + 1000);
+    const states = out.filter((o) => o.msg.t === "state");
+    if (!states.length) continue;
+    for (const o of states) if (!Array.isArray(o.msg.botMoves)) return `state 沒有 botMoves 陣列（送給 ${o.to}）`;
+    if (new Set(states.map((o) => JSON.stringify(o.msg.botMoves))).size > 1) return `第 ${w.room.st.turn} 回合：同一次 handle，兩個人收到的 botMoves 不一樣`;
+    let s = E.apply(before, seat, move);
+    for (const b of states[0].msg.botMoves) {
+      if (!b.why || !why.has(b.why.key)) return `botMoves 的 why.key 不在 WHY：${JSON.stringify(b)}`;
+      if (Object.values(b.why).some((v) => v !== null && typeof v === "object")) return `why 的參數要是數字或字串：${JSON.stringify(b.why)}`;
+      // Everyone is online and moves within a second, so only seat 2 (the bot) moves on its own.
+      if (b.seat !== 2) return `這局只有 seat 2 是 bot，botMoves 卻有 seat ${b.seat}`;
+      try { s = E.apply(s, b.seat, b.move); } catch (e) { return `第 ${w.room.st.turn} 回合：botMoves 套不回去（${JSON.stringify(b.move)}：${e.message}）`; }
+    }
+    if (!same(s, w.room.st)) return `第 ${w.room.st.turn} 回合 ${w.room.st.phase}：人類那一步加上 ${states[0].msg.botMoves.length} 個 botMoves，走不到現在的局面`;
+    if (states[0].msg.botMoves.length) { handles++; moves += states[0].msg.botMoves.length; }
+  }
+  const r = nonEmpty(moves, "bot 的步"); if (r !== true) return r;
+  return ok(true, `${handles} 次 handle 共 ${moves} 個 bot 的步，逐步套回去都對得上`);
+});
+c16("倒數：連線中的人類要動時，每一則 state 都帶 deadline = 這個決定開始的時間 + 60 秒；沒有人類要動時是 null", () => {
+  const { w } = twoHumans(95);
+  const R1 = D.rng(12);
+  let checked = 0;
+  for (let n = 0; n < 200 && w.room.st.phase !== "end"; n++) {
+    const must = E.mustAct(w.room.st).filter((s) => s in humanConn);
+    if (!must.length) return "沒有人類要動";
+    const seat = must[0], st = w.last(humanConn[seat], "state");
+    const at = w.now + 1000, mustBefore = E.mustAct(w.room.st);
+    const out = w.msg(humanConn[seat], { t: "move", move: st.legal[Math.floor(R1() * st.legal.length)] }, at);
+    const mustNow = E.mustAct(w.room.st), humans = mustNow.filter((s) => s in humanConn);
+    for (const o of out.filter((x) => x.msg.t === "state")) {
+      if (!humans.length || w.room.st.phase === "end") { if (o.msg.deadline !== null) return `沒有人類要動，deadline 卻是 ${o.msg.deadline}`; continue; }
+      // Checked only when every human who must act now started deciding with this move: the one
+      // who just moved (every decision restarts the clock, #13 裁決 5) or one who was not asked
+      // before. In simultaneous steps (save, debate) another human may have been waiting longer.
+      if (!humans.every((h) => h === seat || !mustBefore.includes(h))) continue;
+      if (o.msg.deadline !== at + MIN) return `第 ${w.room.st.turn} 回合 ${w.room.st.phase}：deadline 應該是 ${at + MIN}，實際 ${o.msg.deadline}`;
+      checked++;
+    }
+  }
+  const r = nonEmpty(checked, "帶 deadline 的 state"); if (r !== true) return r;
+  return ok(true, `${checked} 則 state 的 deadline 都是該決定開始 + 60 秒`);
+});
+
+// Chat and rematch (#16; plan M4 "chat … rematch"):
+//   { t: "chat", text } from a conn → { t: "chat", lines: [{ seat, name, text, at }] } to every
+//     connected conn; text trimmed, control characters dropped, cut to 200 characters; an empty
+//     text is an error to the sender. The room keeps the last 50 lines and sends them, as one
+//     chat message, to a conn when it opens.
+//   { t: "rematch" } from the host once the game has ended → a new game, same seats and level,
+//     a new engine seed; before the end, or from anyone else, an error to the sender only.
+const lastChat = (w, conn) => w.last(conn, "chat");
+c16("聊天：送出去每個人都收到（名字、座位、文字）；前後空白去掉、控制字元拿掉、超過 200 字截斷；空字串只回 error 給送的人；新連上的人收到最近的聊天", () => {
+  const w = world(97);
+  w.open("A", "Ann"); w.open("B", "Bo");
+  w.msg("A", { t: "sit", seat: 0 });
+  w.msg("A", { t: "chat", text: "  誰要當阿扁？\u0007 " });
+  for (const conn of ["A", "B"]) {
+    const c = lastChat(w, conn);
+    const line = c && c.lines && c.lines[c.lines.length - 1];
+    if (!line) return `${conn} 沒收到聊天`;
+    const r = eq(`${line.name}|${line.seat}|${line.text}`, "Ann|0|誰要當阿扁？", `${conn} 收到的聊天`); if (r !== true) return r;
+  }
+  w.msg("B", { t: "chat", text: "x".repeat(300) });
+  const long = lastChat(w, "A").lines.slice(-1)[0];
+  let r = eq(`${long.seat}|${long.text.length}`, "null|200", "沒入座的 B 送 300 字（座位、長度）"); if (r !== true) return r;
+  const before = JSON.stringify(w.room);
+  const out = w.msg("B", { t: "chat", text: "   " });
+  r = eq(out.length === 1 && out[0].to === "B" && out[0].msg.t === "error" && JSON.stringify(w.room) === before, true, "空白聊天：只回 error 給 B、房間不變"); if (r !== true) return r;
+  w.open("C", "Cy");
+  const hist = lastChat(w, "C");
+  r = eq(hist && hist.lines.map((l) => l.text.slice(0, 6)).join("|"), "誰要當阿扁？|xxxxxx", "C 連上時收到的聊天紀錄"); if (r !== true) return r;
+  for (let i = 0; i < 60; i++) w.msg("A", { t: "chat", text: `line ${i}` });
+  w.open("D", "Di");
+  r = eq(lastChat(w, "D").lines.length, 50, "D 連上時收到的聊天紀錄條數"); if (r !== true) return r;
+  return ok(true, "廣播、清理、截斷、空字串、紀錄 50 條");
+});
+c16("再來一局：結束之前或不是房主按，只回 error；房主在結束後按，同樣的座位與 bot 等級開新的一局，發的牌不一樣", () => {
+  const { w } = twoHumans(99, 1);
+  const firstHand = JSON.stringify(w.room.st.hands[0]);
+  let before = JSON.stringify(w.room);
+  let out = w.msg("A", { t: "rematch" }, w.now + 10);
+  let r = eq(out.length === 1 && out[0].to === "A" && out[0].msg.t === "error" && JSON.stringify(w.room) === before, true, "還沒結束就按：只回 error 給 A、房間不變"); if (r !== true) return r;
+  const bad = playHumans(w, D.rng(13));
+  if (bad) return bad;
+  r = eq(w.room.st.phase, "end", "第一局結束"); if (r !== true) return r;
+  before = JSON.stringify(w.room);
+  out = w.msg("B", { t: "rematch" }, w.now + 10);
+  r = eq(out.length === 1 && out[0].to === "B" && out[0].msg.t === "error" && JSON.stringify(w.room) === before, true, "不是房主按：只回 error 給 B、房間不變"); if (r !== true) return r;
+  w.msg("A", { t: "rematch" }, w.now + 10);
+  r = eq(`${w.room.st.phase !== "end"} ${w.room.st.turn}`, "true 1", "房主按之後：新的一局在第 1 回合"); if (r !== true) return r;
+  const seats = w.last("B", "room").seats.map((s) => s.kind).join(",");
+  r = eq(seats, "human,human,bot", "新的一局的座位"); if (r !== true) return r;
+  for (const [conn, seat] of [["A", 0], ["B", 1]]) {
+    const s = w.last(conn, "state");
+    if (!s || !same(s.view, E.view(w.room.st, seat))) return `${conn} 沒收到新的一局 seat ${seat} 的 state`;
+  }
+  r = eq(JSON.stringify(w.room.st.hands[0]) !== firstHand, true, "新的一局 seat 0 的手牌跟第一局不一樣（新的種子）"); if (r !== true) return r;
+  return ok(true, "結束前、非房主都被拒；房主再開一局，座位不變、牌不同");
 });
 
 test("room", () => {
