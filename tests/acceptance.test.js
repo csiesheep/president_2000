@@ -1701,7 +1701,10 @@ function fuzz(label, seeds, opts, end) {
       const inv = D.invariants(st); if (inv !== true) return `${where}，${JSON.stringify(m)} 之後：${inv}`;
     }
     if (st.phase !== end) return `${label} seed ${seed}：5000 步還沒走到 ${end}（停在第 ${st.turn} 回合 ${st.phase}）`;
-    if (E.mustAct(st).length) return `${label} seed ${seed}：停在 ${end} 卻還有人要動`;
+    // A stop phase that has decisions of its own (the debate after #6, election day after #8) is a
+    // place to stop sampling, not an end: only a real end, or a phase not built yet, must be still.
+    const live = (end === "debate" && DEBATE_READY) || (end === "election" && ELECTION_READY);
+    if (!live && E.mustAct(st).length) return `${label} seed ${seed}：停在 ${end} 卻還有人要動`;
     steps += n; nChecks += D.checks(st);
     unimpl += st.log.filter((e) => e.t === "effect" && e.unimplemented).length;
   }
