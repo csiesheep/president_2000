@@ -10,12 +10,30 @@
 //     ev:  { type: "open", conn, name, token }     token null (or unknown) → a new player
 //          { type: "close", conn }
 //          { type: "msg", conn, data }            data: { t: "sit", seat } | { t: "start", level } | { t: "move", move }
+//                                                       | { t: "chat", text } | { t: "rematch" }   (#16)
 //          { type: "alarm" }                      delivered at or after room.alarmAt
 //     out: [{ to: conn, msg }]
 //          { t: "hello", token, seat }            to an opened conn; again to a conn that sits (seat null until then)
 //          { t: "room", code, host, started, seats }   host: the host's seat (null while unseated)
-//          { t: "state", seat, view, legal }      view = E.view(st, seat); legal = legalMoves, [] if seat need not act
+//          { t: "state", seat, view, legal, botMoves, deadline }
+//                                                 view = E.view(st, seat); legal = legalMoves, [] if seat need not act;
+//                                                 botMoves = [{ seat, move, why }]: every move a bot made in this
+//                                                 handle, in order (bot seats, taken-over seats, timed-out moves),
+//                                                 the same in every seat's message; why = chooseMove's { key, …params };
+//                                                 deadline = the earliest wait + TURN_MS of a connected human who
+//                                                 must act, null if none (and once the game has ended)
+//          { t: "chat", lines: [{ seat, name, text, at }] }   a new line, to every conn; to an opened conn,
+//                                                 the room's last CHAT_KEEP lines (possibly none) as one message
 //          { t: "error", code }                   to the sender only; the room is returned unchanged
+//
+// Chat (#16): the text loses its control characters (and lone surrogates), is
+// trimmed and cut to CHAT_MAX characters; empty → empty_chat, not a string →
+// bad_message. seat is the sender's seat or null; at is `now`. The room keeps
+// the last CHAT_KEEP lines, across rematches.
+// Rematch (#16): the host, once st.phase is "end", starts a new game with the
+// same seats and level; game n's engine seed is derived from "engine n" (game 0
+// from "engine"). Not started → not_started; before the end → not_ended;
+// anyone but the host → not_host.
 //
 // Times (plan; orchestrator rulings in #13 §三):
 //   · a connected human who must decide has 60 s per decision; at the alarm
@@ -37,6 +55,8 @@ export const GRACE_MS = 15_000;
 export const IDLE_MS = 30 * 60_000;
 const NAME_MAX = 24;
 const BOT_CAP = 20_000; // bot moves in one handle; a game is a few hundred decisions
+export const CHAT_MAX = 200; // characters (code points) in one line
+export const CHAT_KEEP = 50; // lines the room keeps
 
 // ------------------------------------------------------------------ hashing
 
@@ -98,6 +118,8 @@ export function newRoom({ code, seed, now }) {
     conns: {},            // conn → token
     seats: [0, 1, 2].map(() => ({ kind: "empty", token: null })),
     started: false, level: null, st: null,
+    games: 0,             // games started before the current one (rematches)
+    chat: [],             // the last CHAT_KEEP lines: { seat, name, text, at }
     wait: [null, null, null], // when each connected human's current decision began
     emptySince: now,      // when the last connection closed (null while anyone is here)
     alarmAt: null, dead: false,
@@ -111,6 +133,9 @@ const err = (room0, conn, code) => ({ room: room0, out: [{ to: conn, msg: { t: "
 
 export function handle(room0, ev, now) {
   const room = E.clone(room0);
+  room.chat ??= []; room.games ??= 0; // rooms stored before #16
+  const bots = []; // the bot moves of this handle, in order
+  let chatLine = null;
   const before = { room: roomMsg(room), st: room.st ? JSON.stringify(room.st) : null };
   const direct = {}; // conn → messages that go first (hello)
   let opened = null;
@@ -171,6 +196,19 @@ export function handle(room0, ev, now) {
         return err(room0, ev.conn, /illegal move|no move/.test(String(e && e.message)) ? "illegal_move" : "engine_error");
       }
       room.st = st; room.wait[seat] = null;
+    } else if (d.t === "chat") {
+      if (typeof d.text !== "string") return err(room0, ev.conn, "bad_message");
+      const text = cleanChat(d.text);
+      if (!text) return err(room0, ev.conn, "empty_chat");
+      chatLine = { seat: p.seat, name: p.name, text, at: now };
+      room.chat = [...room.chat, chatLine].slice(-CHAT_KEEP);
+    } else if (d.t === "rematch") {
+      if (!room.started) return err(room0, ev.conn, "not_started");
+      if (room.st.phase !== "end") return err(room0, ev.conn, "not_ended");
+      if (token !== room.host) return err(room0, ev.conn, "not_host");
+      room.games++;
+      room.st = E.createGame(derive(room, `engine ${room.games}`)[0]);
+      room.wait = [null, null, null];
     } else {
       return err(room0, ev.conn, "bad_message");
     }
@@ -179,14 +217,14 @@ export function handle(room0, ev, now) {
     if (room.started && online(room)) {
       for (let s = 0; s < 3; s++) {
         if (room.wait[s] != null && now - room.wait[s] >= TURN_MS && E.mustAct(room.st).includes(s) && connected(room, s)) {
-          botMove(room, s);
+          botMove(room, s, bots);
         }
       }
     }
     if (room.emptySince != null && now - room.emptySince >= IDLE_MS) room.dead = true;
   }
 
-  advance(room, now);
+  advance(room, now, bots);
   refreshWait(room, now);
   room.alarmAt = room.dead ? null : nextAlarm(room, now);
 
@@ -197,17 +235,25 @@ export function handle(room0, ev, now) {
   const conns = Object.keys(room.conns).sort();
   const rm = roomMsg(room), roomChanged = JSON.stringify(rm) !== JSON.stringify(before.room);
   const stChanged = room.st ? JSON.stringify(room.st) !== before.st : false;
+  const deadline = deadlineOf(room);
   for (const conn of conns) {
     for (const msg of direct[conn] || []) out.push({ to: conn, msg });
     if (roomChanged || conn === opened) out.push({ to: conn, msg: rm });
     const seat = room.players[room.conns[conn]].seat;
-    if (room.started && seat != null && (stChanged || conn === opened)) out.push({ to: conn, msg: stateMsg(room, seat) });
+    if (room.started && seat != null && (stChanged || conn === opened)) out.push({ to: conn, msg: stateMsg(room, seat, bots, deadline) });
+    if (conn === opened) out.push({ to: conn, msg: { t: "chat", lines: room.chat } });
+    else if (chatLine) out.push({ to: conn, msg: { t: "chat", lines: [chatLine] } });
   }
   return { room, out };
 }
 
 // ------------------------------------------------------------------ helpers
 
+// Control characters (Cc) and lone surrogates (Cs: under /u a pair is one code point) go,
+// then the ends are trimmed and the text is cut to CHAT_MAX code points.
+function cleanChat(text) {
+  return Array.from(text.replace(/[\p{Cc}\p{Cs}]/gu, "").trim()).slice(0, CHAT_MAX).join("").trim();
+}
 function cleanName(name, fallback) {
   const s = String(name ?? "").replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, NAME_MAX);
   return s || fallback;
@@ -225,20 +271,23 @@ function botPlays(room, s, now) {
   const p = room.players[seat.token];
   return p.goneAt != null && now - p.goneAt >= GRACE_MS && online(room);
 }
-function botMove(room, s) {
+// The bot moves for seat s; the move goes on `bots` with its why. If chooseMove throws,
+// the first legal move is played (a room never hangs on a bot) and reported as only_move.
+function botMove(room, s, bots) {
   const rng = E.makeRng(0); rng.state = room.botRng;
-  let move;
-  try { move = chooseMove(room.st, s, room.level, rng.next).move; } catch { move = E.legalMoves(room.st, s)[0]; }
+  let move, why;
+  try { ({ move, why } = chooseMove(room.st, s, room.level, rng.next)); } catch { move = E.legalMoves(room.st, s)[0]; why = { key: "only_move" }; }
   room.botRng = rng.state;
+  bots.push({ seat: s, move: E.clone(move), why: { ...why } });
   room.st = E.apply(room.st, s, move);
   room.wait[s] = null;
 }
-function advance(room, now) {
+function advance(room, now, bots) {
   if (!room.started) return;
   for (let n = 0; n < BOT_CAP && room.st.phase !== "end"; n++) {
     const s = E.mustAct(room.st).find((x) => botPlays(room, x, now));
     if (s === undefined) return;
-    botMove(room, s);
+    botMove(room, s, bots);
   }
 }
 function refreshWait(room, now) {
@@ -272,7 +321,13 @@ function roomMsg(room) {
       : { kind: seat.kind, name: null, connected: seat.kind === "bot" }),
   };
 }
-function stateMsg(room, seat) {
+// When the first connected human's pending decision times out (what the alarm acts on), or null.
+function deadlineOf(room) {
+  if (!room.started || room.st.phase === "end") return null;
+  const at = room.wait.filter((w) => w != null).map((w) => w + TURN_MS);
+  return at.length ? Math.min(...at) : null;
+}
+function stateMsg(room, seat, bots, deadline) {
   const must = E.mustAct(room.st).includes(seat);
-  return { t: "state", seat, view: E.view(room.st, seat), legal: must ? E.legalMoves(room.st, seat) : [] };
+  return { t: "state", seat, view: E.view(room.st, seat), legal: must ? E.legalMoves(room.st, seat) : [], botMoves: bots, deadline };
 }
