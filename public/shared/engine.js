@@ -13,8 +13,9 @@
 // (5 choice-free, 41 that need a choice); #5 the last 8 (興票案 and the
 // 本回合 flags, with st.active), so all 70 exist. #6 adds the debate (turn 6,
 // phase "debate") with the first strategic vote and the early set-aside.
-// Election day and the second strategic vote are a later issue: the engine
-// stops at phase "election" after turn 8.
+// #8 adds election day (turn 9, phase "election"): conversion, the canvassing
+// order, canvassing, the second strategic vote, endorsements and the count;
+// the game ends in phase "end" with st.result.
 import { COUNTIES, REGIONS, REGION_EDGES, START_COUNTY, START_MOMENTUM, START_MEDIA, BAG_SEED, BOSS_THRESHOLD, ISSUES, TURNS, SEATS, CAMP, countyIndex } from "./board.js";
 import { EVENTS, localCards, HAND, CANDIDATE_CARDS, REST_CUBES } from "./cards.js";
 
@@ -45,9 +46,11 @@ function withRng(st, fn) {
   return out;
 }
 
-// Every card gets a county for election-day canvassing (§14.2): events by
-// block-weighted draw, locals their printed county. (Phase 0; the rulebook's
-// "every county at least once" is left to the election-day issue, #1 §七.)
+// Every card has a county for election-day canvassing (§14.2). Since #7 all
+// 70 events and the locals carry a printed county in cards.js (24 counties,
+// every one at least once; group 0 guards it), so this loop skips them all.
+// The block-weighted draw stays only as a fallback for a card without one;
+// the RNG calls are unchanged (it draws nothing when every card has a county).
 function assignCounties(rng, cards) {
   const total = COUNTIES.reduce((s, c) => s + c[2] + c[3] + c[4], 0);
   for (const card of cards) {
@@ -106,6 +109,8 @@ export function createGame(seed, opts = {}) {
     },
     removed: [],
     debate: null, // #6: the debate board while turn 6 is on (startDebate)
+    election: null, // #8: election day (startElection): pre-conversion momentum, the card being canvassed
+    result: null, // #8: { votes, leads, momentum, winner } once phase is "end"
     active: [], // #5: 本回合 cards still in effect this turn
     cards: byId,
     hands: [[], [], []],
@@ -574,6 +579,7 @@ export function mustAct(st) {
   if (st.phase === "momentum") return st.pending ? [st.pending.seat] : [];
   if (st.phase === "save") return [0, 1, 2].filter((p) => !st.saved[p]);
   if (st.phase === "debate") return debateMustAct(st);
+  if (st.phase === "election") return electionMustAct(st);
   return [];
 }
 
@@ -584,6 +590,7 @@ export function legalMoves(st, seat) {
   if (st.phase === "order") return [0, 1, 2].map((pos) => ({ type: "order", pos }));
   if (st.phase === "save") return saveMoves(st, seat);
   if (st.phase === "debate") return debateMoves(st, seat);
+  if (st.phase === "election") return electionMoves(st, seat);
   if (st.phase === "momentum") {
     const pd = st.pending;
     if (pd.stage === "swap") return [{ type: "swap", slot: 0 }, { type: "swap", slot: 1 }, { type: "noswap" }];
@@ -736,6 +743,7 @@ export function apply(st0, seat, move) {
     case "momentum": applyMomentum(st, seat, m); break;
     case "save": applySave(st, seat, m); break;
     case "debate": applyDebate(st, seat, m); break;
+    case "election": applyElection(st, seat, m); break;
     default: throw new Error("apply: nothing to do in phase " + st.phase);
   }
   return st;
@@ -1005,7 +1013,7 @@ function endSave(st) {
   for (let p = 0; p < 3; p++) { st.bag[p] += st.rest[p]; st.rest[p] = 0; }
   endTurnFlags(st); // #5 裁決 6: after saving, before the next deal
   if (st.turn === 5) return startDebate(st);
-  if (st.turn === 8) { st.phase = "election"; return; }
+  if (st.turn === 8) return startElection(st);
   beginTurn(st);
 }
 
@@ -1168,6 +1176,156 @@ function strategicVote(st, half) {
     if (c >= 1) flow("G", CHEN);
   }
   st.log.push({ t: "strategic", half, moved });
+}
+
+// ------------------------------------------------------------------ election day (turn 9, §十二, #8)
+//
+// No deal and no action phase. (1) Conversion, at once (裁決 1): every media
+// cube becomes 1 cube of its owner's in the bag, every issue cube likewise,
+// every momentum 2; media, issues and momentum go to 0. The momentum before the
+// conversion is kept in st.election.mom for the count's tie-break. (2) The
+// initiative check (§5.1, 裁決 2); the holder picks a position, the others
+// follow clockwise, as in an ordinary turn. (3) Canvassing (裁決 3): in that
+// order, each seat goes through its whole election pile, one card at a time
+// (`canvass`), three support checks in the card's county, one by one; each
+// success asks for one thing in that county — an empty own-camp (fill) or
+// other-camp (cross) floating block, an empty grey block (grey), or an
+// opponent's cube (remove, back to the supply). With nothing to do there the
+// success is wasted. A used card goes to the discard pile; an empty pile is
+// skipped. (4) No election-day event. (5) The second strategic vote, all of it
+// (裁決 4). (6) Endorsements, after the vote (裁決 5): in each region with a
+// holder, half (rounded down) of each county's empty grey blocks become the
+// holder's. (7) The count (裁決 6, 7): votes, then counties led, then the
+// momentum before the conversion, then the election-day initiative order
+// (the holder, then clockwise); phase "end" with st.result.
+//
+// Nothing is copied out at the start (contract, #8 §四): the board,
+// st.endorse, st.bag, st.savedElection and st.initiative are read when used.
+
+function startElection(st) {
+  st.turn = 9;
+  st.phase = "election"; st.step = 0; st.idx = 0; st.actor = -1; st.pending = null; st.mstep = null;
+  st.saved = [false, false, false];
+  const mom = st.mom.slice();
+  const add = [0, 1, 2].map((p) => st.media.reduce((s, m) => s + m[p], 0) + st.issues.reduce((s, i) => s + i.cubes[p], 0) + 2 * st.mom[p]);
+  for (let p = 0; p < 3; p++) st.bag[p] += add[p];
+  st.media = st.media.map(() => [0, 0, 0]);
+  for (const i of st.issues) i.cubes = [0, 0, 0];
+  st.mom = [0, 0, 0];
+  st.log.push({ t: "convert", bag: add, mom });
+  st.election = { mom, stage: "order", card: null, county: -1, left: 0, choose: false };
+  withRng(st, (rng) => { st.initiative = initiativeCheck(st, rng); });
+  st.log.push({ t: "turn", turn: st.turn, initiative: st.initiative });
+  return st;
+}
+
+function electionMustAct(st) {
+  const e = st.election;
+  if (!e) return [];
+  if (e.stage === "order") return [st.initiative];
+  return st.actor >= 0 ? [st.actor] : [];
+}
+
+function electionMoves(st, seat) {
+  const e = st.election;
+  if (e.stage === "order") return [0, 1, 2].map((pos) => ({ type: "order", pos }));
+  if (e.choose) return canvassChoices(st, seat, e.county);
+  return st.savedElection[seat].map((card) => ({ type: "canvass", card }));
+}
+
+// 裁決 3: what one success may do in county k.
+function canvassChoices(st, seat, k) {
+  const out = [];
+  if (emptyOf(st, k, CAMP[seat])) out.push({ type: "fill", county: k });
+  if (emptyOf(st, k, otherCamp(seat))) out.push({ type: "cross", county: k });
+  if (emptyOf(st, k, "N")) out.push({ type: "grey", county: k });
+  for (let target = 0; target < 3; target++) {
+    if (target === seat) continue;
+    for (const t of ["G", "B", "N"]) if (st.counties[k].blocks.some((b) => b.o === target && b.t === t)) out.push({ type: "remove", county: k, target, t });
+  }
+  return out;
+}
+
+function applyElection(st, seat, m) {
+  const e = st.election;
+  if (m.type === "order") {
+    const p = st.initiative;
+    st.order = [0, 1, 2].map((i) => (p - m.pos + i + 3) % 3);
+    st.log.push({ t: "order", seat: p, pos: m.pos, order: st.order.slice() });
+    e.stage = "canvass"; st.idx = 0;
+    return nextCanvasser(st);
+  }
+  if (m.type === "canvass") {
+    const pile = st.savedElection[seat];
+    pile.splice(pile.indexOf(m.card), 1);
+    e.card = m.card; e.county = countyIndex(st.cards[m.card].county); e.left = 3;
+    st.log.push({ t: "canvass", seat, card: m.card, county: e.county });
+    return runCanvass(st);
+  }
+  const k = m.county;
+  if (m.type === "fill") putCube(st, seat, k, CAMP[seat]);
+  else if (m.type === "cross") putCube(st, seat, k, otherCamp(seat));
+  else if (m.type === "grey") putCube(st, seat, k, "N");
+  else if (m.type === "remove") st.counties[k].blocks.find((b) => b.o === m.target && b.t === m.t).o = -1;
+  st.log.push({ t: "canvass", step: "place", seat, move: m });
+  e.choose = false;
+  runCanvass(st);
+}
+
+// The card's checks, one at a time, until a success with something to do.
+function runCanvass(st) {
+  const e = st.election, seat = st.actor;
+  while (e.left > 0) {
+    e.left--;
+    if (!supportCheck(st, seat)) continue;
+    if (canvassChoices(st, seat, e.county).length) { e.choose = true; return; }
+    st.log.push({ t: "canvass", step: "wasted", seat, county: e.county });
+  }
+  st.decks.discard.push(e.card);
+  e.card = null; e.county = -1;
+  nextCanvasser(st);
+}
+
+// The current seat goes on while its pile has cards; then the next in order.
+function nextCanvasser(st) {
+  while (st.idx < 3) {
+    const a = st.order[st.idx];
+    if (st.savedElection[a].length) { st.actor = a; return; }
+    if (st.actor !== a) st.log.push({ t: "skip", seat: a, step: "canvass" });
+    st.idx++;
+  }
+  st.actor = -1;
+  finishElection(st);
+}
+
+function finishElection(st) {
+  strategicVote(st, false); // 裁決 4: all of it
+  // 裁決 5: endorsements after the vote
+  const given = [];
+  for (let r = 0; r < REGIONS.length; r++) {
+    const h = st.endorse[r];
+    if (h < 0) continue;
+    for (let k = 0; k < COUNTIES.length; k++) {
+      if (regionOf(k) !== r) continue;
+      const free = st.counties[k].blocks.filter((b) => b.o < 0 && b.t === "N");
+      const n = Math.floor(free.length / 2);
+      for (const b of free.slice(0, n)) b.o = h;
+      if (n) given.push({ county: k, seat: h, n });
+    }
+  }
+  st.log.push({ t: "endorse", given });
+  // 裁決 6, 7: the count
+  const votes = [0, 1, 2].map((p) => st.counties.reduce((s, c) => s + c.blocks.filter((b) => b.o === p).length, 0));
+  const leads = [0, 0, 0];
+  for (let k = 0; k < COUNTIES.length; k++) { const p = leader([0, 1, 2].map((q) => cubesIn(st, k, q))); if (p >= 0) leads[p]++; }
+  const momentum = st.election.mom.slice();
+  const better = (a, b) => votes[a] !== votes[b] ? votes[a] > votes[b] : leads[a] !== leads[b] ? leads[a] > leads[b] : momentum[a] > momentum[b];
+  let winner = -1;
+  for (const p of tiePriority(st)) if (winner < 0 || better(p, winner)) winner = p;
+  st.result = { votes, leads, momentum, winner };
+  st.election.stage = "end";
+  st.phase = "end";
+  st.log.push({ t: "result", ...st.result });
 }
 
 // ------------------------------------------------------------------ view
