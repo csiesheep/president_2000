@@ -1,0 +1,29 @@
+/* 2000：總統的誕生 — 街頭旗海。1999 年的競選旗：紙白的地、黑體、噴漆號次，
+   紅白藍塑膠旗串在頂上。候選人三色：宋橘、連藍、陳綠；紅是印章與按鈕。
+   方角 4px、2px 墨線，不做陰影。 */
+:root {
+  --paper: #f7f4ee; --ink: #1a1a1a; --mute: #5a5a5a; --line: #d9d5cc;
+  --red: #d7263d; --soong: #f07f1a; --lien: #1757b5; --chen: #138a4a;
+  --lien-t: #cfdcf2; --chen-t: #cfe8d8; --grey: #e3e0d8;
+  --disp: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --num: "Anton", "Noto Sans TC", sans-serif;
+}
+* { box-sizing: border-box; }
+html { background: var(--paper); color: var(--ink); font: 15px/1.6 var(--disp); -webkit-text-size-adjust: 100%; }
+body { margin: 0; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; }
+.bunting { width: 100%; height: 22px; background: var(--ink);
+  background-image: linear-gradient(135deg, transparent 50%, var(--red) 50%), linear-gradient(45deg, var(--red) 50%, transparent 50%);
+  background-size: 22px 18px; background-repeat: repeat-x; }
+.wrap { width: 100%; max-width: 420px; padding: 16px 20px 28px; display: flex; flex-direction: column; gap: 12px; }
+.kicker { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 2px; color: var(--red); }
+h1 { margin: 0; display: flex; flex-direction: column; line-height: 1; }
+h1 .year { font: 400 112px/1 var(--num); letter-spacing: 2px; }
+h1 .name { font-size: 40px; font-weight: 900; line-height: 1.1; }
+.tag { margin: 0; color: var(--mute); }
+.flags { list-style: none; margin: 8px 0 0; padding: 0; display: flex; gap: 10px; }
+.flags li { flex: 1; color: #fff; border-radius: 4px; padding: 10px; font-weight: 900; font-size: 17px; display: flex; flex-direction: column; gap: 4px; }
+.flags b { font: 400 28px/1 var(--num); }
+.flags .soong { background: var(--soong); } .flags .lien { background: var(--lien); } .flags .chen { background: var(--chen); }
+.building { margin: 8px 0 0; padding: 10px 12px; border-left: 4px solid var(--red); background: #fff3cd; font-weight: 700; }
+.links { display: flex; gap: 14px; font-weight: 700; } .links a { color: var(--ink); }
+.credit { margin: 0; font-size: 11px; line-height: 1.5; color: #666; }

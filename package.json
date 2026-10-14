@@ -1,0 +1,16 @@
+{
+  "name": "president_2000",
+  "version": "0.1.0",
+  "description": "2000: Taiwan Decides (2000：總統的誕生): a three-player card-driven election game set in Taiwan's 2000 presidential race. Solo against AI, or online rooms with friends. Cloudflare Worker + Durable Objects.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "node --test",
+    "sim": "node tests/sim.js"
+  },
+  "devDependencies": {
+    "wrangler": "^4.131.0"
+  }
+}
