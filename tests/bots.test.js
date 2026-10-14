@@ -191,7 +191,9 @@ c17("軍師只用看得到的：把 view 存成 JSON 再讀回來（像房間頁
   const r = nonEmpty(checked, "比對過的決定"); if (r !== true) return r;
   return ok(true, `${checked} 個決定`);
 });
-c17("同一個局面，建議永遠一樣：不給 rng 時，advise(view, legal) 呼叫兩次給同一步；跟 advise(view, legal, 3) 也一樣", () => {
+// Levels 1 and 2 are in here because level 3 hardly ever draws from its rng, so a default rng that
+// is not fixed only shows at the lower levels (found by the BE peer, #17).
+c17("同一個局面，建議永遠一樣：不給 rng 時，advise(view, legal) 呼叫兩次給同一步，跟 advise(view, legal, 3) 也一樣；等級 1、2 也是呼叫兩次給同一步", () => {
   let checked = 0;
   let st = E.createGame(744);
   for (let n = 0; n < 4000 && st.phase !== "end"; n++) {
@@ -200,6 +202,10 @@ c17("同一個局面，建議永遠一樣：不給 rng 時，advise(view, legal)
       const view = E.view(st, seat), legal = E.legalMoves(st, seat);
       const a = BOTS.advise(view, legal), b = BOTS.advise(view, legal), c = BOTS.advise(view, legal, 3);
       if (!same(a.move, b.move) || !same(a.move, c.move)) return `第 ${st.turn} 回合 ${st.phase}：同一個局面給了不同的建議`;
+      for (const lv of [1, 2]) {
+        const x = BOTS.advise(view, legal, lv), y = BOTS.advise(view, legal, lv);
+        if (!same(x.move, y.move)) return `第 ${st.turn} 回合 ${st.phase} 等級 ${lv}：同一個局面呼叫兩次，建議不一樣`;
+      }
       checked++;
     }
     st = E.apply(st, seat, BOTS.chooseMove(st, seat, 3, D.rng(n)).move);
