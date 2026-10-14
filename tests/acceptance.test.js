@@ -872,9 +872,228 @@ c2("事件 · 地方牌當事件：在牌上的縣市放 1 顆（照 §8.1 檢�
   r = eq(`${D.cubes(c, k, CHEN)} ${c.bag.join()}`, "3 0,8,0", "跨營：永遠檢定"); if (r !== true) return r;
   return ok(true, "只能放牌上的縣市；檢定照 §8.1；沒有 CP 行動；移出遊戲");
 });
-check("事件 · 其餘 54 張：需要選擇的、興票案三張、本回合旗標（#2、#3）", () => {
+// ---- 需要選擇的事件效果（#4）
+// Each spec plays one card as an event from a fresh turn-1 state (the v0.3 opening), applies the
+// listed choice moves, and compares every county's cubes and block colours, media, momentum, bag,
+// issues and the number of support checks with deltas worked out by hand from §14.3 and the
+// rulings in issue #4. The bag holds one opponent colour only, so a failed check is deterministic.
+const EFFECT_TYPES = new Set(["fill", "cross", "remove", "convert", "media", "pick"]);
+const OPP_BAG = [[0, 0, 10], [10, 0, 0], [0, 10, 0]];
+const cn = (k) => B.COUNTIES[k][0];
+const countiesOf = (ms, types) => [...new Set(ms.filter((m) => types.includes(m.type)).map((m) => cn(m.county)))].sort().join(",");
+const sorted = (names) => names.slice().sort().join(",");
+function boardSnap(st) {
+  return {
+    cubes: st.counties.map((c) => [0, 1, 2].map((p) => c.blocks.filter((b) => b.o === p).length)),
+    types: st.counties.map((c) => ["G", "B", "N"].map((t) => c.blocks.filter((b) => b.t === t).length)),
+    media: st.media.map((m) => m.slice()), mom: st.mom.slice(), bag: st.bag.slice(),
+    issues: Object.fromEntries(st.issues.map((i) => [i.name, i.cubes.slice()])), checks: D.checks(st),
+  };
+}
+function diffSnap(a, b) {
+  const out = [], d3 = (x, y) => x.map((v, i) => y[i] - v);
+  a.cubes.forEach((r, k) => { const d = d3(r, b.cubes[k]); if (d.some(Boolean)) out.push(`${cn(k)} ${d.join("/")}`); });
+  a.types.forEach((r, k) => { const d = d3(r, b.types[k]); if (d.some(Boolean)) out.push(`${cn(k)}塊色 ${d.join("/")}`); });
+  a.media.forEach((r, k) => { const d = d3(r, b.media[k]); if (d.some(Boolean)) out.push(`媒體${B.REGIONS[k]} ${d.join("/")}`); });
+  for (const key of ["mom", "bag"]) { const d = d3(a[key], b[key]); if (d.some(Boolean)) out.push(`${key} ${d.join("/")}`); }
+  for (const n of Object.keys(a.issues)) { const d = d3(a.issues[n], b.issues[n]); if (d.some(Boolean)) out.push(`${n} ${d.join("/")}`); }
+  if (b.checks !== a.checks) out.push(`檢定 ${b.checks - a.checks}`);
+  return out.sort().join("；") || "無變化";
+}
+function expectStr(w) {
+  const out = [];
+  for (const [n, d] of Object.entries(w.cubes || {})) out.push(`${n} ${d.join("/")}`);
+  for (const [n, d] of Object.entries(w.types || {})) out.push(`${n}塊色 ${d.join("/")}`);
+  for (const [r, d] of Object.entries(w.media || {})) out.push(`媒體${r} ${d.join("/")}`);
+  for (const key of ["mom", "bag"]) if (w[key]) out.push(`${key} ${w[key].join("/")}`);
+  for (const [n, d] of Object.entries(w.issues || {})) out.push(`${n} ${d.join("/")}`);
+  if (w.checks) out.push(`檢定 ${w.checks}`);
+  return out.sort().join("；") || "無變化";
+}
+// steps: [seat, move] applies a choice; ["probe", seat, fn(moves) → true | message] inspects the
+// legal moves without moving. While a seat has effect choices, `done` must not be among them.
+function runSpec(s) {
+  let st = D.giveCard(D.firstActor(s.by, s.opts), s.by, s.id);
+  st.bag = (s.bag || OPP_BAG[s.by]).slice(); st.mom = [2, 2, 2];
+  if (s.arrange) s.arrange(st);
+  const a = boardSnap(st);
+  try { st = s.play ? s.play(st) : D.act(st, s.by, { type: "play", card: s.id, mode: "event" }); } catch (e) { return `${s.id}：${e.message}`; }
+  for (const step of s.steps) {
+    if (step[0] === "probe") { const r = step[2](E.legalMoves(st, step[1])); if (r !== true) return `${s.id}：${r}`; continue; }
+    const [seat, want] = step;
+    if (!E.mustAct(st).includes(seat)) return `${s.id}：輪到 ${JSON.stringify(E.mustAct(st))}，期望 seat ${seat} 選 ${JSON.stringify(want)}`;
+    const ms = E.legalMoves(st, seat);
+    if (ms.some((m) => EFFECT_TYPES.has(m.type)) && ms.some((m) => m.type === "done")) return `${s.id}：效果還能選的時候給了 done（能放就必須放）`;
+    try { st = D.act(st, seat, want); } catch (e) { return `${s.id}：${e.message}`; }
+  }
+  const left = E.mustAct(st).flatMap((p) => E.legalMoves(st, p).filter((m) => EFFECT_TYPES.has(m.type)).map((m) => `seat ${p} ${JSON.stringify(m)}`));
+  if (left.length) return `${s.id}：效果還有選擇沒做完：${left.slice(0, 3).join("，")}`;
+  if (s.after) { const r = s.after(st); if (r !== true) return `${s.id}：${r}`; }
+  const got = diffSnap(a, boardSnap(st)), want = expectStr(s.want);
+  return got === want ? true : `${s.id}：期望 ${want}；實際 ${got}`;
+}
+function choiceGroup(label, specs) {
+  c2(label, () => {
+    if (typeof E.effectImplemented !== "function") return "engine 沒有 export effectImplemented(id)";
+    const ids = [...new Set(specs.map((s) => s.id))];
+    if (!ids.some((id) => E.effectImplemented(id))) return `TODO: 這 ${ids.length} 張的效果都還沒做（#4）`;
+    const bad = [];
+    for (const s of specs) {
+      if (!E.effectImplemented(s.id)) { bad.push(`${s.id} 沒做`); continue; }
+      const r = runSpec(s); if (r !== true) bad.push(r);
+    }
+    return bad.length ? bad.join("\n      ") : ok(true, `${specs.length} 個情境：${ids.join("、")}`);
+  });
+}
+const F = (county) => ({ type: "fill", county: ci(county) });
+const X = (county) => ({ type: "cross", county: ci(county) });
+const RM = (county, target, t) => ({ type: "remove", county: ci(county), target, t });
+const MD = (region, target) => (target == null ? { type: "media", region: ri(region) } : { type: "media", region: ri(region), target });
+const offers = (types, names, what) => (ms) => eq(countiesOf(ms, types), sorted(names), what);
+
+// The runner checks itself on cards that already work: a right expectation passes, a wrong one
+// turns red, and a choice step (a local card placed cross-camp, the check failing) is applied.
+c2("事件 · 選擇情境的比對機械先自己跑一次（用已經做好的牌：對的期望通過、錯的會紅）", () => {
+  const good = runSpec({ id: "alternation", by: CHEN, steps: [], want: { mom: [2, 0, 0] } });
+  if (good !== true) return "對的期望沒通過：" + good;
+  const bad = runSpec({ id: "alternation", by: CHEN, steps: [], want: { mom: [1, 0, 0] } });
+  if (bad === true) return "錯的期望也通過了：比對沒有作用";
+  const local = runSpec({ id: C.localCards().find((c) => c.county === "台北縣").id, by: CHEN, steps: [[CHEN, X("台北縣")]], want: { bag: [0, 0, -1], checks: 1 } });
+  if (local !== true) return "地方牌在台北縣跨營填（袋中只有連 → 失敗）沒對上：" + local;
+  return ok(true, "對的過、錯的紅（" + bad + "）；地方牌的選擇步驟也對得上");
+});
+
+choiceGroup("事件 · 指定縣市（照文字順序；沒有空的游離塊就跳過）：9 張（§14.3）", [
+  { id: "lu_running_mate", by: CHEN, steps: [["probe", CHEN, offers(["fill", "cross"], ["桃園縣"], "呂秀蓮搭檔可選的縣市")], [CHEN, F("桃園縣")], [CHEN, X("桃園縣")]], want: { cubes: { "桃園縣": [2, 0, 0] } } },
+  { id: "hsieh_kaohsiung", by: CHEN, steps: [[CHEN, F("高雄市")], [CHEN, F("高雄市")]], want: { cubes: { "高雄市": [2, 0, 0] }, media: { "高屏": [1, 0, 0] } } },
+  { id: "hsu_wen_long", by: CHEN, steps: [["probe", CHEN, offers(["fill", "cross"], ["台南縣"], "第一個縣市")], [CHEN, F("台南縣")], ["probe", CHEN, offers(["fill", "cross"], ["台南市"], "第二個縣市")], [CHEN, X("台南市")]], want: { cubes: { "台南縣": [1, 0, 0], "台南市": [1, 0, 0] } } },
+  // 新竹縣開局沒有空的游離塊（藍 2 塊宋連各一）：跳過，直接問苗栗。
+  { id: "hakka_vote", by: SOONG, steps: [["probe", SOONG, offers(["fill", "cross"], ["苗栗縣"], "客家票可選的縣市")], [SOONG, F("苗栗縣")]], want: { cubes: { "苗栗縣": [0, 1, 0] } } },
+  { id: "east_coast", by: SOONG, arrange: (s) => { s.counties[ci("花蓮縣")].blocks.find((b) => b.o === LIEN).o = -1; }, steps: [["probe", SOONG, offers(["fill", "cross"], ["花蓮縣"], "花東原鄉可選的縣市（台東沒有空塊）")], [SOONG, F("花蓮縣")]], want: { cubes: { "花蓮縣": [0, 1, 0] } } },
+  { id: "quake_bond", by: SOONG, steps: [["probe", SOONG, offers(["fill", "cross"], ["台中縣"], "災區情誼可選的縣市（南投沒有空塊）")], [SOONG, F("台中縣")]], want: { cubes: { "台中縣": [0, 1, 0] } } },
+  { id: "farmers_association", by: LIEN, steps: [["probe", LIEN, offers(["fill", "cross"], ["雲林縣"], "第一個縣市")], [LIEN, F("雲林縣")], [LIEN, F("彰化縣")]], want: { cubes: { "雲林縣": [0, 0, 1], "彰化縣": [0, 0, 1] } } },
+  // 需檢定：台北市宋 5 顆是樁腳主，連填藍要檢定；袋中只有宋 → 兩次都失敗。
+  { id: "ma_campaigns", by: LIEN, steps: [[LIEN, F("台北市")], [LIEN, F("台北市")]], want: { bag: [0, -2, 0], checks: 2 } },
+  // 台北市：連 −1（不檢定）再宋 +1；新竹市沒有連的方塊：只有宋 +1。
+  { id: "li_ao_endorses", by: SOONG, steps: [[SOONG, RM("台北市", LIEN, "B")], [SOONG, F("台北市")], ["probe", SOONG, (ms) => (ms.some((m) => m.type === "remove") ? "新竹市沒有連的方塊，卻還問移除" : offers(["fill", "cross"], ["新竹市"], "第二個縣市")(ms))], [SOONG, F("新竹市")]], want: { cubes: { "台北市": [0, 1, -1], "新竹市": [0, 1, 0] } } },
+]);
+
+choiceGroup("事件 · 任選縣市（各 +1 的縣市不重複；選過的縣市檢定失敗也算用掉）：13 張（§14.3）", [
+  { id: "taiwan_son", by: CHEN, steps: [
+    ["probe", CHEN, offers(["fill", "cross"], ["雲林縣", "台南縣", "台南市", "高雄市", "高雄縣", "屏東縣"], "台灣之子可選的縣市（雲嘉南或高屏、有空的游離塊）")],
+    [CHEN, F("台南縣")],
+    ["probe", CHEN, offers(["fill", "cross"], ["雲林縣", "台南市", "高雄市", "高雄縣", "屏東縣"], "選過台南縣之後")],
+    [CHEN, X("台南市")], [CHEN, F("高雄市")]], want: { cubes: { "台南縣": [1, 0, 0], "台南市": [1, 0, 0], "高雄市": [1, 0, 0] } } },
+  // 需檢定：台北縣、桃園跨營填永遠檢定（袋中只有連 → 失敗）；台南縣填綠沒有樁腳主、沒有對手候選人 → 不檢定。
+  { id: "dpp_counties", by: CHEN, steps: [
+    ["probe", CHEN, offers(["fill", "cross"], ["台北縣", "桃園縣", "台中縣", "台中市", "台南縣", "台南市", "高雄縣", "屏東縣"], "民進黨執政縣市可選的縣市（新竹縣、宜蘭、嘉義市沒有空塊）")],
+    [CHEN, X("台北縣")], [CHEN, X("桃園縣")], [CHEN, F("台南縣")]], want: { cubes: { "台南縣": [1, 0, 0] }, bag: [0, 0, -2], checks: 2 } },
+  { id: "million_rally", by: CHEN, steps: [[CHEN, F("台北縣")], [CHEN, X("台北市")], [CHEN, F("高雄市")]], want: { cubes: { "台北縣": [1, 0, 0], "台北市": [1, 0, 0], "高雄市": [1, 0, 0] }, mom: [1, 0, 0] } },
+  { id: "south_rally", by: CHEN, steps: [["probe", CHEN, offers(["fill", "cross"], ["高雄市", "高雄縣", "屏東縣"], "南部大造勢可選的縣市")], [CHEN, F("高雄市")], [CHEN, F("屏東縣")]], want: { cubes: { "高雄市": [1, 0, 0], "屏東縣": [1, 0, 0] } } },
+  { id: "diligent", by: SOONG, steps: [[SOONG, F("台北市")], [SOONG, F("桃園縣")], [SOONG, X("高雄市")]], want: { cubes: { "台北市": [0, 1, 0], "桃園縣": [0, 1, 0], "高雄市": [0, 1, 0] } } },
+  { id: "new_party_backs_soong", by: SOONG, steps: [["probe", SOONG, offers(["fill", "cross"], ["台北市", "台北縣"], "新黨全力挺宋可選的縣市（基隆沒有空塊）")], [SOONG, F("台北市")], [SOONG, F("台北縣")]], want: { cubes: { "台北市": [0, 1, 0], "台北縣": [0, 1, 0] } } },
+  // 需檢定：跨營填台北縣失敗（袋中只有陳）；苗栗填藍不檢定。
+  { id: "kneel_for_votes", by: SOONG, steps: [[SOONG, X("台北縣")], [SOONG, F("苗栗縣")]], want: { cubes: { "苗栗縣": [0, 1, 0] }, mom: [0, 2, 0], bag: [-1, 0, 0], checks: 1 } },
+  // 文字順序：先放方塊（袋中只有陳 → 跨營填失敗），最後才袋中 +1 宋。
+  { id: "military_civil", by: SOONG, steps: [[SOONG, X("台北市")], [SOONG, F("苗栗縣")]], want: { cubes: { "苗栗縣": [0, 1, 0] }, bag: [-1, 1, 0], checks: 1 } },
+  { id: "party_machine", by: LIEN, steps: [[LIEN, F("台北縣")], [LIEN, F("桃園縣")], [LIEN, X("高雄市")]], want: { cubes: { "台北縣": [0, 0, 1], "桃園縣": [0, 0, 1], "高雄市": [0, 0, 1] } } },
+  { id: "lee_campaigns", by: LIEN, steps: [[LIEN, F("桃園縣")], [LIEN, F("台中縣")]], want: { cubes: { "桃園縣": [0, 0, 1], "台中縣": [0, 0, 1] } } },
+  { id: "ma_leaks_polls", by: LIEN, opts: { startTurn: 8 }, steps: [[LIEN, X("台南縣")], [LIEN, F("桃園縣")]], want: { cubes: { "桃園縣": [0, 0, 1] }, mom: [1, 1, 0], bag: [0, -1, 0], checks: 1 } },
+  // 跨營填台南縣失敗；桃園填藍不檢定；台北縣填藍有宋這個樁腳主 → 檢定失敗。
+  { id: "lee_alarm", by: LIEN, steps: [[LIEN, X("台南縣")], [LIEN, F("桃園縣")], [LIEN, F("台北縣")]], want: { cubes: { "桃園縣": [0, 0, 1] }, bag: [0, -2, 0], checks: 2 } },
+  // 每個縣市：宋 +1（需檢定）之後，同縣市連有方塊就 −1（不檢定）。
+  { id: "veterans_village", by: SOONG, steps: [
+    [SOONG, X("台北縣")],
+    ["probe", SOONG, (ms) => (ms.every((m) => m.type === "remove" && m.county === ci("台北縣") && m.target === LIEN) && ms.length ? true : "宋在台北縣 +1 之後，選項應該只剩移除台北縣的連：" + JSON.stringify(ms.slice(0, 4)))],
+    [SOONG, RM("台北縣", LIEN, "B")], [SOONG, F("桃園縣")], [SOONG, RM("桃園縣", LIEN, "B")]],
+    want: { cubes: { "台北縣": [0, 0, -1], "桃園縣": [0, 1, -1] }, bag: [-1, 0, 0], checks: 1 } },
+]);
+
+choiceGroup("事件 · 指定塊色與無色塊：三三三安家專案、宋友會、台灣前途決議文（§14.3）", [
+  // 文字順序：經濟 +2，再在空的綠營游離塊放 1 顆；規則書沒寫免檢定 → 照 §8.1（台北縣有宋連兩個樁腳主 → 檢定失敗）。
+  { id: "three_three_three", by: CHEN, steps: [["probe", CHEN, (ms) => (ms.length && ms.every((m) => m.type === "fill") ? true : "只能放綠營游離塊，選項卻有：" + [...new Set(ms.map((m) => m.type))].join(","))], [CHEN, F("台北縣")]], want: { issues: { econ: [2, 0, 0] }, bag: [0, 0, -1], checks: 1 } },
+  { id: "soong_friends", by: SOONG, steps: [["probe", SOONG, (ms) => (ms.length && ms.every((m) => m.type === "fill") ? true : "只能放藍營游離塊，選項卻有：" + [...new Set(ms.map((m) => m.type))].join(","))], [SOONG, F("台北縣")]], want: { cubes: { "台北縣": [0, 1, 0] }, mom: [0, 1, 0] } },
+  // 有空無色塊的縣市都能選（開局除了新竹市、澎湖、金馬共 21 個）；那一塊變成空的綠營游離塊。
+  { id: "future_resolution", by: CHEN, steps: [["probe", CHEN, (ms) => { const c = countiesOf(ms, ["convert"]).split(",").filter(Boolean); return c.length === 21 && !c.includes("新竹市") && c.includes("台北縣") ? true : "可改的縣市：" + c.join(","); }], [CHEN, { type: "convert", county: ci("台北縣") }]], want: { issues: { cross: [1, 0, 0] }, types: { "台北縣": [1, 0, -1] } } },
+]);
+
+choiceGroup("事件 · 同縣市換塊：棄連保扁、棄連保宋、黨內整合（移除要檢定，放方塊照 §8.1）（§14.3）", [
+  // 袋中只有陳 → 都成功。移除檢定 1 次；台北縣還有宋 4 顆的樁腳主 → 填綠也檢定。
+  { id: "dump_lien_save_chen", by: CHEN, bag: [10, 0, 0], steps: [
+    ["probe", CHEN, (ms) => (ms.length && ms.every((m) => m.type === "remove" && m.target === LIEN) ? true : "先選要移除連的縣市，選項卻有：" + JSON.stringify(ms.slice(0, 3)))],
+    [CHEN, RM("台北縣", LIEN, "B")],
+    ["probe", CHEN, offers(["fill", "cross"], ["台北縣"], "移除之後放方塊的縣市")],
+    [CHEN, F("台北縣")]], want: { cubes: { "台北縣": [1, 0, -1] }, checks: 2 } },
+  // 移除連之後台北縣沒有別人的樁腳主、沒有對手候選人 → 宋填藍不檢定：一共 1 次。
+  { id: "dump_lien_save_soong", by: SOONG, bag: [0, 10, 0], steps: [[SOONG, RM("台北縣", LIEN, "B")], [SOONG, F("台北縣")]], want: { cubes: { "台北縣": [0, 1, -1] }, checks: 1 } },
+  { id: "party_unity", by: LIEN, bag: [0, 0, 10], steps: [[LIEN, RM("台北縣", SOONG, "B")], [LIEN, F("台北縣")]], want: { cubes: { "台北縣": [0, -1, 1] }, checks: 1 } },
+]);
+
+choiceGroup("事件 · 移除對手方塊：許信良參選（宋選）、李登輝痛批宋（同一縣市 −2）、黨員歸隊（兩個縣市各一次檢定）（§14.3）", [
+  { id: "hsu_hsin_liang", by: SOONG, steps: [["probe", SOONG, (ms) => (ms.length && ms.every((m) => m.type === "remove" && m.target === CHEN) ? true : "只能移除陳的方塊，選項卻有：" + JSON.stringify(ms.slice(0, 3)))], [SOONG, RM("台北縣", CHEN, "G")]], want: { cubes: { "台北縣": [-1, 0, 0] }, mom: [0, 1, 0] } },
+  { id: "lee_attacks_soong", by: LIEN, steps: [[LIEN, RM("台北市", SOONG, "B")], ["probe", LIEN, offers(["remove"], ["台北市"], "第二顆只能在同一縣市")], [LIEN, RM("台北市", SOONG, "B")]], want: { cubes: { "台北市": [0, -2, 0] }, mom: [0, 1, 0] } },
+  { id: "members_return", by: LIEN, bag: [0, 0, 10], steps: [[LIEN, RM("台北縣", SOONG, "B")], ["probe", LIEN, (ms) => (countiesOf(ms, ["remove"]).split(",").includes("台北縣") ? "第二個縣市還能選台北縣" : true)], [LIEN, RM("桃園縣", SOONG, "B")]], want: { cubes: { "台北縣": [0, -1, 0], "桃園縣": [0, -1, 0] }, checks: 2 } },
+]);
+
+choiceGroup("事件 · 媒體（事件放媒體不檢定；「任 N 個區」不重複；「任一區 +2」放同一區）：7 張（§14.3）", [
+  { id: "lo_propaganda", by: CHEN, steps: [[CHEN, MD("雲嘉南")], ["probe", CHEN, (ms) => (ms.length && ms.every((m) => m.type === "media" && m.region === ri("雲嘉南") && m.target == null) ? true : "第二顆應該只能放在雲嘉南：" + JSON.stringify(ms.slice(0, 3)))], [CHEN, MD("雲嘉南")]], want: { media: { "雲嘉南": [2, 0, 0] } } },
+  { id: "chang_yung_fa", by: CHEN, steps: [[CHEN, MD("離島")]], want: { media: { "離島": [1, 0, 0] }, bag: [2, 0, 0] } },
+  { id: "chang_doctors", by: SOONG, steps: [[SOONG, MD("桃竹苗")]], want: { media: { "桃竹苗": [0, 1, 0] }, bag: [0, 2, 0] } },
+  { id: "advisory_group", by: CHEN, steps: [["probe", CHEN, (ms) => eq(ms.filter((m) => m.type === "media").map((m) => m.region).sort().join(), `${ri("北北基")},${ri("中彰投")}`, "國政顧問團可選的區")], [CHEN, MD("北北基")]], want: { issues: { clean: [1, 0, 0], econ: [1, 0, 0] }, media: { "北北基": [1, 0, 0] } } },
+  { id: "party_assets_ads", by: LIEN, steps: [[LIEN, MD("雲嘉南")], ["probe", LIEN, (ms) => (ms.some((m) => m.region === ri("雲嘉南")) ? "第二區還能選雲嘉南" : true)], [LIEN, MD("高屏")]], want: { media: { "雲嘉南": [0, 0, 1], "高屏": [0, 0, 1] } } },
+  { id: "massive_ads", by: LIEN, steps: [[LIEN, MD("北北基")], [LIEN, MD("桃竹苗")], [LIEN, MD("中彰投")]], want: { media: { "北北基": [0, 0, 1], "桃竹苗": [0, 0, 1], "中彰投": [0, 0, 1] } } },
+  { id: "expel_soong", by: LIEN, arrange: (s) => { for (const r of ["桃竹苗", "雲嘉南", "宜花東"]) s.media[ri(r)][SOONG] = 1; }, steps: [
+    ["probe", LIEN, (ms) => eq(ms.map((m) => `${m.type}:${m.region}:${m.target}`).sort().join(), [ri("桃竹苗"), ri("雲嘉南"), ri("宜花東")].map((r) => `media:${r}:1`).sort().join(), "開除宋楚瑜黨籍的選項（只能移除宋的媒體）")],
+    [LIEN, MD("桃竹苗", SOONG)], [LIEN, MD("宜花東", SOONG)]], want: { media: { "桃竹苗": [0, -1, 0], "宜花東": [0, -1, 0] }, mom: [0, 1, 0] } },
+]);
+
+const actionNext = (seat) => (st) => (D.has(st, seat, { type: "action", kind: "campaign" }) ? true : `效果之後 seat ${seat} 應該接著選 CP 行動`);
+choiceGroup("事件 · 外力牌由受益的人選（陳的方塊由陳選）；TVBS 民調平手由出牌者選（§14.3；#4 裁決）", [
+  { id: "zhu_rongji", by: SOONG, steps: [[CHEN, F("台南縣")], [CHEN, F("高雄市")], [CHEN, X("台北市")]], after: actionNext(SOONG), want: { cubes: { "台南縣": [1, 0, 0], "高雄市": [1, 0, 0], "台北市": [1, 0, 0] }, mom: [1, 0, 0] } },
+  { id: "lee_secret_help", by: LIEN, steps: [[CHEN, F("台南縣")], [CHEN, F("高雄市")]], after: actionNext(LIEN), want: { cubes: { "台南縣": [1, 0, 0], "高雄市": [1, 0, 0] }, mom: [0, 0, -1] } },
+  { id: "tvbs_poll", by: CHEN, arrange: (s) => { s.mom = [3, 1, 1]; }, steps: [["probe", CHEN, (ms) => eq(ms.filter((m) => m.type === "pick").map((m) => m.seat).sort().join(), "1,2", "宋連平手時陳的選項")], [CHEN, { type: "pick", seat: LIEN }]], after: actionNext(CHEN), want: { mom: [0, 0, 1] } },
+  { id: "tvbs_poll", by: CHEN, arrange: (s) => { s.mom = [0, 2, 2]; }, steps: [], after: actionNext(CHEN), want: { mom: [1, 0, 0] } },
+]);
+
+choiceGroup("事件 · 觸發的事件由歸屬者選（陳把黨機器動員當 CP 出，連觸發後連選縣市）（§6.2）", [
+  { id: "party_machine", by: CHEN, play: (st) => {
+    st = D.act(st, CHEN, { type: "play", card: "party_machine", mode: "cp" });
+    st = D.act(st, CHEN, { type: "action", kind: "campaign" });
+    st = D.act(st, CHEN, { type: "done" });
+    return D.act(st, LIEN, { type: "trigger" });
+  }, steps: [[LIEN, F("台北縣")], [LIEN, F("桃園縣")], [LIEN, X("高雄市")]], want: { cubes: { "台北縣": [0, 0, 1], "桃園縣": [0, 0, 1], "高雄市": [0, 0, 1] }, mom: [0, 0, -1] } },
+]);
+
+const SIMPLE_V03 = [
+  { id: "chang_chiu", by: CHEN, want: { bag: [3, 0, 0], mom: [1, 0, 0] } },
+  { id: "provincial_build", by: SOONG, want: { econ: [0, 2, 0] } },
+  { id: "econ_cabinet", by: LIEN, want: { econ: [0, 0, 1], bag: [0, 0, 2] } },
+  { id: "kmt_anniversary", by: LIEN, want: { mom: [0, 0, 1], cross: [0, 0, 1] } },
+  { id: "pla_drill_rumor", by: CHEN, want: { cross: [0, 1, 1], mom: [-1, 0, 0] } },
+];
+c2(`事件 · v0.3 新牌裡不需選擇的 ${SIMPLE_V03.length} 張（§14.3）`, () => {
+  if (typeof E.effectImplemented !== "function") return "engine 沒有 export effectImplemented(id)";
+  if (!SIMPLE_V03.some((s) => E.effectImplemented(s.id))) return `TODO: 這 ${SIMPLE_V03.length} 張的效果都還沒做（#4）`;
+  const keys = ["mom", "bag", "cross", "clean", "econ"];
+  const snap = (s) => ({ mom: s.mom.slice(), bag: s.bag.slice(), cross: D.issue(s, "cross").slice(), clean: D.issue(s, "clean").slice(), econ: D.issue(s, "econ").slice() });
+  const bad = [];
+  for (const { id, by, want } of SIMPLE_V03) {
+    if (!E.effectImplemented(id)) { bad.push(`${id} 沒做`); continue; }
+    let st = D.giveCard(D.firstActor(by), by, id);
+    st.mom = [2, 2, 2]; st.bag = [5, 5, 5];
+    for (const i of st.issues) i.cubes = [1, 1, 1];
+    const a = snap(st);
+    st = playEvent(st, by, id);
+    const b = snap(st);
+    const diff = keys.map((k) => `${k} ${b[k].map((x, p) => x - a[k][p]).join("/")}`).join("；");
+    const exp = keys.map((k) => `${k} ${(want[k] || [0, 0, 0]).join("/")}`).join("；");
+    if (diff !== exp) bad.push(`${id}：期望 ${exp}，實際 ${diff}`);
+  }
+  return bad.length ? bad.join("\n      ") : ok(true, `${SIMPLE_V03.length} 張的變化都照規則書`);
+});
+check("事件 · 興票案三張與「本回合」旗標五張（之後的 issue）", () => {
   const n = typeof E.effectImplemented === "function" ? C.EVENTS.filter((e) => E.effectImplemented(e.id)).length : 0;
-  return `TODO: 事件效果已實作 ${n}/60`;
+  return `TODO: 事件效果已實作 ${n}/${C.EVENTS.length}`;
 });
 check("政見發表會（第 6 回合）", () => "TODO: §九");
 check("兩段棄保結算（差距 ≥ 2；一半／全部）", () => "TODO: §十一");
