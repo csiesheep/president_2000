@@ -1049,6 +1049,19 @@ choiceGroup("事件 · 媒體（事件放媒體不檢定；「任 N 個區」不
     [LIEN, MD("桃竹苗", SOONG)], [LIEN, MD("宜花東", SOONG)]], want: { media: { "桃竹苗": [0, -1, 0], "宜花東": [0, -1, 0] }, mom: [0, 1, 0] } },
 ]);
 
+// Text order made observable: with an empty bag, the first check refills it (12 each) only if the
+// placement comes before 「袋中 +1 宋方塊」. The other order leaves one 宋 cube in the bag, the check
+// draws it and succeeds, and no refill happens.
+c2("事件 · 文字順序：軍公教警先放方塊、最後才袋中 +1（袋子先清空，順序對時第一次檢定會重裝）（#4 裁決 1）", () => {
+  if (typeof E.effectImplemented !== "function" || !E.effectImplemented("military_civil")) return "TODO: 軍公教警的效果還沒做（#4）";
+  let st = D.giveCard(D.firstActor(SOONG), SOONG, "military_civil");
+  st.bag = [0, 0, 0];
+  st = D.act(st, SOONG, { type: "play", card: "military_civil", mode: "event" });
+  st = D.act(st, SOONG, X("台北市"));
+  st = D.act(st, SOONG, F("苗栗縣"));
+  const total = st.bag.reduce((a, b) => a + b, 0);
+  return total >= 35 ? ok(true, `袋子 ${st.bag.join("/")}：檢定前重裝過，宋的 +1 在最後`) : `袋子 ${st.bag.join("/")}：檢定時袋裡已經有宋的那一顆、沒有重裝，「袋中 +1」比放方塊先做了`;
+});
 const actionNext = (seat) => (st) => (D.has(st, seat, { type: "action", kind: "campaign" }) ? true : `效果之後 seat ${seat} 應該接著選 CP 行動`);
 choiceGroup("事件 · 外力牌由受益的人選（陳的方塊由陳選）；TVBS 民調平手由出牌者選（§14.3；#4 裁決）", [
   { id: "zhu_rongji", by: SOONG, steps: [[CHEN, F("台南縣")], [CHEN, F("高雄市")], [CHEN, X("台北市")]], after: actionNext(SOONG), want: { cubes: { "台南縣": [1, 0, 0], "高雄市": [1, 0, 0], "台北市": [1, 0, 0] }, mom: [1, 0, 0] } },
