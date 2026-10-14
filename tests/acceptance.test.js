@@ -1190,6 +1190,28 @@ c5("興票案 · 授意說只在爆料出過後、說法反覆只在授意說出
   return ok(true, "爆料退回 4 → 授意說取回 2 → 說法反覆再退回 2；條件沒到之前都只能當 CP");
 });
 
+c5("興票案 · 授意說取回「一半（捨去）」：爆料只退回 3 顆時，授意說放回 1 顆（§14.3）", ["lee_authorized"], () => {
+  let st = D.firstActor(LIEN);
+  D.giveCard(st, LIEN, YANG, 0); D.giveCard(st, SOONG, "lee_authorized", 0);
+  // 宋在盤上只留台北市 3 顆：爆料最多退回 3。
+  for (const c of st.counties) for (const b of c.blocks) if (b.o === SOONG) b.o = -1;
+  st.counties[ci("台北市")].blocks.filter((b) => b.t === "B" && b.o < 0).slice(0, 3).forEach((b) => { b.o = SOONG; });
+  st.bag = [0, 10, 0];
+  st = D.act(st, LIEN, { type: "play", card: YANG, mode: "event" });
+  st = D.act(st, LIEN, { type: "action", kind: "campaign" });
+  st = D.act(st, LIEN, { type: "done" });
+  for (let k = 0; k < 3; k++) st = D.act(st, LIEN, RM("台北市", SOONG, "B"));
+  if (effectLeft(st).length) return "宋在盤上已經沒有方塊，爆料還在問要退回哪一顆";
+  st = nextDecision(st, SOONG);
+  st.bag = [0, 10, 0];
+  const a = boardSnap(st);
+  st = D.act(st, SOONG, { type: "play", card: "lee_authorized", mode: "event" });
+  st = D.act(st, SOONG, F("台北縣"));
+  if (effectLeft(st).length) return "退回 3 顆，授意說放了 1 顆之後還在問（一半捨去是 1）";
+  const r = eq(diffSnap(a, boardSnap(st)), expectStr({ cubes: { "台北縣": [0, 1, 0] }, bag: [0, -1, 0], issues: { clean: [0, 1, 0] } }), "授意說之後"); if (r !== true) return r;
+  return ok(true, "退回 3 → 放回 1");
+});
+
 c5("本回合 · 新中間路線：兩岸陳 +2；本回合外力事件不移除陳的方塊；牌留在 st.active 到回合結束才移出遊戲（§6.1、§14.3）", ["new_middle"], () => {
   let st = D.firstActor(CHEN);
   D.giveCard(st, CHEN, "new_middle"); D.giveCard(st, SOONG, "strait_tension");
@@ -1242,7 +1264,8 @@ c5("本回合 · 李遠哲挺扁：陳動能 +2；本回合陳填同營免檢定
   a = boardSnap(st);
   st = D.act(st, CHEN, { type: "play", card: "dpp_counties", mode: "cp" });
   st = D.act(st, CHEN, { type: "action", kind: "campaign" });
-  st = D.act(st, CHEN, { type: "move", to: ci("台北縣") });
+  // 第 7 回合陳停在台北縣（最後一個操作的縣市）；已經在那裡就不用移動（移到自己所在的縣市不是合法動作）。
+  if (st.pos[CHEN] !== ci("台北縣")) st = D.act(st, CHEN, { type: "move", to: ci("台北縣") });
   st = D.act(st, CHEN, F("台北縣"));
   r = eq(diffSnap(a, boardSnap(st)), expectStr({ bag: [0, 0, -1], checks: 1 }), "第 8 回合在台北縣填綠（旗標已過）"); if (r !== true) return r;
   return ok(true, "同一回合填綠免檢定、跨營照常；下一回合恢復檢定");
