@@ -46,7 +46,7 @@ export const START_COUNTY = { chen: "台南縣", soong: "南投縣", lien: "台�
 export const START_MOMENTUM = [3, 2, 1];
 export const START_MEDIA = [[0, 0, 1], [0, 0, 0], [0, 0, 1], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]];
 export const BAG_SEED = 12;
-export const BOSS_THRESHOLD = 4; // 樁腳主: 4 cubes; counties under 4 blocks never have one
+export const BOSS_THRESHOLD = 4; // 地方大老: 4 cubes; counties under 4 blocks never have one
 export const ISSUES = ["cross", "clean", "econ"]; // 兩岸 / 清廉 / 經濟民生
 export const TURNS = 9;
 

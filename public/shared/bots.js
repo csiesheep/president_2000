@@ -8,7 +8,7 @@
 // where the page holds only the view, plays exactly like the bot.
 // `move` is one of E.legalMoves(st, seat), returned as that very object; `why`
 // is { key, …params } with key in WHY and every param a number or a string
-// (table talk is written from the key, #10 §二). level 1 樁腳, 2 總幹事, 3 操盤手.
+// (table talk is written from the key, #10 §二). level 1 助選員, 2 總幹事, 3 操盤手.
 // rng() → [0, 1) is the caller's; nothing here touches Math.random, so a game
 // replays from its seed, the rng and the levels.
 //
@@ -31,7 +31,7 @@
 //     the harm of playing an opponent's card when its owner can trigger it, and
 //     the initiative holder going last when ahead.
 // The three levels (orchestrator ruling in #10 §三.2):
-//   1 樁腳: counts cubes, campaigns only (filling its own camp or the other,
+//   1 助選員: counts cubes, campaigns only (filling its own camp or the other,
 //     never stealing), never triggers or blocks, always goes first, saves and
 //     takes its momentum reward at random.
 //   2 總幹事: the softened strategic-vote projection, every kind of action and
@@ -94,7 +94,7 @@ const SV = [1.2, 0.8, 0.55];
 // How much a seat counts an opponent's gain against its own: the strongest
 // opponent W_MAIN, the other W_OTHER (a little more when close). Below 1 in
 // sum, so taking a cube from the leader is worth less than adding one's own:
-// it helps the third seat too. 樁腳 counts every cube the same.
+// it helps the third seat too. 助選員 counts every cube the same.
 const W_MAIN = 0.65, W_OTHER = [0.3, 0.35];
 // An empty block is not a banked vote before election day (a cross-fill or a
 // steal can still take it): an empty green counts this much for 陳 where he
@@ -594,7 +594,7 @@ class Bot {
         const cc = CANDIDATE_CARDS[SEATS[p]];
         let val = cpv(cc.cp).v + (lv >= 2 ? cc.rest * BAGV : 0) - 0.8;
         if (lv === 1) {
-          // 樁腳: plays it on a turn picked at random among 1–3, at its first play
+          // 助選員: plays it on a turn picked at random among 1–3, at its first play
           const t = v.turn;
           val = v.step === 0 && t <= 3 && this.rng() < 1 / (4 - t) ? 99 : -99;
         }
