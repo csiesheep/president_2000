@@ -346,3 +346,7 @@ button.btn:hover, a.btn:hover { background: var(--ink); color: var(--paper); }
   .tbl > .t-now, .tbl > .res { grid-column: 1; }
   .tbl > .help { grid-column: 1 / -1; }
 }
+.res.did { background: var(--paper); border-left-color: var(--mute); font-weight: 700; }
+.res small { display: block; font-size: 11px; font-weight: 700; color: var(--mute); }
+.t-mom .chips { margin-top: 6px; } html { scroll-padding-bottom: 200px; }
+.cn .new { align-self: flex-start; margin: 2px 0; } .cn small .new { margin-left: 0; }

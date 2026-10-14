@@ -280,9 +280,19 @@ export function resultLine(res, x) {
   return e ? x.tr("res.fail", { where: entryPhrase({ ...e, ok: false }, x), drew }) : x.tr("res.failNoWhere", { drew });
 }
 
+// What the table writes at the top of the decision after your own step: { text, kind } with kind
+// "ok" / "fail" (a support check was made: resultLine) or "did" (a placement that needed none, so
+// the table can still say it went on the board; lastResult stays null for those), else null.
+export function resultBlock(res, x) {
+  const text = resultLine(res, x);
+  if (text) return { text, kind: res.checks[res.checks.length - 1].ok ? "ok" : "fail" };
+  const e = res && (res.lines || []).slice().reverse().find((q) => q.ok && entryPhrase(q, x));
+  return e ? { text: x.tr("res.did", { what: entryPhrase(e, x) }), kind: "did" } : null;
+}
+
 // ---------------------------------------------------------------- pieces
 
-const sq =(cls) => `<i class="b ${cls}"></i>`;
+const sq = (cls) => `<i class="b ${cls}"></i>`;
 const cubesRow = (arr) => arr.map((n, p) => sq("o" + p).repeat(n)).join("");
 
 function cardFace(id, x) {
@@ -348,7 +358,7 @@ function mapHTML(v, x, open, changed = []) {
         const blocks = v.counties[k].blocks.slice().sort((a, b) => key(a) - key(b));
         const bosses = [0, 1, 2].filter((p) => cubesIn(v, k, p) >= BOSS_THRESHOLD);
         const sub = bosses.length ? `<span class="boss">${esc(x.tr("map.boss", { who: bosses.map((p) => x.short(p)).join("/") }))}</span>` : "";
-        return `<div class="cty${bosses.length ? " hot" : ""}${chg.has(k) ? " chg" : ""}"><span class="cn">${esc(x.county(k))}<small>${esc(x.tr("map.blocks", { n: blocks.length }))}${mark(k)}</small>${sub}</span>` +
+        return `<div class="cty${bosses.length ? " hot" : ""}${chg.has(k) ? " chg" : ""}"><span class="cn">${esc(x.county(k))}<small>${esc(x.tr("map.blocks", { n: blocks.length }))}</small>${mark(k)}${sub}</span>` +
           `<span class="bs">${blocks.map((b) => sq(b.o >= 0 ? "o" + b.o : "e" + b.t)).join("")}</span>` +
           `<span class="pw">${seatsHere(k).map((p) => flag(p)).join("")}</span></div>`;
       }).join("") + `</div>`);
@@ -757,9 +767,9 @@ function nowHTML(x, o) {
     lines.map((l) => `<li class="${l.seat != null ? "s" + l.seat : "sys"}">${esc(l.text)}</li>`).join("") + `</ul></section>`;
 }
 
-// Your own last step (o.result = { text, ok }), at the top of the decision.
-function resultHTML(o) {
-  return o.result ? `<p class="res ${o.result.ok ? "ok" : "fail"}" role="status">${esc(o.result.text)}</p>` : "";
+// Your own last step (o.result = resultBlock), at the top of the decision.
+function resultHTML(o, x) {
+  return o.result ? `<p class="res ${o.result.kind}" role="status"><small>${esc(x.tr("res.label"))}</small>${esc(o.result.text)}</p>` : "";
 }
 
 export function tableHTML(view, choices, lang, opts = {}) {
@@ -767,9 +777,9 @@ export function tableHTML(view, choices, lang, opts = {}) {
   const bar = o.advisor ? advisorBar(x, o) : "";
   const open = o.open || [v.pos ? REGION_OF[v.pos[v.seat]] : 0];
   if (v.phase === "end") {
-    return `<div class="tbl end" data-phase="end">${headerHTML(v, choices, x, o)}${endHTML(v, x, o)}${nowHTML(x, o)}${resultHTML(o)}${trackHTML(v, x, o)}${mapHTML(v, x, open, o.changed)}${feedHTML(v, x, o)}</div>`;
+    return `<div class="tbl end" data-phase="end">${headerHTML(v, choices, x, o)}${endHTML(v, x, o)}${nowHTML(x, o)}${resultHTML(o, x)}${trackHTML(v, x, o)}${mapHTML(v, x, open, o.changed)}${feedHTML(v, x, o)}</div>`;
   }
   return `<div class="tbl${bar ? " hasbar" : ""}" data-phase="${esc(v.phase)}">${bar}${headerHTML(v, choices, x, o)}${trackHTML(v, x, o)}${helpHTML(x, o)}${oppHTML(v, x)}` +
-    `${nowHTML(x, o)}<section class="t-act${choices.length ? " mine" : ""}" id="act">${resultHTML(o)}${choices.length ? adviceLine(x, o) : ""}${panelHTML(v, choices, x, o)}</section>` +
+    `${nowHTML(x, o)}<section class="t-act${choices.length ? " mine" : ""}" id="act">${resultHTML(o, x)}${choices.length ? adviceLine(x, o) : ""}${panelHTML(v, choices, x, o)}</section>` +
     `${v.phase === "debate" ? debateHTML(v, x) : ""}${mapHTML(v, x, open, o.changed)}${feedHTML(v, x, o)}${handHTML(v, choices, x, o)}</div>`;
 }

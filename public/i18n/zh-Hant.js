@@ -75,7 +75,7 @@ export default {
         },
       },
       res: {
-        ok: "檢定成功：{what}", okPlain: "檢定成功",
+        ok: "檢定成功：{what}", okPlain: "檢定成功", did: "你剛剛：{what}", label: "你的上一步",
         fail: "檢定失敗：{where}，抽到{drew}，這顆回到{drew}手上", failNoWhere: "檢定失敗：抽到{drew}，這顆回到{drew}手上",
       },
       hand: { title: "手牌 {n}", titleDebate: "政見發表會留牌 {n}", titleElection: "投票日留牌 {n}", kept: "已留 {n} 張（給{dest}）", none: "沒有牌" },

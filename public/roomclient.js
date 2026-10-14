@@ -16,7 +16,7 @@
 // and sentMove the move this page just sent (set by sent(), so a failed check can say where).
 import * as E from "./shared/engine.js";
 import { SEATS } from "./shared/board.js";
-import { tableHTML, labelMove, esc, bind, sayLine, orderChoices, recentLines, resultLine, changedCounties } from "./table.js";
+import { tableHTML, labelMove, esc, bind, sayLine, orderChoices, recentLines, resultBlock, changedCounties } from "./table.js";
 import { fromLog, settleEntries } from "./solo.js";
 import { advise } from "./shared/bots.js";
 import en from "./i18n/en.js";
@@ -126,8 +126,7 @@ function nextFeed(client, view) {
   if (!prev || view.log.length < prev.logLen) { const all = roomLog(view.log, 0).slice(-FEED_MAX); return { feed: all, added: all, fresh: true }; }
   const slice = view.log.slice(prev.logLen);
   const settle = settleEntries(prev.mom, prev.slots, slice);
-  const decay = settle.filter((e) => e.k === "decay"), after = settle.filter((e) => e.k !== "decay");
-  const added = [...decay, ...roomLog(view.log, prev.logLen), ...diffFeed(prev, view, slice), ...after];
+  const added = [...roomLog(view.log, prev.logLen), ...diffFeed(prev, view, slice), ...settle];
   return { feed: client.feed.concat(added).slice(-FEED_MAX), added, fresh: false, slice };
 }
 
@@ -139,7 +138,8 @@ function justNow(client, next, view) {
   const me = view.seat, slice = next.slice || [];
   const checks = slice.filter((e) => e.t === "check" && e.seat === me).map((e) => ({ ok: e.ok, drew: e.drew }));
   const own = next.added.filter((e) => e.seat === me && !["turn", "slot", "endorseOne"].includes(e.k));
-  if (!client.sentMove && !checks.length && !own.length) return { rec: (client.rec || []).concat(next.added).slice(-FEED_MAX), mine: client.mine };
+  const declined = client.sentMove && client.sentMove.type === "pass";
+  if ((!client.sentMove || declined) && !checks.length && !own.length) return { rec: (client.rec || []).concat(next.added).slice(-FEED_MAX), mine: client.mine };
   const tried = client.sentMove && ["fill", "cross", "steal", "grey", "remove"].includes(client.sentMove.type) && client.sentMove.county != null && !own.some((e) => e.county === client.sentMove.county)
     ? [{ k: client.sentMove.type, seat: me, county: client.sentMove.county, target: client.sentMove.target, ok: false }] : [];
   return { rec: next.added.filter((e) => !own.includes(e)).slice(-FEED_MAX), mine: { checks, lines: [...own, ...tried] } };
@@ -299,9 +299,8 @@ export function screen(client, lang, opts = {}) {
     const names = [0, 1, 2].map((p) => { const s = client.room && client.room.seats[p]; return s && s.kind === "human" ? s.name : ""; });
     const wait = acting(view).filter((p) => p !== view.seat);
     const xb = bind(lang), rec = client.rec || [];
-    const text = resultLine(client.mine, xb), last = client.mine && client.mine.checks.length ? client.mine.checks[client.mine.checks.length - 1] : null;
     const body = tableHTML(view, choices, lang, {
-      recent: recentLines(rec, view, xb), result: text ? { text, ok: !!(last && last.ok) } : null,
+      recent: recentLines(rec, view, xb), result: resultBlock(client.mine, xb),
       changed: [...changedCounties(rec), ...changedCounties((client.mine && client.mine.lines) || [], true)],
       help: opts.help, moves: opts.moves, confirm: opts.confirm,
       feed: client.feed, wait: wait.length ? wait : [0, 1, 2].filter((p) => p !== view.seat),

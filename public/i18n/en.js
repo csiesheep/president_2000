@@ -76,7 +76,7 @@ export default {
         },
       },
       res: {
-        ok: "Check succeeded: {what}", okPlain: "Check succeeded",
+        ok: "Check succeeded: {what}", okPlain: "Check succeeded", did: "You just did: {what}", label: "Your last step",
         fail: "Check failed: {where}. Drew {drew}; that cube goes back to {drew}'s supply.", failNoWhere: "Check failed: drew {drew}; that cube goes back to {drew}'s supply.",
       },
       hand: { title: "Hand {n}", titleDebate: "Policy Forum pile {n}", titleElection: "Election-day pile {n}", kept: "{n} kept for the {dest}", none: "No cards" },

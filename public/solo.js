@@ -8,7 +8,7 @@
 import * as E from "./shared/engine.js";
 import { chooseMove, advise } from "./shared/bots.js";
 import { COUNTIES } from "./shared/board.js";
-import { tableHTML, labelMove, orderChoices, recentLines, resultLine, changedCounties, bind } from "./table.js";
+import { tableHTML, labelMove, orderChoices, recentLines, resultLine, resultBlock, changedCounties, bind } from "./table.js";
 
 const FEED_MAX = 60;
 
@@ -109,14 +109,17 @@ function move(session, seat, m, why) {
   if (said) { if (lines.length) lines[0] = { ...lines[0], why: said }; else lines.push({ k: "say", seat, why: said }); }
   const slice = a.log.slice(b.log.length);
   const settle = settleEntries(b.mom, b.issues, slice);
-  const decay = settle.filter((e) => e.k === "decay"), after = settle.filter((e) => e.k !== "decay");
   const logged = fromLog(a, session.logSeen);
-  const entries = [...decay, ...lines, ...after, ...logged];
+  // The move itself comes first, then the settlement it set off (the decay is logged by the move that
+  // ends the action phase, the slot rewards by the one that ends the momentum phase), then the log.
+  const entries = [...lines, ...settle, ...logged];
   const feed = session.feed.concat(entries).slice(-FEED_MAX);
   // "Just now" is everything since the human last decided. A human move empties it; what the move
   // itself set off (the settlement, the next turn) is the first thing in it again.
-  const human = seat === session.seat;
-  const rec = human ? [...decay, ...after, ...logged] : (session.rec || []).concat(entries).slice(-FEED_MAX);
+  // (Declining to trigger a card is not a decision to forget what the others did: it stays.)
+  const human = seat === session.seat, reset = human && m.type !== "pass";
+  const after = [...settle, ...logged];
+  const rec = reset ? after : (session.rec || []).concat(human ? after : entries).slice(-FEED_MAX);
   const mine = human
     ? { checks: slice.filter((e) => e.t === "check" && e.seat === seat).map((e) => ({ ok: e.ok, drew: e.drew })), lines: lines.filter((l) => l.k !== "say") }
     : session.mine || null;
@@ -192,9 +195,8 @@ export function screen(session, lang, opts = {}) {
   const v = E.view(session.st, session.seat);
   const d = decide(session, lang), x = bind(lang), rec = session.rec || [];
   const changed = [...changedCounties(rec), ...changedCounties((session.mine && session.mine.lines) || [], true)];
-  const text = resultLine(session.mine, x), ok = !!(session.mine && session.mine.checks.length && session.mine.checks[session.mine.checks.length - 1].ok);
   return tableHTML(v, d.choices, lang, {
     feed: session.feed, wait: botsToMove(session), advisor: { on: !!session.advisor, why: d.why },
-    recent: recentLines(rec, v, x), result: text ? { text, ok } : null, changed, ...opts,
+    recent: recentLines(rec, v, x), result: resultBlock(session.mine, x), changed, ...opts,
   });
 }
