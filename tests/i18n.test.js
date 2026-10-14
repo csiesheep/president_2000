@@ -189,6 +189,20 @@ c20("舊名不見了：中文字串沒有「樁腳」（含樁腳主），英文
   return ok(true, `中文 ${strings(zh).length} 條、英文 ${strings(en).length} 條、${C.EVENTS.length} 張事件牌都沒有舊名`);
 });
 
+// ---- Q7 = B（#22）. Owner (2026-10-14) said 「Yes」 to the orchestrator's advice on Q4–Q8, which
+// changed Q7: when the debate cards run out, an issue nobody played a card on (0/0/0) is not
+// settled; it goes back to the track in its original order. The rules page has to say so.
+// Reports 尚未實作 until the Chinese debate section says 不結算.
+const debateText = (t) => strings((t.rules || []).find((s) => s.id === "debate") || {}).join(" ");
+const Q7 = /不結算/.test(debateText(zh));
+section("22 規則頁：政見發表會沒人出牌的議題");
+check("規則頁的政見發表會寫出：沒人出過牌的議題不結算（中文「不結算」、英文 not settled），議題照原順序回軌道", () => {
+  if (!Q7) return "TODO: 規則頁還沒寫 Q7 = B（#22）";
+  if (!/not settled/i.test(debateText(en))) return "英文的政見發表會一節沒有寫 not settled";
+  if (!/原(來的)?順序/.test(debateText(zh))) return "中文沒有寫議題照原順序回軌道";
+  return ok(true, "中英都寫了");
+});
+
 test("i18n", () => {
   const s = summary();
   for (const p of R.pass) console.log(`  ✓ ${p.label}${p.msg ? " — " + p.msg : ""}`);

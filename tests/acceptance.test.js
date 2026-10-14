@@ -1481,7 +1481,7 @@ c6("政見發表會 · 情境 A：同一輪兩個議題到 2 張時照原軌道�
   return ok(true, "兩岸 → 連 2、經濟（平手）→ 宋 3、清廉 → 連 4；軌道 清廉/經濟/兩岸；棄保一半：台中縣宋 +1、高雄市陳 +1、台北市宋 +2");
 });
 
-c6("政見發表會 · 情境 B：平手時從持有者順時針比（宋持有，陳連平手 → 連）；牌出完時沒結算的議題依原軌道順序給 CP 總和最高者（0 比 0 比 0 也照主動權順序）（§九）", () => {
+c6("政見發表會 · 情境 B：平手時從持有者順時針比（宋持有，陳連平手 → 連）；牌出完時，沒人出過牌的議題（0 比 0 比 0）不結算，依原軌道順序回剩下的空槽（§九；owner 裁決 Q7 = B，#21）", () => {
   let st = toDebate();
   setPile(st, CHEN, ["dpp_counties", "lu_running_mate", "hsieh_kaohsiung", "three_three_three", "no_nuke4"]);
   setPile(st, SOONG, ["hakka_vote", "east_coast", "diligent", "quake_bond", "provincial_build"]);
@@ -1500,17 +1500,15 @@ c6("政見發表會 · 情境 B：平手時從持有者順時針比（宋持有�
   st = round(st, [[CHEN, "hsieh_kaohsiung"], [SOONG, "diligent"], [LIEN, "lien_siew"]]);
   st = round(st, [[CHEN, "three_three_three"], [SOONG, "quake_bond"], [LIEN, "hand_in_hand"]]);
   st = round(st, [[CHEN, "no_nuke4"], [SOONG, "provincial_build"], [LIEN, "local_factions"]]);
-  // 牌出完：兩岸（原軌道第一）0/0/0 → 持有者宋放 3；清廉 0/0/0 → 宋放 4
-  r = eq(JSON.stringify(E.mustAct(st)), JSON.stringify([SOONG]), "牌出完後放兩岸那 3 顆的人"); if (r !== true) return r;
-  for (let k = 0; k < 3; k++) st = D.act(st, SOONG, F("苗栗縣"));
-  r = eq(JSON.stringify(E.mustAct(st)), JSON.stringify([SOONG]), "接著放清廉那 4 顆的人"); if (r !== true) return r;
-  for (const k of ["澎湖縣", "金馬", "台東縣", "新竹縣"]) st = D.act(st, SOONG, F(k));
-  r = eq(`${st.turn} ${st.phase}`, "7 order", "發表會結束之後"); if (r !== true) return r;
-  r = eq(st.issues.map((i) => i.name).join(), "clean,cross,econ", "議題軌道（經濟第一個結算 → 第三槽）"); if (r !== true) return r;
-  r = eq(st.mom.map((x, p) => x - mom0[p]).join(), "0,2,1", "動能變化"); if (r !== true) return r;
-  const expect = { ...want, "新竹市": [0, 0, 2], "苗栗縣": [0, 3, 0], "澎湖縣": [0, 1, 0], "金馬": [0, 1, 0], "台東縣": [0, 1, 0], "新竹縣": [0, 1, 0] };
+  // 牌出完：兩岸、清廉都是 0 比 0 比 0 → 不結算（owner 裁決 Q7 = B，2026-10-14）。
+  // Until #21 the engine still settles them for the holder (the old default): reported as 尚未實作.
+  if (st.phase === "debate" && JSON.stringify(E.mustAct(st)) === JSON.stringify([SOONG])) return "TODO: Q7 改成 B 還沒做（#21）：牌出完後 0 比 0 比 0 的議題仍在結算";
+  r = eq(`${st.turn} ${st.phase}`, "7 order", "牌出完之後（沒人出牌的議題不結算，直接結束）"); if (r !== true) return r;
+  r = eq(st.issues.map((i) => i.name).join(), "cross,clean,econ", "議題軌道（經濟結算 → 第三槽；兩岸、清廉照原順序回第一、二槽）"); if (r !== true) return r;
+  r = eq(st.mom.map((x, p) => x - mom0[p]).join(), "0,0,1", "動能變化（只有經濟的贏家連 +1）"); if (r !== true) return r;
+  const expect = { ...want, "新竹市": [0, 0, 2] };
   r = eq(cubesStr(cubesOf(st)), cubesStr(expect), "第一段棄保之後的盤面"); if (r !== true) return r;
-  return ok(true, "陳連平手 → 連；沒人出牌的兩岸、清廉給持有者宋；軌道 清廉/兩岸/經濟");
+  return ok(true, "陳連平手 → 連；沒人出牌的兩岸、清廉不結算；軌道 兩岸/清廉/經濟");
 });
 
 c6("政見發表會 · 情境 C：同一輪兩個議題到 2 張時的順序來自發表會開始時的軌道，不是議題的固定順序（軌道 經濟/清廉/兩岸 → 經濟先結算）（§九）", () => {
