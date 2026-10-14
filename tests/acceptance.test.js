@@ -1527,6 +1527,35 @@ c6("政見發表會 · 情境 C：同一輪兩個議題到 2 張時的順序來�
   r = eq(E.legalMoves(st, LIEN).every((m) => m.type === "fill" || m.type === "cross"), true, "連的選項都是放方塊"); if (r !== true) return r;
   return ok(true, "軌道 經濟/清廉/兩岸：經濟（陳）先、兩岸（連）後");
 });
+// The BE peer found (#21) that the scenarios settle every played-on issue before the piles run
+// out, so an engine that skipped an issue with one card when the cards run out passed. This plays
+// random legal moves from turn 1 to turn 7 and reads each debate from the log: every issue with a
+// live card on it is settled, and an issue nobody played on (0 比 0 比 0) is not (owner, Q7 = B).
+c6("政見發表會 · 隨機對打到第 7 回合：有人出過牌（就算只有一張）的議題都結算，沒人出過牌的不結算（§九 6；owner 裁決 Q7 = B）", () => {
+  let games = 0, settled = 0, empty = 0;
+  for (let seed = 1; seed <= 120; seed++) {
+    let st = E.createGame(seed);
+    const R1 = D.rng(seed * 13 + 1);
+    for (let n = 0; n < 6000 && !(st.turn === 7 && st.phase !== "debate"); n++) {
+      const s = E.mustAct(st)[0], ms = E.legalMoves(st, s);
+      st = E.apply(st, s, ms[Math.floor(R1() * ms.length)]);
+    }
+    if (st.turn !== 7) return `seed ${seed}：走不到第 7 回合（停在第 ${st.turn} 回合 ${st.phase}）`;
+    const played = { cross: 0, clean: 0, econ: 0 }, done = new Set();
+    for (const e of st.log) {
+      if (e.t !== "debate") continue;
+      if (e.step === "reveal") for (const c of e.cards) if (!c.dead) played[c.issue]++;
+      if (e.step === "settle") done.add(e.issue);
+    }
+    for (const name of Object.keys(played)) {
+      if (played[name] && !done.has(name)) return `seed ${seed}：${name} 有人出過 ${played[name]} 張牌，卻沒有結算`;
+      if (!played[name] && done.has(name)) return `seed ${seed}：${name} 沒有人出過牌（0 比 0 比 0），卻結算了`;
+    }
+    games++; settled += done.size; empty += Object.values(played).filter((x) => !x).length;
+  }
+  const r = nonEmpty(games, "走到第 7 回合的局"); if (r !== true) return r;
+  return ok(true, `${games} 局，${settled} 次結算，${empty} 個沒人出牌的議題沒有結算`);
+});
 
 c6("政見發表會 · 發表會的牌全部進前期棄牌堆；第 6 回合結束時前期牌放到一旁（decks.earlyDiscard），第 7 回合的棄牌堆是空的（§14.1）", () => {
   let st = toDebate();
