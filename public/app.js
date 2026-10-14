@@ -5,6 +5,7 @@ import en from "./i18n/en.js";
 import zh from "./i18n/zh-Hant.js";
 import * as Solo from "./solo.js";
 import { mount as mountRoom } from "./roompage.js";
+import { drawInto } from "./drawing.js";
 
 if (typeof document !== "undefined") {
   const qs = new URLSearchParams(location.search);
@@ -50,12 +51,12 @@ if (typeof document !== "undefined") {
     gLang.href = "?" + (other ? "play&lang=en" : "play");
     const stage = $("#stage");
     let session = store.get(KEY);
-    let ui = { open: null, sel: null, picks: [] };
+    let ui = { open: null, sel: null, picks: [], help: null, moves: false, confirm: null };
     let timer = null;
     const save = () => store.set(KEY, session);
 
     const draw = () => {
-      stage.innerHTML = Solo.screen(session, code, { open: ui.open || undefined, sel: ui.sel, picks: ui.picks });
+      drawInto(stage, Solo.screen(session, code, { open: ui.open || undefined, sel: ui.sel, picks: ui.picks, help: ui.help, moves: ui.moves, confirm: ui.confirm }));
       $("#quit").hidden = false;
     };
     const pump = () => {
@@ -96,15 +97,21 @@ if (typeof document !== "undefined") {
         const p = store.get(SETUP) || { seat: 0, level: 2 };
         const seed = crypto.getRandomValues(new Uint32Array(1))[0];
         session = Solo.setAdvisor(Solo.advance(Solo.newSolo({ seat: p.seat, level: p.level, seed })), store.get(ADV) === true);
-        ui = { open: null, sel: null, picks: [] };
+        ui = { open: null, sel: null, picks: [], help: null, moves: false, confirm: null };
         save(); pump(); window.scrollTo(0, 0);
       } else if (d.advisor != null) {
         session = Solo.setAdvisor(session, d.advisor === "on"); store.set(ADV, session.advisor);
         save(); draw();
+      } else if (d.confirm && d.move) {
+        // The candidate card is once a game: ask first (the table draws the question).
+        ui.confirm = d.move; draw(); toAct();
       } else if (d.move) {
         session = Solo.act(session, JSON.parse(d.move));
-        ui.sel = null; ui.picks = [];
+        ui.sel = null; ui.picks = []; ui.moves = false; ui.confirm = null;
         save(); pump(); window.scrollTo({ top: 0 });
+      } else if (d.cancel) { ui.confirm = null; draw();
+      } else if (d.help != null) { ui.help = d.help && ui.help !== d.help ? d.help : null; draw();
+      } else if (d.toggle === "moves") { ui.moves = !ui.moves; draw();
       } else if (d.sel != null) { ui.sel = d.sel || null; draw(); if (ui.sel) toAct(); }
       else if (d.pick != null) {
         ui.picks = ui.picks.includes(d.pick) ? ui.picks.filter((x) => x !== d.pick) : [...ui.picks, d.pick];

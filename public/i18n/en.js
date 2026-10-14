@@ -46,7 +46,7 @@ export default {
       },
       menu: { quit: "Abandon this game", confirm: "Abandon this game and go back to setup?", skip: "Click to skip the animation" },
       hdr: {
-        turn: "Turn {n}", initiative: "Initiative: {who}", star: "Initiative", mom: "Momentum", bag: "Bag", feed: "Record",
+        turn: "Turn {n}", initiative: "Initiative: {who}", star: "Initiative", mom: "Momentum", bag: "Bag", feed: "Record", first: "1st", momL: "Momentum", slotsL: "Issue slots", tap: "Tap for an explanation",
         yourTurn: "Your move", busy: "{who} is acting…", waitHint: "The bots are acting. You can look through your hand meanwhile.",
         slot: { 1: "Slot 1", 2: "Slot 2", 3: "Slot 3" },
         phase: { action: "Action phase {n} / 4", order: "Pick your place in the order", momentum: "Momentum phase", save: "Set aside", debate: "The Policy Forum", election: "Election day · canvassing", end: "The count" },
@@ -54,11 +54,40 @@ export default {
       },
       map: {
         title: "The regions", here: "{who} is here", endorse: "Endorsed by", media: "Media", blocks: "{n} blocks", empty: "empty {n}", boss: "{who}, local boss",
-        legendEmpty: "empty swing blocks", legendGrey: "non-voter blocks",
+        legendEmpty: "empty swing blocks", legendGrey: "non-voter blocks", changed: "changed just now",
+      },
+      help: {
+        mom: "Momentum: your pull. It is halved at the end of each turn (Chen rounds up, Soong and Lien round down), then leading an issue adds to it. Spend it to block, or to trigger your card that an opponent used for CP.",
+        bag: "Bag: a support check draws one cube from here. Your own colour is a success; another colour fails and that cube goes back to its owner. The numbers are the cubes of each colour in the bag.",
+        slot: "Issue slots: at the end of the turn the leader of slot 1 gains 1 momentum and draws an endorsement, the leader of slot 2 picks a reward, and the leader of slot 3 gains 1 momentum. Then each slot's leader loses 1 cube.",
+        close: "Close",
+      },
+      now: { title: "Just now" },
+      r: {
+        turn: "Turn {n} begins · initiative: {who} · you are dealt up to {cards} cards", turnNoDeal: "Turn {n} begins · initiative: {who}",
+        turnDebate: "Turn {n}: the Policy Forum begins", turnElection: "Turn {n}: election day begins",
+        decay: "End of turn · momentum halved: {text}", slot1: "Slot 1, {issue}: {who} leads: +1 momentum and an endorsement", slot3: "Slot 3, {issue}: {who} leads: +1 momentum",
+        issueDecay: "The leader of each issue slot loses 1 cube", momNow: "Momentum now: {text}", group: "{head}: {what}", times: "×{n}",
+        p: {
+          fill: "{county} +{n}", cross: "{county} cross-camp +{n}", steal: "{county}: took {n} {target}", remove: "{county}: removed {n} {target}", grey: "{county} non-voter +{n}",
+          fillFail: "{county}: fill failed", crossFail: "{county}: cross-camp failed", stealFail: "{county}: take {target} failed", removeFail: "{county}: remove {target} failed", greyFail: "{county}: fill failed",
+          adOk: "ad hit", adFail: "ad missed", move: "moved to {county}", media: "media in {region}", mediaRemove: "removed {target}'s media in {region}",
+          issue: "{issue}: +{n}", issueRemove: "{issue}: removed {n} {target}",
+        },
+      },
+      res: {
+        ok: "Check succeeded: {what}", okPlain: "Check succeeded",
+        fail: "Check failed: {where}. Drew {drew}; that cube goes back to {drew}'s supply.", failNoWhere: "Check failed: drew {drew}; that cube goes back to {drew}'s supply.",
       },
       hand: { title: "Hand {n}", titleDebate: "Policy Forum pile {n}", titleElection: "Election-day pile {n}", kept: "{n} kept for the {dest}", none: "No cards" },
       card: { local: "Local card", cand: "Candidate card" },
       p: {
+        candConfirm: "The candidate card can be used only once per game. Use it now?", candYes: "Yes, use it", candNo: "Not now",
+        movesOpen: "Move to another county…", movesShut: "Hide moves", moveHint: "To move, do it before you place your first block.", eg: "open green {n}", eb: "open blue {n}",
+        c: {
+          fill: "fill 1 block", cross: "cross-camp fill 1 block", steal: "take 1 {who} cube ({kind})", grey: "fill 1 non-voter block", remove: "remove 1 {who} cube ({kind})",
+          convert: "turn 1 non-voter block into a green swing block", move: "{county} · {left} CP left after moving",
+        },
         moveHead: "Move", back: "← Close", notNow: "You cannot play this card right now.",
         order: "You hold the initiative: pick where you act in the order this turn.",
         orderElection: "You hold the initiative: pick where you canvass in the order on election day; the others follow in seat order.",
@@ -78,7 +107,7 @@ export default {
         canvass: "Pick a card from your pile to canvass: three support checks in the county on the card.", canvassPlace: "A success in {county}. Pick one thing to do ({left} checks left on this card).", canvassRate: "Each check is about {p}%.",
       },
       o: {
-        order: "Act in position {n}", orderElection: "Canvass in position {n}", candidate: "Candidate card: {cp} CP", playEvent: "{card}: play as an event", playCp: "{card}: use {cp} CP for an action", playBlock: "{card}: use CP, and spend 2 momentum to block",
+        order: "Act in position {n}", orderElection: "Canvass in position {n}", candidate: "Candidate card: {cp} CP · once per game", playEvent: "{card}: play as an event", playCp: "{card}: use {cp} CP for an action", playBlock: "{card}: use CP, and spend 2 momentum to block",
         trigger: "Trigger (spend 1 momentum)", pass: "Don't trigger",
         kind: { campaign: "Campaign · fill or take blocks", ads: "Advertising · a check per CP, about {p}% each", adsNoRate: "Advertising · a check per CP", issue: "Issue · put cubes on an issue (1 CP for the first, 2 CP for each after)" },
         move: "Move to {county} ({cost} CP)", fill: "{county} · fill 1 block", cross: "{county} · cross-camp fill 1 block", steal: "{county} · take 1 {who} cube ({kind})",

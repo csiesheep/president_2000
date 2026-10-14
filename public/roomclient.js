@@ -10,12 +10,14 @@
 //
 // The client never works out what is allowed: it offers the seats the room says are empty, the start
 // button to the seat the room says is host, and exactly the moves the server put in `legal`.
-// A client is { v, token, seat, room, state, error, feed, snap }: state is { seat, view, legal } as the
-// server sent it, feed the record the table shows, snap a few counts of the last view to diff against.
+// A client is { v, token, seat, room, state, error, feed, snap, rec, mine, sentMove }: state is { seat, view, legal } as the
+// server sent it, feed the record the table shows, snap a few counts of the last view to diff against, rec what
+// happened since this seat last decided ("just now"), mine the outcome of its own last move (the result line)
+// and sentMove the move this page just sent (set by sent(), so a failed check can say where).
 import * as E from "./shared/engine.js";
 import { SEATS } from "./shared/board.js";
-import { tableHTML, labelMove, esc, bind, sayLine } from "./table.js";
-import { fromLog } from "./solo.js";
+import { tableHTML, labelMove, esc, bind, sayLine, orderChoices, recentLines, resultLine, changedCounties } from "./table.js";
+import { fromLog, settleEntries } from "./solo.js";
 import { advise } from "./shared/bots.js";
 import en from "./i18n/en.js";
 import zh from "./i18n/zh-Hant.js";
@@ -28,7 +30,7 @@ const fill = (s, vars = {}) => s.replace(/\{(\w+)\}/g, (_, k) => (k in vars ? va
 
 export function newClient() {
   return { v: 1, token: null, seat: null, room: null, state: null, error: null, feed: [], snap: null, advisor: false,
-    tape: [], chatFresh: false, deadline: null };
+    tape: [], chatFresh: false, deadline: null, rec: [], mine: null, sentMove: null };
 }
 
 // ------------------------------------------------------------------ the record
@@ -74,6 +76,8 @@ function snapOf(view) {
     pos: view.pos.slice(),
     media: view.media.map((m) => m.slice()),
     issues: Object.fromEntries(view.issues.map((i) => [i.name, i.cubes.slice()])),
+    slots: view.issues.map((i) => ({ name: i.name, cubes: i.cubes.slice() })),
+    mom: view.mom.slice(),
     actor: acting(view)[0] ?? null,
   };
 }
@@ -105,7 +109,9 @@ function diffFeed(prev, view, slice) {
     for (const g of gain) out.push({ k: "media", seat: g.p, region: r, target: null });
     if (!gain.length && who != null) for (const l of loss) if (l.p !== who) out.push({ k: "media", seat: who, region: r, target: l.p });
   });
-  for (const [name, cubes] of Object.entries(next.issues)) {
+  // The end-of-turn settlement takes a cube off each issue's leader: that is not anyone's move.
+  const settled = slice.some((e) => e.t === "momentum" && e.step === "done");
+  for (const [name, cubes] of settled ? [] : Object.entries(next.issues)) {
     const { gain, loss } = deltas(prev.issues[name] || [0, 0, 0], cubes);
     for (const g of gain) out.push({ k: "issue", seat: g.p, issue: name, target: null });
     if (!gain.length && who != null) for (const l of loss) if (l.p !== who) out.push({ k: "issue", seat: who, issue: name, target: l.p });
@@ -113,11 +119,35 @@ function diffFeed(prev, view, slice) {
   return out;
 }
 
+// → { feed, added, fresh }: the whole record, the entries this state added to it, and whether it
+// started over (first state, or a new game).
 function nextFeed(client, view) {
   const prev = client.snap;
-  if (!prev || view.log.length < prev.logLen) return roomLog(view.log, 0).slice(-FEED_MAX);
+  if (!prev || view.log.length < prev.logLen) { const all = roomLog(view.log, 0).slice(-FEED_MAX); return { feed: all, added: all, fresh: true }; }
   const slice = view.log.slice(prev.logLen);
-  return client.feed.concat(roomLog(view.log, prev.logLen), diffFeed(prev, view, slice)).slice(-FEED_MAX);
+  const settle = settleEntries(prev.mom, prev.slots, slice);
+  const decay = settle.filter((e) => e.k === "decay"), after = settle.filter((e) => e.k !== "decay");
+  const added = [...decay, ...roomLog(view.log, prev.logLen), ...diffFeed(prev, view, slice), ...after];
+  return { feed: client.feed.concat(added).slice(-FEED_MAX), added, fresh: false, slice };
+}
+
+// "Just now" and "your result" for this state. A decision of this seat is one it sent (sentMove) or one
+// the record shows (an entry with its seat, a support check of its own); then "just now" starts over
+// with what the others did, and the result is read off its own checks. Otherwise "just now" grows.
+function justNow(client, next, view) {
+  if (next.fresh) return { rec: next.added, mine: null };
+  const me = view.seat, slice = next.slice || [];
+  const checks = slice.filter((e) => e.t === "check" && e.seat === me).map((e) => ({ ok: e.ok, drew: e.drew }));
+  const own = next.added.filter((e) => e.seat === me && !["turn", "slot", "endorseOne"].includes(e.k));
+  if (!client.sentMove && !checks.length && !own.length) return { rec: (client.rec || []).concat(next.added).slice(-FEED_MAX), mine: client.mine };
+  const tried = client.sentMove && ["fill", "cross", "steal", "grey", "remove"].includes(client.sentMove.type) && client.sentMove.county != null && !own.some((e) => e.county === client.sentMove.county)
+    ? [{ k: client.sentMove.type, seat: me, county: client.sentMove.county, target: client.sentMove.target, ok: false }] : [];
+  return { rec: next.added.filter((e) => !own.includes(e)).slice(-FEED_MAX), mine: { checks, lines: [...own, ...tried] } };
+}
+
+// The page tells the client which move it just sent, so a failed check can name its county.
+export function sent(client, move) {
+  return { ...client, sentMove: move || null };
 }
 
 // ------------------------------------------------------------------ messages in
@@ -134,13 +164,15 @@ export function receive(client, msg) {
     }
     case "room": return { ...client, room: { code: msg.code, host: msg.host, started: msg.started, seats: msg.seats }, error: null };
     case "state": {
-      const feed = nextFeed(client, msg.view);
+      const next = nextFeed(client, msg.view), now = justNow(client, next, msg.view);
       // What the bots said about this state's moves goes on the table-talk tape (only_move is not worth saying).
+      // Every move keeps its sentence: tests/roomclient.test.js (#19) wants the last one on screen, so the
+      // "one sentence per action" of #23 is done on the solo record only (see the issue).
       const said = (Array.isArray(msg.botMoves) ? msg.botMoves : []).filter((b) => b && b.why && b.why.key !== "only_move").map((b) => ({ k: "bot", seat: b.seat, why: b.why }));
       const tape = said.length ? client.tape.concat(said).slice(-TAPE_MAX) : client.tape;
-      return { ...client, seat: msg.seat, state: { seat: msg.seat, view: msg.view, legal: msg.legal }, feed, snap: snapOf(msg.view), error: null, tape, deadline: typeof msg.deadline === "number" ? msg.deadline : null };
+      return { ...client, seat: msg.seat, state: { seat: msg.seat, view: msg.view, legal: msg.legal }, feed: next.feed, rec: now.rec, mine: now.mine, sentMove: null, snap: snapOf(msg.view), error: null, tape, deadline: typeof msg.deadline === "number" ? msg.deadline : null };
     }
-    case "error": return { ...client, error: String(msg.code) };
+    case "error": return { ...client, error: String(msg.code), sentMove: null };
   }
   return client;
 }
@@ -161,10 +193,10 @@ export function setAdvisor(client, on) {
 // → { choices, why } for the seat's current decision; the advised one is marked when the switch is on.
 function decide(client, lang) {
   const { view, legal } = client.state;
-  const list = legal.map((m) => ({ move: m, label: labelMove(view, m, lang) }));
+  const list = orderChoices(view, legal.map((m) => ({ move: m, label: labelMove(view, m, lang) })));
   if (!client.advisor || !list.length || view.phase === "end") return { choices: list, why: null };
   const { move: pick, why } = advise(view, legal);
-  const key = JSON.stringify(pick), at = legal.findIndex((m) => JSON.stringify(m) === key);
+  const key = JSON.stringify(pick), at = list.findIndex((c) => JSON.stringify(c.move) === key);
   if (at >= 0) list[at] = { ...list[at], advised: true };
   return { choices: list, why };
 }
@@ -266,7 +298,12 @@ export function screen(client, lang, opts = {}) {
     const d = decide(client, lang), choices = d.choices, acts = actions(client, lang);
     const names = [0, 1, 2].map((p) => { const s = client.room && client.room.seats[p]; return s && s.kind === "human" ? s.name : ""; });
     const wait = acting(view).filter((p) => p !== view.seat);
+    const xb = bind(lang), rec = client.rec || [];
+    const text = resultLine(client.mine, xb), last = client.mine && client.mine.checks.length ? client.mine.checks[client.mine.checks.length - 1] : null;
     const body = tableHTML(view, choices, lang, {
+      recent: recentLines(rec, view, xb), result: text ? { text, ok: !!(last && last.ok) } : null,
+      changed: [...changedCounties(rec), ...changedCounties((client.mine && client.mine.lines) || [], true)],
+      help: opts.help, moves: opts.moves, confirm: opts.confirm,
       feed: client.feed, wait: wait.length ? wait : [0, 1, 2].filter((p) => p !== view.seat),
       names, waitLabel: U.game.wait, waitHint: U.game.hint, noAgain: true,
       advisor: { on: !!client.advisor, why: d.why },
