@@ -19,7 +19,7 @@ const dict = (lang) => (lang === "en" ? en : zh);
 
 // A small translator bound to one language. `tr("p.play", {n: 1})` reads ui.solo.p.play and
 // throws on a missing key, so a typo is found by playing, not by a player.
-function bind(lang) {
+export function bind(lang) {
   const d = dict(lang), S = d.ui.solo;
   const get = (path) => path.split(".").reduce((o, k) => (o == null ? o : o[k]), S);
   const tr = (path, vars) => {
@@ -222,6 +222,12 @@ function mapHTML(v, x, open) {
 }
 const key = (b) => (b.o >= 0 ? b.o : 3 + (b.t === "G" ? 0 : b.t === "B" ? 1 : 2));
 
+// The room's move clock (o.clock = { left, deadline, tpl }): the page rewrites it every second.
+function clockHTML(c) {
+  if (!c) return "";
+  return ` <span class="clock${c.left <= 10 ? " low" : ""}" data-left="${c.left}" data-deadline="${c.deadline}">${esc(fill(c.tpl, { n: c.left }))}</span>`;
+}
+
 function headerHTML(v, ch, x, o) {
   const me = v.seat, S = x.S;
   const nm = (p) => x.short(p) + (o.names && o.names[p] ? ` (${o.names[p]})` : "");
@@ -231,8 +237,8 @@ function headerHTML(v, ch, x, o) {
   else phase = x.tr("hdr.phase." + v.phase);
   let status = "";
   if (v.phase === "end") status = "";
-  else if (ch.length) status = `<span class="you">${esc(x.tr("hdr.yourTurn"))}</span>`;
-  else status = `<span class="wait">${esc(o.waitLabel ? fill(o.waitLabel, { who: waitNames || "…" }) : x.tr("hdr.busy", { who: waitNames || "…" }))}</span>`;
+  else if (ch.length) status = `<span class="yrow"><span class="you">${esc(x.tr("hdr.yourTurn"))}</span>${clockHTML(o.clock)}</span>`;
+  else status = `<span class="wait">${esc(o.waitLabel ? fill(o.waitLabel, { who: waitNames || "…" }) : x.tr("hdr.busy", { who: waitNames || "…" }))}${clockHTML(o.clock)}</span>`;
   const init = v.initiative >= 0 && v.phase !== "end" ? ` · ${x.tr("hdr.initiative", { who: x.short(v.initiative) })}` : "";
   const chips = SHOW_ORDER.map((p) => `<span class="chip s${p}${p === me ? " me" : ""}" title="${esc(x.full(p))}">${esc(x.short(p))}<b>${v.mom[p]}</b>${v.initiative === p && v.phase !== "end" ? `<i class="star" aria-label="${esc(x.tr("hdr.star"))}">★</i>` : ""}</span>`).join("");
   return `<header class="t-top"><div class="t-ttl"><span class="t-turn">${esc(x.tr("hdr.turn", { n: v.turn }))}${esc(init)}</span>` +
@@ -486,7 +492,7 @@ function feedHTML(v, x, o) {
   if (!feed.length) return "";
   const rows = feed.map((e) => {
     const line = e.k === "say" ? "" : feedLine(e, v, x);
-    const say = e.why ? sayLine(e.why, line ? null : e.seat, x) : "";
+    const say = e.why && e.why.key !== "only_move" ? sayLine(e.why, line ? null : e.seat, x) : "";
     if (!line && !say) return "";
     return `<li class="${e.seat != null ? "s" + e.seat : "sys"}${e.k === "turn" ? " turn" : ""}">${line ? esc(line) : ""}${say ? `<span class="say">${esc(say)}</span>` : ""}</li>`;
   }).join("");
@@ -536,7 +542,7 @@ function endHTML(v, x, o) {
     `<h3 class="t-h">${esc(x.tr("end.dayTitle"))}</h3><ul class="day">${lines.join("")}</ul>` +
     `<h3 class="t-h">${esc(x.tr("end.leadTitle"))}</h3><div class="leads">${leadRows}</div>` +
     `<p class="hist">${esc(x.tr("end.history"))}</p>` +
-    `<div class="opts">${o.noAgain ? "" : `<button type="button" class="opt" data-act="again">${esc(x.tr("end.again"))}</button>`}<a class="opt ghost" href="./${q}">${esc(x.tr("end.home"))}</a></div></section>`;
+    `<div class="opts">${o.again ? `<button type="button" class="opt" data-msg="${esc(JSON.stringify(o.again.data))}">${esc(o.again.label)}</button>` : o.noAgain ? (o.againWait ? `<p class="sub wait">${esc(o.againWait)}</p>` : "") : `<button type="button" class="opt" data-act="again">${esc(x.tr("end.again"))}</button>`}<a class="opt ghost" href="./${q}">${esc(x.tr("end.home"))}</a></div></section>`;
 }
 
 // ---------------------------------------------------------------- the whole table

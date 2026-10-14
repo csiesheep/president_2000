@@ -14,20 +14,21 @@
 // server sent it, feed the record the table shows, snap a few counts of the last view to diff against.
 import * as E from "./shared/engine.js";
 import { SEATS } from "./shared/board.js";
-import { tableHTML, labelMove, esc } from "./table.js";
+import { tableHTML, labelMove, esc, bind, sayLine } from "./table.js";
 import { fromLog } from "./solo.js";
 import { advise } from "./shared/bots.js";
 import en from "./i18n/en.js";
 import zh from "./i18n/zh-Hant.js";
 
-const FEED_MAX = 60;
+const FEED_MAX = 60, TAPE_MAX = 60, CHAT_MAX = 200;
 const NO = [5, 1, 2];
 const SHOW_ORDER = [1, 2, 0]; // ballot-number order, as the table and the mockups
 const dict = (lang) => (lang === "en" ? en : zh);
 const fill = (s, vars = {}) => s.replace(/\{(\w+)\}/g, (_, k) => (k in vars ? vars[k] : "{" + k + "}"));
 
 export function newClient() {
-  return { v: 1, token: null, seat: null, room: null, state: null, error: null, feed: [], snap: null, advisor: false };
+  return { v: 1, token: null, seat: null, room: null, state: null, error: null, feed: [], snap: null, advisor: false,
+    tape: [], chatFresh: false, deadline: null };
 }
 
 // ------------------------------------------------------------------ the record
@@ -124,15 +125,29 @@ function nextFeed(client, view) {
 export function receive(client, msg) {
   if (!msg || typeof msg !== "object") return client;
   switch (msg.t) {
-    case "hello": return { ...client, token: msg.token, seat: msg.seat, error: null };
+    // The first chat message after a hello is the whole record and replaces; later ones append.
+    case "hello": return { ...client, token: msg.token, seat: msg.seat, error: null, chatFresh: true };
+    case "chat": {
+      const lines = (Array.isArray(msg.lines) ? msg.lines : []).map((l) => ({ k: "chat", seat: l.seat, name: l.name, text: String(l.text) }));
+      const tape = client.chatFresh ? lines.concat(client.tape.filter((e) => e.k !== "chat")) : client.tape.concat(lines);
+      return { ...client, tape: tape.slice(-TAPE_MAX), chatFresh: false };
+    }
     case "room": return { ...client, room: { code: msg.code, host: msg.host, started: msg.started, seats: msg.seats }, error: null };
     case "state": {
       const feed = nextFeed(client, msg.view);
-      return { ...client, seat: msg.seat, state: { seat: msg.seat, view: msg.view, legal: msg.legal }, feed, snap: snapOf(msg.view), error: null };
+      // What the bots said about this state's moves goes on the table-talk tape (only_move is not worth saying).
+      const said = (Array.isArray(msg.botMoves) ? msg.botMoves : []).filter((b) => b && b.why && b.why.key !== "only_move").map((b) => ({ k: "bot", seat: b.seat, why: b.why }));
+      const tape = said.length ? client.tape.concat(said).slice(-TAPE_MAX) : client.tape;
+      return { ...client, seat: msg.seat, state: { seat: msg.seat, view: msg.view, legal: msg.legal }, feed, snap: snapOf(msg.view), error: null, tape, deadline: typeof msg.deadline === "number" ? msg.deadline : null };
     }
     case "error": return { ...client, error: String(msg.code) };
   }
   return client;
+}
+
+// The room's chat as the page shows it.
+export function chatLines(client) {
+  return client.tape.filter((e) => e.k === "chat").map((e) => ({ seat: e.seat, name: e.name, text: e.text }));
 }
 
 // ------------------------------------------------------------------ what can be clicked
@@ -157,7 +172,9 @@ function decide(client, lang) {
 export function actions(client, lang) {
   const T = dict(lang), U = T.ui.room;
   if (client.state) {
-    return decide(client, lang).choices.map((c) => ({ label: c.label, data: { t: "move", move: c.move }, ...(c.advised ? { advised: true } : {}) }));
+    const out = decide(client, lang).choices.map((c) => ({ label: c.label, data: { t: "move", move: c.move }, ...(c.advised ? { advised: true } : {}) }));
+    if (client.state.view.phase === "end" && client.room && client.seat != null && client.room.host === client.seat) out.push({ label: T.ui.solo.end.again, data: { t: "rematch" } });
+    return out;
   }
   const room = client.room;
   if (!room || room.started) return [];
@@ -179,6 +196,28 @@ function errorHTML(client, T) {
   return `<p class="rerr" role="alert">${esc((T.errors && T.errors[client.error]) || U.conn.unknownError)}</p>`;
 }
 
+// 桌邊 · TABLE TALK: what the players typed and what the bots' teams say, in one column.
+function chatHTML(client, lang, opts, T) {
+  const C = T.ui.room.chat, x = bind(lang);
+  const rows = client.tape.map((e) => {
+    if (e.k === "chat") return `<li class="c${e.seat != null && e.seat >= 0 ? " s" + e.seat : ""}${e.seat != null && e.seat === client.seat ? " me" : ""}"><b>${esc(e.name || T.ui.room.lobby.guest)}</b> ${esc(e.text)}</li>`;
+    const say = sayLine(e.why, e.seat, x);
+    return say ? `<li class="bt${e.seat != null ? " s" + e.seat : ""}"><span class="say">${esc(say)}</span></li>` : "";
+  }).join("");
+  return `<section class="t-chat" aria-label="${esc(C.title)}"><h3 class="t-h">${esc(C.title)}</h3>` +
+    `<ol class="chatlog" tabindex="0">${rows || `<li class="none">${esc(C.none)}</li>`}</ol>` +
+    `<form class="chatf" id="chatf" novalidate><label class="sr" for="chatin">${esc(C.label)}</label>` +
+    `<input id="chatin" class="fi" name="text" maxlength="${CHAT_MAX}" autocomplete="off" placeholder="${esc(C.ph)}" value="${esc(opts.draft || "")}">` +
+    `<button type="submit" class="btn send">${esc(C.send)}</button></form></section>`;
+}
+
+// The clock for the header: whole seconds left, counted against opts.now (default: the wall clock).
+function clockOf(client, opts, T) {
+  if (client.deadline == null) return null;
+  const now = typeof opts.now === "number" ? opts.now : Date.now();
+  return { left: Math.max(0, Math.ceil((client.deadline - now) / 1000)), deadline: client.deadline, tpl: T.ui.room.game.left };
+}
+
 function lobbyHTML(client, lang, opts, T) {
   const U = T.ui.room, L = U.lobby, room = client.room, S = T.ui.solo;
   const acts = actions(client, lang);
@@ -193,7 +232,7 @@ function lobbyHTML(client, lang, opts, T) {
     } else if (s.kind === "bot") line = esc(L.bot);
     else line = esc(L.empty);
     const sit = sitFor(p);
-    if (sit) right = `<button type="button" class="btn sit" data-msg="${esc(JSON.stringify(sit.data))}">${esc(sit.label)}</button>`;
+    if (sit) right = `<button type="button" class="btn sit" aria-label="${esc(fill(client.seat == null ? L.sitAria : L.moveAria, { who: c.name }))}" data-msg="${esc(JSON.stringify(sit.data))}">${esc(sit.label)}</button>`;
     else if (s.kind === "human" && me) right = `<span class="mine">${esc(L.you)}</span>`;
     return `<div class="seat s${p}${s.kind === "empty" ? " empty" : ""}${me ? " me" : ""}" data-seat="${p}"><b class="no">${NO[p]}</b>` +
       `<span class="sb"><span class="sc">${esc(c.name)}</span><span class="sw">${line}</span></span>${right}</div>`;
@@ -213,7 +252,7 @@ function lobbyHTML(client, lang, opts, T) {
     `<div class="roomcode"><div><span class="rl">${esc(L.code)}</span><span class="rc">${esc(room.code)}</span></div>` +
     `<button type="button" class="btn copy" data-copy="1">${esc(L.copy)}</button></div>` +
     `<p class="sub">${esc(L.share)}</p><div class="seats">${rows}</div>${errorHTML(client, T)}${foot}` +
-    `<p class="note">${esc(L.rules)}</p></section>`;
+    `<p class="note">${esc(L.rules)}</p></section>` + chatHTML(client, lang, opts, T);
 }
 
 function waitingHTML(text) {
@@ -224,16 +263,18 @@ export function screen(client, lang, opts = {}) {
   const T = dict(lang), U = T.ui.room;
   if (client.state) {
     const { view } = client.state;
-    const d = decide(client, lang), choices = d.choices;
+    const d = decide(client, lang), choices = d.choices, acts = actions(client, lang);
     const names = [0, 1, 2].map((p) => { const s = client.room && client.room.seats[p]; return s && s.kind === "human" ? s.name : ""; });
     const wait = acting(view).filter((p) => p !== view.seat);
     const body = tableHTML(view, choices, lang, {
       feed: client.feed, wait: wait.length ? wait : [0, 1, 2].filter((p) => p !== view.seat),
       names, waitLabel: U.game.wait, waitHint: U.game.hint, noAgain: true,
       advisor: { on: !!client.advisor, why: d.why },
+      clock: clockOf(client, opts, T),
+      again: view.phase === "end" ? (acts.find((a) => a.data.t === "rematch") || null) : null, againWait: U.game.waitAgain,
       open: opts.open, sel: opts.sel, picks: opts.picks,
     });
-    return errorHTML(client, T) + body;
+    return errorHTML(client, T) + body + chatHTML(client, lang, opts, T);
   }
   if (!client.room) return errorHTML(client, T) + waitingHTML(U.conn.connecting);
   if (client.room.started) return errorHTML(client, T) + waitingHTML(U.game.noSeat);

@@ -46,6 +46,12 @@ export function mount({ T, lang, qs, store, $ }) {
   };
   stage.addEventListener("submit", (ev) => {
     ev.preventDefault();
+    if (ev.target.id === "chatf") {
+      const text = ev.target.elements.text.value.trim();
+      ui.draft = "";
+      if (text) send({ t: "chat", text }); else draw();
+      return;
+    }
     const f = ev.target, name = f.elements.name.value.trim(), err = $("#ferr");
     const fail = (msg) => { err.textContent = msg; err.hidden = false; };
     if (!name) return fail(F.needName);
@@ -58,7 +64,7 @@ export function mount({ T, lang, qs, store, $ }) {
 
   // ---- the room
   let roomCode = null, name = "", client = RC.setAdvisor(RC.newClient(), store.get(ADV_KEY) === true), sock = null, attempts = 0, retry = null, tick = null, terminal = false, gone = false;
-  let ui = { open: null, sel: null, picks: [], level: [1, 2, 3].includes(store.get(LEVEL_KEY)) ? store.get(LEVEL_KEY) : 2 };
+  let ui = { open: null, sel: null, picks: [], draft: "", level: [1, 2, 3].includes(store.get(LEVEL_KEY)) ? store.get(LEVEL_KEY) : 2 };
 
   const say = (text) => { banner.textContent = text || ""; banner.hidden = !text; };
   const draw = () => {
@@ -66,8 +72,26 @@ export function mount({ T, lang, qs, store, $ }) {
       stage.innerHTML = `<section class="lobby setup"><p class="rerr" role="alert">${esc(T.errors.no_room)}</p><a class="big go" href="${esc(q({ join: "1" }))}">${esc(F.joinGo)}</a></section>`;
       return;
     }
-    stage.innerHTML = RC.screen(client, lang, { level: ui.level, open: ui.open || undefined, sel: ui.sel, picks: ui.picks });
+    // A redraw replaces the chat box: keep what is typed, and the caret if the box had focus.
+    const box = $("#chatin"), had = box && document.activeElement === box, caret = had ? [box.selectionStart, box.selectionEnd] : null;
+    const log = stage.querySelector(".chatlog"), pinned = !log || log.scrollHeight - log.scrollTop - log.clientHeight < 40;
+    stage.innerHTML = RC.screen(client, lang, { level: ui.level, open: ui.open || undefined, sel: ui.sel, picks: ui.picks, draft: ui.draft });
+    const nb = $("#chatin");
+    if (nb && had) { nb.focus({ preventScroll: true }); try { nb.setSelectionRange(caret[0], caret[1]); } catch { /* not a text field */ } }
+    const nl = stage.querySelector(".chatlog");
+    if (nl && pinned) nl.scrollTop = nl.scrollHeight;
   };
+  // The move clock: rewrite the seconds in place once a second, without redrawing the page.
+  const clockTick = () => {
+    for (const el of stage.querySelectorAll(".clock[data-deadline]")) {
+      const left = Math.max(0, Math.ceil((+el.dataset.deadline - Date.now()) / 1000));
+      el.dataset.left = String(left);
+      el.textContent = U.game.left.replace("{n}", left);
+      el.classList.toggle("low", left <= 10);
+    }
+  };
+  setInterval(clockTick, 1000);
+  stage.addEventListener("input", (ev) => { if (ev.target.id === "chatin") ui.draft = ev.target.value; });
   const url = () => {
     const u = new URL("ws", location.href);
     u.protocol = location.protocol === "https:" ? "wss:" : "ws:";
