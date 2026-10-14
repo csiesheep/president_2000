@@ -32,7 +32,10 @@
 - `src/index.js` 是從天地會(csiesheep/tiandihui)複製的,只改了 PREFIX;`src/room.js` 是 stub,M4 重寫。
 - 設計文件在 owner 的 vault:`Projects/president_2000/president_2000 - rulebook.md`(v0.2,60 張牌)、
   `president_2000 - design.md`(決定、模擬結果)、`president_2000 plan.md`(里程碑、決定)、`sim/sim.js`(設計模擬器,M2 的對照)。
-  UI 定案是方向 A 街頭旗海,canvas https://claude.ai/artifact/VH7BjNkQumRRPvZjfn7afB 。brief 會帶上需要的段落。
+  UI 定案:owner 2026-10-14 改選**方向 C 桌遊桌面**(木桌、米色印刷棋盤、木頭方塊、襯線字;點地圖上的縣市開選項、手牌扇形),
+  取代先前的方向 A 街頭旗海。同日 owner 選定:地圖「一版 印刷棋盤」(台灣形狀,輪廓與縣市界為手繪近似)、事件牌與縣市插圖「美術三 桌上模型」、
+  議題與候選人「美術二」。canvas https://claude.ai/artifact/69Q4zH2AbWEXV7ikBuMHTd (owner 私人;A 的舊 canvas VH7BjNkQumRRPvZjfn7afB 只作歷史)。
+  peer 打不開 canvas:brief 會帶上需要的段落與圖。
 
 - 跨界修改**可以**,但交付時要點名,由 orchestrator 轉給檔案主人。最糟的不是衝突,是兩邊安靜地各持一份真相。
 - **資料表要加 id 的**,開工第一則留言先列出這一趟**所有**新 id。同一個檔案裡有幾張表就有幾個命名空間;撞 id 時兩邊的測試都是綠的。
