@@ -1501,8 +1501,8 @@ c6("政見發表會 · 情境 B：平手時從持有者順時針比（宋持有�
   st = round(st, [[CHEN, "three_three_three"], [SOONG, "quake_bond"], [LIEN, "hand_in_hand"]]);
   st = round(st, [[CHEN, "no_nuke4"], [SOONG, "provincial_build"], [LIEN, "local_factions"]]);
   // 牌出完：兩岸、清廉都是 0 比 0 比 0 → 不結算（owner 裁決 Q7 = B，2026-10-14）。
-  // Until #21 the engine still settles them for the holder (the old default): reported as 尚未實作.
-  if (st.phase === "debate" && JSON.stringify(E.mustAct(st)) === JSON.stringify([SOONG])) return "TODO: Q7 改成 B 還沒做（#21）：牌出完後 0 比 0 比 0 的議題仍在結算";
+  // #21 landed: settling them for the holder (the old default) is now a failure, not 尚未實作.
+  if (st.phase === "debate" && JSON.stringify(E.mustAct(st)) === JSON.stringify([SOONG])) return "牌出完後 0 比 0 比 0 的議題仍在結算（Q7 = B，#21）";
   r = eq(`${st.turn} ${st.phase}`, "7 order", "牌出完之後（沒人出牌的議題不結算，直接結束）"); if (r !== true) return r;
   r = eq(st.issues.map((i) => i.name).join(), "cross,clean,econ", "議題軌道（經濟結算 → 第三槽；兩岸、清廉照原順序回第一、二槽）"); if (r !== true) return r;
   r = eq(st.mom.map((x, p) => x - mom0[p]).join(), "0,0,1", "動能變化（只有經濟的贏家連 +1）"); if (r !== true) return r;

@@ -197,7 +197,7 @@ const debateText = (t) => strings((t.rules || []).find((s) => s.id === "debate")
 const Q7 = /不結算/.test(debateText(zh));
 section("22 規則頁：政見發表會沒人出牌的議題");
 check("規則頁的政見發表會寫出：沒人出過牌的議題不結算（中文「不結算」、英文 not settled），議題照原順序回軌道", () => {
-  if (!Q7) return "TODO: 規則頁還沒寫 Q7 = B（#22）";
+  if (!Q7) return "中文的政見發表會一節沒有寫「不結算」（Q7 = B，#22）";
   if (!/not settled/i.test(debateText(en))) return "英文的政見發表會一節沒有寫 not settled";
   // The order has to be said after 不結算 / not settled: the sentence before already says the
   // settled ones go in track order (found by the writer, #22).
