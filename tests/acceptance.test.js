@@ -148,7 +148,7 @@ check("起始位置、動能、袋子、門檻、回合數、議題數", () => {
   for (const [s, c] of Object.entries(SPEC.startCounty)) { const r = eq(B.START_COUNTY[s], c, "起始位置 " + s); if (r !== true) return r; }
   const r1 = eq(B.START_MOMENTUM.join(), SPEC.startMomentum.join(), "起始動能"); if (r1 !== true) return r1;
   const r2 = eq(B.BAG_SEED, SPEC.bagSeed, "袋子起始"); if (r2 !== true) return r2;
-  const r3 = eq(B.BOSS_THRESHOLD, SPEC.bossThreshold, "樁腳主門檻"); if (r3 !== true) return r3;
+  const r3 = eq(B.BOSS_THRESHOLD, SPEC.bossThreshold, "地方大老門檻"); if (r3 !== true) return r3;
   const r4 = eq(B.TURNS, SPEC.turns, "回合數"); if (r4 !== true) return r4;
   const r5 = eq(B.ISSUES.length, SPEC.issues, "議題數"); if (r5 !== true) return r5;
   return ok(true, "全部相符");
@@ -702,7 +702,7 @@ c2("檢定 · 袋子抽空時每人投入 12 顆再抽（§8.2）", () => {
   const r = eq(`${x.st.bag.join()} ${c.ok === (c.drew === CHEN)}`, `${want.join()} true`, `重裝後（抽到 ${c.drew}）的袋子`); if (r !== true) return r;
   return ok(true, `重裝 12/12/12 後抽到 ${c.drew}，袋子 ${x.st.bag.join("/")}`);
 });
-c2("檢定 · 填同營游離塊，沒有別人的樁腳主、沒有對手候選人 → 不檢定（§8.1）", () => {
+c2("檢定 · 填同營游離塊，沒有別人的地方大老、沒有對手候選人 → 不檢定（§8.1）", () => {
   const r = eq(opStr(chenOp((s) => { s.bag = [0, 0, 10]; }, null, { type: "fill", county: ci("台南縣") }), "台南縣", CHEN), "2 0,0,10 0", "陳在台南縣的方塊、袋子、檢定次數"); if (r !== true) return r;
   return ok(true, "台南縣填綠：放上、沒有檢定");
 });
@@ -713,22 +713,22 @@ c2("檢定 · 跨營填與搶永遠要檢定，有媒體優勢也一樣（§7.1�
   return ok(true, "雲嘉南媒體優勢下，跨營填與搶都檢定");
 });
 
-// ---- 樁腳主、區域媒體優勢（§3.4、§8.1）
-c2("樁腳主 · 4 顆以上；別人在該縣市是樁腳主就要檢定（自己也是不抵銷），3 顆不算（§3.4、§8.1）", () => {
+// ---- 地方大老、區域媒體優勢（§3.4、§8.1）
+c2("地方大老 · 4 顆以上；別人在該縣市是地方大老就要檢定（自己也是不抵銷），3 顆不算（§3.4、§8.1）", () => {
   const tpx = ci("台北縣");
-  // v0.3 開局台北縣 陳 3、宋 4、連 4。先替陳補一顆綠到 4 顆：三人都是樁腳主。
+  // v0.3 開局台北縣 陳 3、宋 4、連 4。先替陳補一顆綠到 4 顆：三人都是地方大老。
   const four = (s) => { s.bag = [0, 0, 10]; s.counties[tpx].blocks.find((x) => x.o < 0 && x.t === "G").o = CHEN; };
   let r = eq(opStr(chenOp(four, "台北縣", { type: "fill", county: tpx }), "台北縣", CHEN), "4 0,0,9 1", "陳 宋 連 都 4 顆：陳填台北縣"); if (r !== true) return r;
   const three = (s) => { four(s); for (const p of [SOONG, LIEN]) s.counties[tpx].blocks.find((x) => x.o === p).o = -1; };
   r = eq(opStr(chenOp(three, "台北縣", { type: "fill", county: tpx }), "台北縣", CHEN), "5 0,0,10 0", "宋、連各剩 3 顆：陳填台北縣"); if (r !== true) return r;
   return ok(true, "別人 4 顆要檢定、3 顆不用；陳自己 4 顆不抵銷");
 });
-c2("樁腳主 · 填同營游離塊，該縣市有對手候選人棋子就要檢定（§8.1）", () => {
+c2("地方大老 · 填同營游離塊，該縣市有對手候選人棋子就要檢定（§8.1）", () => {
   let r = eq(opStr(chenOp((s) => { s.bag = [0, 0, 10]; s.pos[SOONG] = ci("台中縣"); }, "台中縣", { type: "fill", county: ci("台中縣") }), "台中縣", CHEN), "1 0,0,9 1", "宋在台中縣：陳填綠"); if (r !== true) return r;
   r = eq(opStr(chenOp((s) => { s.bag = [0, 0, 10]; }, "台中縣", { type: "fill", county: ci("台中縣") }), "台中縣", CHEN), "2 0,0,10 0", "宋在南投：陳填台中縣"); if (r !== true) return r;
   return ok(true, "對手在場檢定、不在場不檢定");
 });
-c2("樁腳主 · 區域媒體優勢（該區媒體最多、平手無人）免除樁腳主與候選人在場的檢定（§3.4、§8.1）", () => {
+c2("地方大老 · 區域媒體優勢（該區媒體最多、平手無人）免除地方大老與候選人在場的檢定（§3.4、§8.1）", () => {
   const fill = (to, arrange) => opStr(chenOp(arrange, to, { type: "fill", county: ci(to) }), to, CHEN);
   let r = eq(fill("台北縣", (s) => { s.bag = [0, 0, 10]; s.media[ri("北北基")] = [2, 0, 1]; }), "4 0,0,10 0", "北北基媒體 陳2 連1：填台北縣"); if (r !== true) return r;
   r = eq(fill("台北縣", (s) => { s.bag = [0, 0, 10]; s.media[ri("北北基")] = [1, 0, 1]; }), "3 0,0,9 1", "北北基媒體 陳1 連1（平手）：填台北縣"); if (r !== true) return r;
@@ -910,7 +910,7 @@ c2("事件 · 地方牌當事件：在牌上的縣市放 1 顆（照 §8.1 檢�
   const s = start((x) => { x.bag = [0, 9, 0]; });
   let r = eq(E.legalMoves(s, CHEN).map((m) => `${m.type}:${m.county}`).sort().join(), `cross:${k},fill:${k}`, "地方牌（台北縣）的選項"); if (r !== true) return r;
   const a = D.act(s, CHEN, { type: "fill", county: k });
-  r = eq(`${D.cubes(a, k, CHEN)} ${a.bag.join()}`, "3 0,8,0", "填綠：宋連是樁腳主 → 檢定失敗"); if (r !== true) return r;
+  r = eq(`${D.cubes(a, k, CHEN)} ${a.bag.join()}`, "3 0,8,0", "填綠：宋連是地方大老 → 檢定失敗"); if (r !== true) return r;
   if (E.mustAct(a).includes(CHEN) && E.legalMoves(a, CHEN).some((m) => m.type === "action")) return "地方牌當事件之後還有 CP 行動";
   if (!a.removed.includes(id)) return "地方牌當事件之後沒有移出遊戲";
   const m = D.act(start((x) => { x.bag = [0, 9, 0]; x.media[ri("北北基")] = [2, 0, 1]; }), CHEN, { type: "fill", county: k });
@@ -1019,9 +1019,9 @@ choiceGroup("事件 · 指定縣市（照文字順序；沒有空的游離塊就
   { id: "east_coast", by: SOONG, arrange: (s) => { s.counties[ci("花蓮縣")].blocks.find((b) => b.o === LIEN).o = -1; }, steps: [["probe", SOONG, offers(["fill", "cross"], ["花蓮縣"], "花東原鄉可選的縣市（台東沒有空塊）")], [SOONG, F("花蓮縣")]], want: { cubes: { "花蓮縣": [0, 1, 0] } } },
   { id: "quake_bond", by: SOONG, steps: [["probe", SOONG, offers(["fill", "cross"], ["台中縣"], "災區情誼可選的縣市（南投沒有空塊）")], [SOONG, F("台中縣")]], want: { cubes: { "台中縣": [0, 1, 0] } } },
   { id: "farmers_association", by: LIEN, steps: [["probe", LIEN, offers(["fill", "cross"], ["雲林縣"], "第一個縣市")], [LIEN, F("雲林縣")], [LIEN, F("彰化縣")]], want: { cubes: { "雲林縣": [0, 0, 1], "彰化縣": [0, 0, 1] } } },
-  // 需檢定：開局連在北北基有媒體優勢（連 1、其他 0），§8.1 免除樁腳主檢定 → 兩顆都放上、不檢定。
+  // 需檢定：開局連在北北基有媒體優勢（連 1、其他 0），§8.1 免除地方大老檢定 → 兩顆都放上、不檢定。
   { id: "ma_campaigns", by: LIEN, steps: [[LIEN, F("台北市")], [LIEN, F("台北市")]], want: { cubes: { "台北市": [0, 0, 2] } } },
-  // 把北北基媒體清掉：台北市宋 5 顆是樁腳主，連填藍要檢定；袋中只有宋 → 兩次都失敗。
+  // 把北北基媒體清掉：台北市宋 5 顆是地方大老，連填藍要檢定；袋中只有宋 → 兩次都失敗。
   { id: "ma_campaigns", by: LIEN, arrange: (s) => { s.media[ri("北北基")] = [0, 0, 0]; }, steps: [[LIEN, F("台北市")], [LIEN, F("台北市")]], want: { bag: [0, -2, 0], checks: 2 } },
   // 台北市：連 −1（不檢定）再宋 +1；新竹市沒有連的方塊：只有宋 +1。
   { id: "li_ao_endorses", by: SOONG, steps: [[SOONG, RM("台北市", LIEN, "B")], [SOONG, F("台北市")], ["probe", SOONG, (ms) => (ms.some((m) => m.type === "remove") ? "新竹市沒有連的方塊，卻還問移除" : offers(["fill", "cross"], ["新竹市"], "第二個縣市")(ms))], [SOONG, F("新竹市")]], want: { cubes: { "台北市": [0, 1, -1], "新竹市": [0, 1, 0] } } },
@@ -1033,7 +1033,7 @@ choiceGroup("事件 · 任選縣市（各 +1 的縣市不重複；選過的縣�
     [CHEN, F("台南縣")],
     ["probe", CHEN, offers(["fill", "cross"], ["雲林縣", "台南市", "高雄市", "高雄縣", "屏東縣"], "選過台南縣之後")],
     [CHEN, X("台南市")], [CHEN, F("高雄市")]], want: { cubes: { "台南縣": [1, 0, 0], "台南市": [1, 0, 0], "高雄市": [1, 0, 0] } } },
-  // 需檢定：台北縣、桃園跨營填永遠檢定（袋中只有連 → 失敗）；台南縣填綠沒有樁腳主、沒有對手候選人 → 不檢定。
+  // 需檢定：台北縣、桃園跨營填永遠檢定（袋中只有連 → 失敗）；台南縣填綠沒有地方大老、沒有對手候選人 → 不檢定。
   { id: "dpp_counties", by: CHEN, steps: [
     ["probe", CHEN, offers(["fill", "cross"], ["台北縣", "桃園縣", "台中縣", "台中市", "台南縣", "台南市", "高雄縣", "屏東縣"], "民進黨執政縣市可選的縣市（新竹縣、宜蘭、嘉義市沒有空塊）")],
     [CHEN, X("台北縣")], [CHEN, X("桃園縣")], [CHEN, F("台南縣")]], want: { cubes: { "台南縣": [1, 0, 0] }, bag: [0, 0, -2], checks: 2 } },
@@ -1048,7 +1048,7 @@ choiceGroup("事件 · 任選縣市（各 +1 的縣市不重複；選過的縣�
   { id: "party_machine", by: LIEN, steps: [[LIEN, F("台北縣")], [LIEN, F("桃園縣")], [LIEN, X("高雄市")]], want: { cubes: { "台北縣": [0, 0, 1], "桃園縣": [0, 0, 1], "高雄市": [0, 0, 1] } } },
   { id: "lee_campaigns", by: LIEN, steps: [[LIEN, F("桃園縣")], [LIEN, F("台中縣")]], want: { cubes: { "桃園縣": [0, 0, 1], "台中縣": [0, 0, 1] } } },
   { id: "ma_leaks_polls", by: LIEN, opts: { startTurn: 8 }, steps: [[LIEN, X("台南縣")], [LIEN, F("桃園縣")]], want: { cubes: { "桃園縣": [0, 0, 1] }, mom: [1, 1, 0], bag: [0, -1, 0], checks: 1 } },
-  // 跨營填台南縣失敗；桃園填藍不檢定；北北基媒體先清掉，台北縣填藍有宋這個樁腳主 → 檢定失敗。
+  // 跨營填台南縣失敗；桃園填藍不檢定；北北基媒體先清掉，台北縣填藍有宋這個地方大老 → 檢定失敗。
   { id: "lee_alarm", by: LIEN, arrange: (s) => { s.media[ri("北北基")] = [0, 0, 0]; }, steps: [[LIEN, X("台南縣")], [LIEN, F("桃園縣")], [LIEN, F("台北縣")]], want: { cubes: { "桃園縣": [0, 0, 1] }, bag: [0, -2, 0], checks: 2 } },
   // 每個縣市：宋 +1（需檢定）之後，同縣市連有方塊就 −1（不檢定）。
   { id: "veterans_village", by: SOONG, steps: [
@@ -1059,7 +1059,7 @@ choiceGroup("事件 · 任選縣市（各 +1 的縣市不重複；選過的縣�
 ]);
 
 choiceGroup("事件 · 指定塊色與無色塊：三三三安家專案、宋友會、台灣前途決議文（§14.3）", [
-  // 文字順序：經濟 +2，再在空的綠營游離塊放 1 顆；規則書沒寫免檢定 → 照 §8.1（台北縣有宋連兩個樁腳主 → 檢定失敗）。
+  // 文字順序：經濟 +2，再在空的綠營游離塊放 1 顆；規則書沒寫免檢定 → 照 §8.1（台北縣有宋連兩個地方大老 → 檢定失敗）。
   { id: "three_three_three", by: CHEN, steps: [["probe", CHEN, (ms) => (ms.length && ms.every((m) => m.type === "fill") ? true : "只能放綠營游離塊，選項卻有：" + [...new Set(ms.map((m) => m.type))].join(","))], [CHEN, F("台北縣")]], want: { issues: { econ: [2, 0, 0] }, bag: [0, 0, -1], checks: 1 } },
   { id: "soong_friends", by: SOONG, steps: [["probe", SOONG, (ms) => (ms.length && ms.every((m) => m.type === "fill") ? true : "只能放藍營游離塊，選項卻有：" + [...new Set(ms.map((m) => m.type))].join(","))], [SOONG, F("台北縣")]], want: { cubes: { "台北縣": [0, 1, 0] }, mom: [0, 1, 0] } },
   // 有空無色塊的縣市都能選（開局除了新竹市、澎湖、金馬共 21 個）；那一塊變成空的綠營游離塊。
@@ -1067,13 +1067,13 @@ choiceGroup("事件 · 指定塊色與無色塊：三三三安家專案、宋友
 ]);
 
 choiceGroup("事件 · 同縣市換塊：棄連保扁、棄連保宋、黨內整合（移除要檢定，放方塊照 §8.1）（§14.3）", [
-  // 袋中只有陳 → 都成功。移除檢定 1 次；台北縣還有宋 4 顆的樁腳主 → 填綠也檢定。
+  // 袋中只有陳 → 都成功。移除檢定 1 次；台北縣還有宋 4 顆的地方大老 → 填綠也檢定。
   { id: "dump_lien_save_chen", by: CHEN, bag: [10, 0, 0], steps: [
     ["probe", CHEN, (ms) => (ms.length && ms.every((m) => m.type === "remove" && m.target === LIEN) ? true : "先選要移除連的縣市，選項卻有：" + JSON.stringify(ms.slice(0, 3)))],
     [CHEN, RM("台北縣", LIEN, "B")],
     ["probe", CHEN, offers(["fill", "cross"], ["台北縣"], "移除之後放方塊的縣市")],
     [CHEN, F("台北縣")]], want: { cubes: { "台北縣": [1, 0, -1] }, checks: 2 } },
-  // 移除連之後台北縣沒有別人的樁腳主、沒有對手候選人 → 宋填藍不檢定：一共 1 次。
+  // 移除連之後台北縣沒有別人的地方大老、沒有對手候選人 → 宋填藍不檢定：一共 1 次。
   { id: "dump_lien_save_soong", by: SOONG, bag: [0, 10, 0], steps: [[SOONG, RM("台北縣", LIEN, "B")], [SOONG, F("台北縣")]], want: { cubes: { "台北縣": [0, 1, -1] }, checks: 1 } },
   { id: "party_unity", by: LIEN, bag: [0, 0, 10], steps: [[LIEN, RM("台北縣", SOONG, "B")], [LIEN, F("台北縣")]], want: { cubes: { "台北縣": [0, -1, 1] }, checks: 1 } },
 ]);
@@ -1303,7 +1303,7 @@ c5("本回合 · 李遠哲挺扁：陳動能 +2；本回合陳填同營免檢定
   st = D.act(st, CHEN, { type: "move", to: ci("台北縣") });
   st = D.act(st, CHEN, F("台北縣"));
   st = D.act(st, CHEN, X("台北縣"));
-  // 台北縣有宋連兩個樁腳主：填綠本來要檢定（現在免）；跨營照常檢定，袋中只有連 → 失敗。
+  // 台北縣有宋連兩個地方大老：填綠本來要檢定（現在免）；跨營照常檢定，袋中只有連 → 失敗。
   r = eq(diffSnap(a, boardSnap(st)), expectStr({ cubes: { "台北縣": [1, 0, 0] }, bag: [0, 0, -1], checks: 1 }), "李遠哲之後同一回合在台北縣 填綠＋跨營"); if (r !== true) return r;
   st = D.playUntil(st, (s) => s.turn === 8 && E.mustAct(s)[0] === CHEN && D.isPlayDecision(E.legalMoves(s, CHEN)), null, D.quiet);
   D.giveCard(st, CHEN, "dpp_counties");
@@ -1329,7 +1329,7 @@ c5("本回合 · 走透透：本回合宋填同營免檢定、跨營照常檢定
   st = D.act(st, SOONG, { type: "move", to: ci("台北縣") });
   st = D.act(st, SOONG, F("台北縣"));
   st = D.act(st, SOONG, X("台北縣"));
-  // 台北縣連 4 顆是樁腳主：填藍本來要檢定（現在免）；跨營照常檢定，袋中只有陳 → 失敗。
+  // 台北縣連 4 顆是地方大老：填藍本來要檢定（現在免）；跨營照常檢定，袋中只有陳 → 失敗。
   const r = eq(diffSnap(a, boardSnap(st)), expectStr({ cubes: { "台北縣": [0, 1, 0] }, bag: [-1, 0, 0], checks: 1 }), "走透透之後同一回合在台北縣 填藍＋跨營"); if (r !== true) return r;
   return ok(true, "填藍免檢定、跨營照常");
 });

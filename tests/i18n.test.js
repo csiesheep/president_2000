@@ -78,14 +78,14 @@ c9("地名：24 縣市與 7 個區域都有英文名，中文名跟 board.js 一
   if (wrong.length) return "中文縣市名跟 board.js 不同：" + wrong.join(",");
   return ok(true, "24 縣市、7 區域");
 });
-c9("名詞表與 bot 三級的名字兩邊都有（樁腳／總幹事／操盤手）", () => {
+// The exact names are checked in section 20 (owner renamed level 1 on 2026-10-14).
+c9("名詞表與 bot 三級的名字兩邊都有", () => {
   for (const [lang, t] of [["zh", zh], ["en", en]]) {
     const tm = TERMS.filter((k) => !t.terms || !String(t.terms[k] || "").trim());
     if (tm.length) return `${lang} 缺名詞：${tm.join(",")}`;
     const bm = BOT_LEVELS.filter((k) => !t.bots || !String(t.bots[k] || "").trim());
     if (bm.length) return `${lang} 缺 bot 等級：${bm.join(",")}`;
   }
-  const r = eq(BOT_LEVELS.map((k) => zh.bots[k]).join("/"), "樁腳/總幹事/操盤手", "中文 bot 名字（owner 定）"); if (r !== true) return r;
   return ok(true, `${TERMS.length} 個名詞、3 級 bot`);
 });
 // The language switch names the other language in its own script (orchestrator 裁決, #9): on
@@ -160,6 +160,33 @@ c14(`一句話放得進手機上的泡泡：中文 ≤ ${TALK_MAX.zh} 字、英�
     if (n > TALK_MAX[lang]) long.push(`${lang}.${k} ${n}`);
   }
   return long.length ? "太長：" + long.slice(0, 6).join("、") : ok(true, `${BOTS.WHY.length * 2} 句`);
+});
+
+// ---- 改名（#20）. Owner (2026-10-14, choosing A and C of the orchestrator's proposal):
+// 「A and C」 — the weakest bot 樁腳 becomes 助選員 (English Canvasser → Volunteer, which also stops
+// clashing with canvass, 催票), and the term 樁腳主 becomes 地方大老 (English stays local boss).
+// Reports 尚未實作 while both old names are still in place.
+const RENAMING = !(zh.bots && zh.bots[1] === "樁腳" && zh.terms && zh.terms.boss === "樁腳主");
+const c20 = (name, fn) => check(name, () => (RENAMING ? fn() : "TODO: 改名還沒開始（#20）"));
+section("20 改名");
+c20("bot 三級：中文 助選員／總幹事／操盤手，英文 Volunteer／Campaign chief／Strategist", () => {
+  let r = eq(BOT_LEVELS.map((k) => zh.bots[k]).join("/"), "助選員/總幹事/操盤手", "中文 bot 名字（owner 定）"); if (r !== true) return r;
+  r = eq(BOT_LEVELS.map((k) => en.bots[k]).join("/"), "Volunteer/Campaign chief/Strategist", "英文 bot 名字"); if (r !== true) return r;
+  return ok(true, "助選員／總幹事／操盤手");
+});
+c20("名詞：中文 terms.boss 是「地方大老」，英文仍是 local boss", () => {
+  let r = eq(zh.terms.boss, "地方大老", "中文 terms.boss"); if (r !== true) return r;
+  r = eq(/local boss/i.test(en.terms.boss), true, `英文 terms.boss 仍是 local boss（實際 "${en.terms.boss}"）`); if (r !== true) return r;
+  return ok(true, "地方大老 / local boss");
+});
+c20("舊名不見了：中文字串沒有「樁腳」（含樁腳主），英文字串沒有 Canvasser；牌文裡也沒有「樁腳主」", () => {
+  const zs = strings(zh).filter((s) => s.includes("樁腳"));
+  if (zs.length) return `中文還有「樁腳」：${zs.slice(0, 3).map((s) => JSON.stringify(s.slice(0, 30))).join("；")}`;
+  const es = strings(en).filter((s) => /canvasser/i.test(s));
+  if (es.length) return `英文還有 Canvasser：${es.slice(0, 3).map((s) => JSON.stringify(s.slice(0, 40))).join("；")}`;
+  const cs = [...C.EVENTS, ...C.localCards()].filter((c) => /樁腳主/.test(`${c.name} ${c.text}`)).map((c) => c.id);
+  if (cs.length) return `牌文還有「樁腳主」：${cs.join("、")}`;
+  return ok(true, `中文 ${strings(zh).length} 條、英文 ${strings(en).length} 條、${C.EVENTS.length} 張事件牌都沒有舊名`);
 });
 
 test("i18n", () => {
