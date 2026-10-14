@@ -1031,9 +1031,11 @@ function endSave(st) {
 // in track order (裁決 4); its winner (highest CP total, ties by the priority
 // above) gets +1 momentum and places 2 / 3 / 4 cubes free of checks on empty
 // floating blocks anywhere (裁決 6), one move at a time. When every issue is
-// settled or every pile is empty, the unsettled issues are settled in track
-// order (裁決 8, Q7 default: 0/0/0 is a tie too). The issues go back to the
-// track, the first settled in slot 3 (裁決 7); every debate card goes to the
+// settled or every pile is empty, the unsettled issues where somebody played a
+// card are settled in track order (裁決 8); an issue nobody played on (0/0/0) is
+// not settled (owner 裁決 Q7 = B, #21). The issues go back to the track: the
+// unsettled ones in the upper slots in their original track order, then the
+// settled ones, the first settled in slot 3 (裁決 7); every debate card goes to the
 // discard pile, the first strategic vote moves half (§十一, 裁決 9), the early
 // discard pile is set aside (裁決 10) and turn 7 begins.
 //
@@ -1122,7 +1124,14 @@ function advanceDebate(st) {
     if (d.queue.length) { settleIssue(st, d.queue.shift()); continue; }
     const open = unsettled(st);
     if (!open.length) return endDebate(st);
-    if (st.savedDebate.every((pile) => !pile.length)) { d.queue = open; continue; } // 裁決 8
+    if (st.savedDebate.every((pile) => !pile.length)) {
+      // 裁決 8; owner 裁決 Q7 = B (#21): an issue nobody played on is not settled.
+      // A settled issue leaves `open`, so once these are settled the filter comes
+      // back empty and the debate ends (no loop).
+      d.queue = open.filter((n) => d.placed[n].some((cards) => cards.length));
+      if (!d.queue.length) return endDebate(st);
+      continue;
+    }
     return; // next round
   }
 }
@@ -1142,9 +1151,11 @@ function settleIssue(st, name) {
 
 function endDebate(st) {
   const d = st.debate;
-  // 裁決 7: the first settled goes back to the lowest slot
+  // owner 裁決 Q7 = B (#21): the unsettled issues take the upper slots in their
+  // original track order (st.issues is still that order here); 裁決 7: the first
+  // settled goes back to the lowest slot.
   const byName = Object.fromEntries(st.issues.map((i) => [i.name, i]));
-  st.issues = d.settled.slice().reverse().map((n) => byName[n]);
+  st.issues = [...unsettled(st), ...d.settled.slice().reverse()].map((n) => byName[n]);
   // 裁決 10: what is left of the piles goes to the (early) discard pile
   for (const pile of st.savedDebate) st.decks.discard.push(...pile.splice(0));
   for (const name of Object.keys(d.placed)) for (const cards of d.placed[name]) st.decks.discard.push(...cards.splice(0));
