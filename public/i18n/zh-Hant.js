@@ -85,7 +85,7 @@ export default {
         movesOpen: "移到別的縣市…", movesShut: "收起移動", moveHint: "要移動的話，得在放第一塊之前。", eg: "空綠 {n}", eb: "空藍 {n}",
         c: {
           fill: "填 1 塊", cross: "跨營填 1 塊", steal: "搶{who} 1 顆（{kind}）", grey: "填 1 塊無色塊", remove: "移除{who} 1 顆（{kind}）",
-          convert: "把 1 塊無色塊轉成綠營游離塊", move: "{county} · 移動後剩 {left} CP",
+          convert: "把 1 塊無色塊轉成綠營游離塊", move: "{county}\n移動後剩 {left} CP",
         },
         moveHead: "移動", back: "← 收起", notNow: "現在不能打這張牌。",
         order: "你有主動權：選這回合你排第幾個行動。",

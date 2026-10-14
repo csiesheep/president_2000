@@ -86,7 +86,7 @@ export default {
         movesOpen: "Move to another county…", movesShut: "Hide moves", moveHint: "To move, do it before you place your first block.", eg: "open green {n}", eb: "open blue {n}",
         c: {
           fill: "fill 1 block", cross: "cross-camp fill 1 block", steal: "take 1 {who} cube ({kind})", grey: "fill 1 non-voter block", remove: "remove 1 {who} cube ({kind})",
-          convert: "turn 1 non-voter block into a green swing block", move: "{county} · {left} CP left after moving",
+          convert: "turn 1 non-voter block into a green swing block", move: "{county}\n{left} CP left after moving",
         },
         moveHead: "Move", back: "← Close", notNow: "You cannot play this card right now.",
         order: "You hold the initiative: pick where you act in the order this turn.",
