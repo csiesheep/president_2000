@@ -35,6 +35,8 @@
   UI 定案:owner 2026-10-14 改選**方向 C 桌遊桌面**(木桌、米色印刷棋盤、木頭方塊、襯線字;點地圖上的縣市開選項、手牌扇形),
   取代先前的方向 A 街頭旗海。同日 owner 選定:地圖「一版 印刷棋盤」(台灣形狀,輪廓與縣市界為手繪近似)、事件牌與縣市插圖「美術三 桌上模型」、
   議題與候選人「美術二」。canvas https://claude.ai/artifact/69Q4zH2AbWEXV7ikBuMHTd (owner 私人;A 的舊 canvas VH7BjNkQumRRPvZjfn7afB 只作歷史)。
+  2026-10-15 owner 定稿精簡牌桌(#29):一版的候選人按鈕、二版的議題按鈕、一版的地圖(方塊一樣大、框照票塊數變大)、候選人圈圈站在所在縣市、
+  票數寫成「33」+小字「0萬票」;canvas https://claude.ai/artifact/WQA4hG46qh5FBqXCWGfBjh 的「定稿」與「細節」兩張(owner 私人)。
   peer 打不開 canvas:brief 會帶上需要的段落與圖。
 
 - 跨界修改**可以**,但交付時要點名,由 orchestrator 轉給檔案主人。最糟的不是衝突,是兩邊安靜地各持一份真相。
@@ -104,7 +106,7 @@ orch restore                            還原並驗證真的乾淨
 orch clean                              land 之前跑:樹上不可以有 FALSIFY
 ```
 
-瀏覽器量測（要 Chrome 與跑著的 dev server）：`node tools/imgchurn.mjs <base url>`，量教學與對手行動時有沒有新建 `<img>`（#28）。peer 可以跑、不編輯。
+瀏覽器量測（要 Chrome 與跑著的 dev server）：`node tools/imgchurn.mjs <base url>`，量教學與對手行動時有沒有新建 `<img>` 與地圖上的 SVG `<image>`（#28、#29）；`node tools/compact29.mjs <base url>`，量手機與桌機牌桌上方的高度、候選人與議題按鈕、選單、地圖方塊與候選人圖的大小（#29）。peer 可以跑、不編輯。
 
 慣例:驗證用的工作樹在 `../_wt/`;peer(子 agent)的工作樹由 Claude Code 開在 `.claude/worktrees/<name>/`,
 cwd 就是它。每個 `_wt/` 工作樹有 `__MARKER_ORCH.txt`(name + SHA);harness 是 `npm test`(`node --test`,

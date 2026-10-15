@@ -4,7 +4,8 @@
 //   node tools/imgchurn.mjs http://127.0.0.1:8787/president_2000/
 //
 // It drives headless Chrome over the DevTools protocol (Node's own WebSocket, no packages) and counts,
-// with a MutationObserver, the NEW <img> elements (ones never on the page before) created in windows
+// with a MutationObserver, the NEW <img> elements (and, since #29, SVG <image> elements: the candidates on the
+// map) - ones never on the page before - created in windows
 // where no picture changes; moving an existing <img> back into place does not count:
 //   A. the tutorial's first two "next" presses (1440 wide and 390 wide);
 //   B. the rivals' turn after the tutorial's "end the action" (1440 wide);
@@ -46,10 +47,10 @@ async function tab(br, url, w, h, mobile) {
 // is not counted: it keeps its decoded picture and does not blink.
 const WATCH = `(()=>{
   window.__churn = { newImg: 0, newSrc: [], tableSwaps: 0 };
-  window.__churnSeen = new WeakSet(document.querySelectorAll("img"));
+  window.__churnSeen = new WeakSet(document.querySelectorAll("img, image"));
   if (window.__churnMO) window.__churnMO.disconnect();
-  const look = (n) => { if (n.nodeType !== 1) return; const list = n.tagName === "IMG" ? [n] : [...(n.querySelectorAll ? n.querySelectorAll("img") : [])];
-    for (const im of list) if (!__churnSeen.has(im)) { __churnSeen.add(im); __churn.newImg++; if (__churn.newSrc.length < 5) __churn.newSrc.push((im.getAttribute("src") || "").split("/").slice(-2).join("/")); } };
+  const look = (n) => { if (n.nodeType !== 1) return; const list = n.tagName === "IMG" || n.tagName === "image" ? [n] : [...(n.querySelectorAll ? n.querySelectorAll("img, image") : [])];
+    for (const im of list) if (!__churnSeen.has(im)) { __churnSeen.add(im); __churn.newImg++; if (__churn.newSrc.length < 5) __churn.newSrc.push((im.getAttribute("src") || im.getAttribute("href") || "").split("/").slice(-2).join("/")); } };
   window.__churnMO = new MutationObserver((list) => { for (const m of list) for (const n of m.addedNodes) {
     look(n); if (n.nodeType === 1 && n.querySelector && n.querySelector("[data-county]")) __churn.tableSwaps++; } });
   window.__churnMO.observe(document.body, { childList: true, subtree: true });
