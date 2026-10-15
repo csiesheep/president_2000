@@ -80,7 +80,7 @@ export default {
       menu: { quit: "放棄這局", confirm: "放棄這一局，回到設定？", skip: "點一下跳過動畫", label: "選單" },
       hdr: {
         ph: { action: "行動 {n}/4", order: "選順位", momentum: "動能階段", save: "留牌", debate: "政見發表會", election: "投票日", end: "開票結果" },
-        turn: "第 {n} 回合", initiative: "主動權 {who}", star: "主動權", mom: "動能", bag: "袋子", feed: "紀錄", momL: "動能", slotsL: "議題槽", tap: "點一下看說明",
+        turn: "第 {n} 回合", endDate: "3 月 18 日", initiative: "主動權 {who}", star: "主動權", mom: "動能", bag: "袋子", feed: "紀錄", momL: "動能", slotsL: "議題槽", tap: "點一下看說明",
         yourTurn: "輪到你", busy: "{who} 行動中…", waitHint: "對手行動中。你可以先翻看手牌。",
         slot: { 1: "第一槽", 2: "第二槽", 3: "第三槽" },
         phase: { action: "行動階段 {n} / 4", order: "選行動順位", momentum: "動能階段", save: "留牌", debate: "公辦政見發表會", election: "投票日 · 催票", end: "開票結果" },
@@ -188,6 +188,15 @@ export default {
         dayTitle: "投票日流水", canvass: "{who}催票 {cards} 張：填 {fill} 塊，搶 {take} 顆", strategic: "棄保：{text}", strategicNone: "棄保：沒有游離票流動", endorse: "背書：{text}",
         leadTitle: "領先縣市", history: "史實：陳 39.3%、宋 36.8%、連 23.1%，差約 31 萬票，投票率 82.7%。",
         again: "再來一局", home: "回首頁",
+        // 開票之夜(#33)
+        stamp: "當選", heroKicker: "開票完畢 · 第十任總統當選人", heroLine: "{votes} · 得票率 {share}", heroAlt: "{who}當選的開票之夜",
+        vfull: "{n}萬票", vfull0: "0票", vu: "萬票", vu0: "票",
+        blk: "{n} 塊", resTitle: "得票", turnout: "投票率 {pct} · {n} / {all} 塊",
+        lead: "{who}領先{other} {wan}萬票（{n} 塊）。", nonvote: "1 塊 = 10 萬票；沒去投票 {wan}萬（{n} 塊）。",
+        youWho: "你（{name}）", rank1: "第一名", rank2: "第二名", rank3: "第三名", youLine: "{rank} · {votes}", youShare: "得票率 {share}，{cmp}",
+        cmpLess: "比 2000 年實際少 {d} 個百分點", cmpMore: "比 2000 年實際多 {d} 個百分點", cmpSame: "跟史實一樣",
+        cmpTitle: "跟 2000 年實際比", nowL: "這局", thenL: "史實", turnCmp: "投票率：這局 {now}，史實 {then}。史實陳水扁以約 31 萬票險勝。",
+        board: "看最後的盤面與紀錄 ▾",
       },
     },
     // 房間頁（#15）：開房、加入、大廳、多人對局

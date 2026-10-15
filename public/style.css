@@ -326,19 +326,7 @@ button.btn.menub { width: 40px; height: 40px; padding: 0; justify-content: cente
 .hc.candc .b { box-shadow: none; }
 
 /* The count */
-.t-end { display: flex; flex-direction: column; gap: 8px; background: var(--paper); border-radius: 4px; box-shadow: var(--lift); border: 1px solid var(--edge); padding: 14px; order: 3; }
 .tbl.end .res { order: 4; }
-.t-end .kick { margin: 0; font-size: 12px; font-weight: 900; letter-spacing: 2px; color: var(--red); }
-.t-end .elected { margin: 0; font-size: 13px; font-weight: 700; }
-.t-end h2 { margin: 0; font: 900 40px/1.1 var(--serif); color: var(--c); }
-.t-end .sum { margin: 0; font-size: 14px; }
-.bars { display: flex; flex-direction: column; gap: 6px; }
-.bar { display: flex; align-items: center; gap: 8px; }
-.bar .bn { width: 112px; flex: none; font: 900 13px var(--serif); }
-.bar .bt { flex: 1; height: 22px; background: var(--grey); border-radius: 3px; overflow: hidden; border: 1px solid var(--edge); }
-.bar .bt i { display: block; height: 100%; background: var(--c); }
-.bar b { font: 900 21px/1 var(--serif); width: 40px; text-align: right; }
-.t-end .note, .t-end .hist { margin: 0; font-size: 12px; color: var(--mute); }
 .day { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
 .day li { padding-left: 8px; border-left: 4px solid var(--line); } .day li.s0 { border-left-color: var(--chen); } .day li.s1 { border-left-color: var(--soong); } .day li.s2 { border-left-color: var(--lien); }
 .leads p { margin: 0 0 4px; font-size: 13px; } .leads b { color: var(--c); }
@@ -438,7 +426,6 @@ button.btn.menub { width: 40px; height: 40px; padding: 0; justify-content: cente
 .chatf { display: flex; gap: 8px; }
 .chatf .fi { flex: 1; min-width: 0; }
 .chatf .send { flex: none; min-height: 48px; padding: 0 16px; font-size: 14px; background: var(--ink); color: var(--paper); }
-.t-end .opts .wait { margin: 0; font-weight: 700; }
 html { scroll-padding-bottom: 190px; }
 
 /* The Taiwan map (#25): the printed board on a cream card. The county papers are SVG (map.js); the box that
@@ -523,7 +510,7 @@ html { scroll-padding-bottom: 190px; }
   .tbl { display: grid; grid-template-columns: 262px minmax(0, 1fr) 316px; gap: 12px 18px; align-items: start; }
   .col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
   .tbl > .t-top, .tbl > .t-hand { grid-column: 1 / -1; }
-  .t-top { order: 0; } .t-players, .t-track, .t-now, .t-act, .t-debate, .t-feed, .t-map, .t-end, .help { order: 0; }
+  .t-top { order: 0; } .t-players, .t-track, .t-now, .t-act, .t-debate, .t-feed, .t-map, .help { order: 0; }
   .t-players { grid-template-columns: 1fr; gap: 10px; }
   .pl { display: block; border-top: 4px solid var(--c); border-radius: 6px; overflow: hidden; background: var(--paper2); box-shadow: 0 3px 0 var(--edge2), 0 6px 12px rgba(0, 0, 0, .35); }
   .pl.me { box-shadow: 0 3px 0 var(--edge2), 0 0 0 2px var(--c), 0 8px 14px rgba(0, 0, 0, .4); }
@@ -538,7 +525,6 @@ html { scroll-padding-bottom: 190px; }
   .t-now { margin-top: 10px; transform: rotate(-1deg); padding: 12px 14px 11px; }
   .t-now li { font-size: 14px; }
   .t-act { padding: 12px; }
-  .t-end h2 { font-size: 36px; }
   /* The fan is wide here: bigger cards, more overlap, the lower part tucked under the screen edge. */
   .t-hand { position: sticky; bottom: -96px; margin: 0 -24px; padding-bottom: 0; }
   .t-hand .hh { justify-content: center; gap: 28px; }
@@ -606,3 +592,64 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
 
 /* The candidates' round pictures (#31): HTML <img> over the map, placed in % of the svg by map.js; the ring, the number and the "you" tag stay in the svg beneath. The mask (inline, from map.js) cuts out what must stay in front: its own number disc, and the ring and number of a candidate standing to its left. */
 .tw-box > img[data-pawn-pic] { position: absolute; z-index: 1; display: block; border-radius: 50%; object-fit: cover; object-position: 50% 0; pointer-events: none; user-select: none; -webkit-user-drag: none; -webkit-mask-composite: source-in; mask-composite: intersect; }
+
+/* Election night (#33): the count is the first thing under the top row. A hero picture with the winner and the stamp, the votes
+   card (one row per candidate, most votes first), your result, the comparison with 2000, the buttons, two folded notes. The
+   board, the record and the three player boards follow underneath ("see the final board"). On a wide desk it is the middle
+   column, above the map. */
+.endp { order: 2; display: flex; flex-direction: column; gap: 10px; color: var(--ink); }
+.e-mark { display: block; height: 0; scroll-margin-top: 8px; }
+@media (max-width: 1099px) { .tbl.end .t-players { order: 7; } .tbl.end .t-now { order: 5; } .e-mark { order: 6; } }
+.e-hero { position: relative; height: 300px; border-radius: 6px; overflow: hidden; box-shadow: 0 8px 20px rgba(0, 0, 0, .45); background: #2b2118; }
+.e-hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; display: block; }
+.e-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20, 12, 6, 0) 35%, rgba(20, 12, 6, .88) 100%); }
+.e-ht { position: absolute; left: 16px; right: 16px; bottom: 14px; display: flex; flex-direction: column; gap: 2px; color: #fbf6e9; }
+.e-k { font-size: 12px; font-weight: 700; letter-spacing: .08em; color: #f0d9a8; }
+.e-w { margin: 0; font: 900 44px/1.05 var(--serif); overflow-wrap: anywhere; }
+.e-l { font-size: 14px; font-weight: 700; }
+.e-stamp { position: absolute; right: 14px; top: 14px; width: 74px; height: 74px; border: 4px solid #c23a2e; border-radius: 50%; color: #c23a2e; background: rgba(251, 246, 233, .82); transform: rotate(-14deg); display: flex; align-items: center; justify-content: center; text-align: center; font: 900 24px/1.1 var(--serif); }
+.e-res, .e-cmp { background: var(--paper2); border-radius: 6px; box-shadow: 0 4px 0 var(--edge2); padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 12px; }
+.e-rh { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.e-rh h3, .e-cmp h3 { margin: 0; font: 900 18px var(--serif); }
+.e-rh span { font-size: 12px; font-weight: 700; color: var(--mute); text-align: right; }
+.rrow { display: flex; flex-direction: column; gap: 4px; }
+.rr1, .rr2 { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.rr1 .no { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--c); color: #fff; font: 900 13px/1 var(--serif); display: flex; align-items: center; justify-content: center; }
+.rr1 .rn { min-width: 0; font: 900 16px var(--serif); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rr1 .me { flex: none; font-size: 11px; font-weight: 900; font-style: normal; color: var(--paper2); background: var(--red); border-radius: 3px; padding: 1px 5px; }
+.rr1 .rv { margin-left: auto; flex: none; display: flex; align-items: baseline; gap: 2px; white-space: nowrap; }
+.rr1 .rv b { font: 900 22px/1 var(--serif); } .rr1 .rv small { font-size: 12px; font-weight: 700; }
+.rr2 .blk { flex: none; width: 56px; font-size: 11px; font-weight: 700; color: var(--mute); white-space: nowrap; }
+.rr2 .bt { flex: 1; height: 14px; background: var(--grey); border-radius: 3px; overflow: hidden; }
+.rr2 .bt i { display: block; height: 100%; background: var(--c); }
+.rr2 .pc { flex: none; width: 52px; text-align: right; font-size: 15px; font-weight: 900; color: var(--c); }
+.e-note, .e-cmp p { margin: 0; font-size: 13px; line-height: 1.6; color: #4a3a2a; }
+.e-note { border-top: 1px dashed var(--edge); padding-top: 10px; }
+.e-you { background: var(--paper); border-radius: 6px; box-shadow: 0 4px 0 var(--edge2); padding: 12px 14px; display: flex; align-items: center; gap: 12px; }
+.e-you .yp { flex: none; width: 56px; height: 56px; border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 3px var(--c); background: var(--grey); }
+.e-you .yp img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; display: block; }
+.e-you .yt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.e-you .yw { font-size: 12px; font-weight: 700; color: var(--mute); } .e-you .yl { font: 900 20px/1.25 var(--serif); } .e-you .ys { font-size: 12.5px; color: #4a3a2a; }
+.e-cmp { gap: 8px; } .e-cmp h3 { font-size: 16px; } .e-cmp p { font-size: 12px; }
+.hgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.hcell { display: flex; flex-direction: column; gap: 4px; padding: 8px; border-radius: 4px; background: #f3ead6; min-width: 0; }
+.hcell .hn { font-size: 12px; font-weight: 900; color: var(--c); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hcell span { font-size: 11px; color: #6a5a48; } .hcell span b { font-size: 13px; color: var(--ink); } .hcell span:nth-of-type(1) b { font-size: 15px; }
+.endp .opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.endp .opts .opt { min-height: 48px; justify-content: center; text-align: center; font: 900 16px var(--serif); }
+.endp .opts .opt.ghost { font: 700 15px var(--sans); background: var(--paper2); border-color: var(--edge2); color: var(--ink); }
+.endp .opts .wait { grid-column: 1 / -1; margin: 0; font-weight: 700; }
+.e-dets { background: var(--paper2); border-radius: 6px; box-shadow: 0 4px 0 var(--edge2); overflow: hidden; }
+.e-det > summary { list-style: none; cursor: pointer; min-height: 48px; padding: 0 14px; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 900; }
+.e-det > summary::-webkit-details-marker { display: none; }
+.e-det > summary::after { content: "▾"; } .e-det[open] > summary::after { content: "▴"; }
+.e-det + .e-det { border-top: 1px solid #e3d8bd; }
+.e-det > :not(summary) { margin: 0 14px 14px; }
+.e-det summary:focus-visible, .e-jump:focus-visible { outline: 3px solid #ffd34d; outline-offset: 2px; }
+.e-jump { align-self: center; color: var(--paper); font-size: 13px; font-weight: 700; padding: 10px; text-decoration: none; }
+@media (min-width: 1100px) {
+  .endp { order: 0; }
+  .e-hero { height: 340px; } .e-ht { left: 28px; bottom: 20px; } .e-w { font-size: 56px; }
+  .tbl.end .e-mark { display: none; } .e-jump { display: none; }
+  .endp .opts { max-width: 420px; }
+}

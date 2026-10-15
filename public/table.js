@@ -425,7 +425,7 @@ function headerHTML(v, ch, x, o) {
   const init = v.initiative >= 0 && v.phase !== "end" ? ` · ${x.tr("hdr.initiative", { who: x.short(v.initiative) })}` : "";
   const home = "./" + (x.lang === "en" ? "?lang=en" : "");
   return `<header class="t-top"><a class="t-back" href="${home}" aria-label="${esc(x.tr("setup.home"))}">${ICON_BACK}</a>` +
-    `<div class="t-ttl"><span class="t-turn" data-turn="1">${esc(x.tr("hdr.turn", { n: v.turn }))}${esc(init)}</span>` +
+    `<div class="t-ttl"><span class="t-turn" data-turn="1">${esc(x.tr("hdr.turn", { n: v.turn }))}${esc(v.phase === "end" ? ` · ${x.tr("hdr.endDate")}` : init)}</span>` +
     `<span class="t-line"><b class="t-phase">${esc(phase)}</b>${status}</span></div>` +
     `${o.advisor && v.phase !== "end" ? advisorBar(x, o) : ""}` +
     `<button type="button" class="t-menu" data-menu aria-haspopup="true" aria-expanded="false" aria-label="${esc(x.tr("menu.label"))}">${ICON_MENU}</button></header>`;
@@ -764,14 +764,34 @@ function feedHTML(v, x, o) {
 function endHTML(v, x, o) {
   const r = v.result, S = x.S;
   const names = [0, 1, 2];
-  const max = Math.max(...r.votes, 1);
-  const order = names.slice().sort((a, b) => r.votes[b] - r.votes[a] || r.leads[b] - r.leads[a] || r.momentum[b] - r.momentum[a]);
-  const w = r.winner, second = order.find((p) => p !== w);
+  const w = r.winner;
+  // Most votes first; on a tie the winner (who won it on counties led, momentum, order) goes first.
+  const order = names.slice().sort((a, b) => r.votes[b] - r.votes[a] || (b === w) - (a === w));
+  const second = order.find((p) => p !== w);
   const diff = r.votes[w] - r.votes[second];
   const total = COUNTIES.reduce((s, c) => s + c[2] + c[3] + c[4], 0);
-  const emptyLeft = v.counties.reduce((s, c) => s + c.blocks.filter((b) => b.o < 0).length, 0);
-  const youWon = w === v.seat;
-  const bars = order.map((p) => `<div class="bar s${p}"><span class="bn">${NO[p]} ${esc(x.full(p))}</span><span class="bt"><i style="width:${Math.round((r.votes[p] / max) * 100)}%"></i></span><b>${r.votes[p]}</b></div>`).join("");
+  const cast = r.votes[0] + r.votes[1] + r.votes[2], away = total - cast;
+  const top = Math.max(r.votes[w], 1);
+  // Numbers (#33): a block is 10萬 votes. The share is of the votes cast, in tenths of a percent.
+  const tenths = (p) => Math.round((r.votes[p] / (cast || 1)) * 1000);
+  const pctOf = (t) => (t / 10).toFixed(1) + "%";
+  const numOf = (n) => (n ? (x.lang === "en" ? (n / 10).toFixed(1) : String(n * 10)) : "0");
+  const votesOf = (n) => (n ? x.tr("end.vfull", { n: numOf(n) }) : x.tr("end.vfull0"));
+  const fullVotes = (n) => String(n * 100000).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const me = Number.isInteger(v.seat) && v.seat >= 0 && v.seat <= 2 ? v.seat : -1;
+  const rows = order.map((p) => `<div class="rrow s${p}" data-result="${SEATS[p]}"><div class="rr1"><b class="no">${NO[p]}</b><span class="rn">${esc(x.full(p))}</span>${p === me ? `<em class="me">${esc(x.tr("map.you"))}</em>` : ""}<span class="rv"><b>${numOf(r.votes[p])}</b><small>${esc(x.tr(r.votes[p] ? "end.vu" : "end.vu0"))}</small></span></div>` +
+    `<div class="rr2"><span class="blk">${esc(x.tr("end.blk", { n: r.votes[p] }))}</span><span class="bt"><i style="width:${Math.round((r.votes[p] / top) * 100)}%"></i></span><b class="pc">${pctOf(tenths(p))}</b></div></div>`).join("");
+  const lead = diff > 0 ? x.tr("end.lead", { who: x.full(w), other: x.full(second), n: diff, wan: diff * 10, votes: fullVotes(diff) }) : x.tr("end.marginTie", { who: x.full(w), other: x.full(second) });
+  const nonvote = x.tr("end.nonvote", { n: away, wan: away * 10, votes: fullVotes(away) });
+  const HIST = [393, 368, 231]; // 2000's real shares (陳, 宋, 連), in tenths of a percent
+  const hist = SHOW_ORDER.map((p) => `<div class="hcell s${p}"><b class="hn">${esc(x.full(p))}</b><span>${esc(x.tr("end.nowL"))} <b>${pctOf(tenths(p))}</b></span><span>${esc(x.tr("end.thenL"))} <b>${pctOf(HIST[p])}</b></span></div>`).join("");
+  let you = "";
+  if (me >= 0) {
+    const rank = order.indexOf(me), d = tenths(me) - HIST[me];
+    const cmp = d === 0 ? x.tr("end.cmpSame") : x.tr(d < 0 ? "end.cmpLess" : "end.cmpMore", { d: (Math.abs(d) / 10).toFixed(1) });
+    you = `<section class="e-you s${me}" data-you="${SEATS[me]}" aria-label="${esc(x.tr("end.youWho", { name: x.full(me) }))}"><span class="yp"><img src="art/candidates/${SEATS[me]}.webp" alt="" width="480" height="640" loading="lazy" decoding="async"></span>` +
+      `<div class="yt"><span class="yw">${esc(x.tr("end.youWho", { name: x.full(me) }))}</span><b class="yl">${esc(x.tr("end.youLine", { rank: x.tr("end.rank" + (rank + 1)), votes: votesOf(r.votes[me]) }))}</b><span class="ys">${esc(x.tr("end.youShare", { share: pctOf(tenths(me)), cmp }))}</span></div></section>`;
+  }
   const leadsBy = names.map((p) => ({ p, ks: v.counties.map((c, k) => k).filter((k) => leader([0, 1, 2].map((q) => cubesIn(v, k, q))) === p) }));
   const leadRows = SHOW_ORDER.map((p) => { const e = leadsBy[p]; return `<p class="s${p}"><b>${esc(x.short(p))} ${e.ks.length}</b> · ${esc(e.ks.map((k) => x.county(k)).join(x.lang === "en" ? ", " : "、") || "—")}</p>`; }).join("");
   // election day, from the log: everything after the conversion
@@ -796,13 +816,18 @@ function endHTML(v, x, o) {
   }
   const q = x.lang === "en" ? "?lang=en" : "";
   void S;
-  return `<section class="t-end"><p class="kick">${esc(x.tr("end.kicker"))}</p><p class="elected">${esc(x.tr("end.elected"))}</p><h2 class="s${w}">${esc(x.full(w))}</h2>` +
-    `<p class="sum">${esc(diff > 0 ? x.tr("end.margin", { who: x.full(w), other: x.full(second), n: diff, wan: diff * 10, votes: String(diff * 100000).replace(/\B(?=(\d{3})+(?!\d))/g, ",") }) : x.tr("end.marginTie", { who: x.full(w), other: x.full(second) }))} ${esc(x.tr(youWon ? "end.youWon" : "end.youLost"))}</p>` +
-    `<div class="bars">${bars}</div><p class="note">${esc(x.tr("end.unit", { total }))} · ${esc(x.tr("end.emptyLeft", { n: emptyLeft }))}</p>` +
-    `<h3 class="t-h">${esc(x.tr("end.dayTitle"))}</h3><ul class="day">${lines.join("")}</ul>` +
-    `<h3 class="t-h">${esc(x.tr("end.leadTitle"))}</h3><div class="leads">${leadRows}</div>` +
-    `<p class="hist">${esc(x.tr("end.history"))}</p>` +
-    `<div class="opts">${o.again ? `<button type="button" class="opt" data-msg="${esc(JSON.stringify(o.again.data))}">${esc(o.again.label)}</button>` : o.noAgain ? (o.againWait ? `<p class="sub wait">${esc(o.againWait)}</p>` : "") : `<button type="button" class="opt" data-act="again">${esc(x.tr("end.again"))}</button>`}<a class="opt ghost" href="./${q}">${esc(x.tr("end.home"))}</a></div></section>`;
+  const det = (id, title, body) => `<details class="e-det" data-keep="${id}"><summary>${esc(title)}</summary>${body}</details>`;
+  const wname = esc(x.full(w));
+  return `<div class="endp s${w}">` +
+    `<section class="e-hero"><img data-end-hero src="art/end/${SEATS[w]}.webp" alt="${esc(x.tr("end.heroAlt", { who: x.full(w) }))}" decoding="async"><i class="e-shade" aria-hidden="true"></i>` +
+    `<div class="e-ht"><span class="e-k">${esc(x.tr("end.heroKicker"))}</span><h2 class="e-w" data-winner="${SEATS[w]}">${wname}</h2><span class="e-l">${esc(x.tr("end.heroLine", { votes: votesOf(r.votes[w]), share: pctOf(tenths(w)) }))}</span></div>` +
+    `<span class="e-stamp" aria-hidden="true">${esc(x.tr("end.stamp"))}</span></section>` +
+    `<section class="e-res" aria-label="${esc(x.tr("end.resTitle"))}"><div class="e-rh"><h3>${esc(x.tr("end.resTitle"))}</h3><span>${esc(x.tr("end.turnout", { pct: pctOf(Math.round((cast / total) * 1000)), n: cast, all: total }))}</span></div>${rows}` +
+    `<p class="e-note">${esc(lead)}${esc(nonvote)}</p></section>` +
+    `${you}<section class="e-cmp" aria-label="${esc(x.tr("end.cmpTitle"))}"><h3>${esc(x.tr("end.cmpTitle"))}</h3><div class="hgrid">${hist}</div><p>${esc(x.tr("end.turnCmp", { now: pctOf(Math.round((cast / total) * 1000)), then: "82.7%" }))}</p></section>` +
+    `<div class="opts">${o.again ? `<button type="button" class="opt" data-msg="${esc(JSON.stringify(o.again.data))}">${esc(o.again.label)}</button>` : o.noAgain ? (o.againWait ? `<p class="sub wait">${esc(o.againWait)}</p>` : "") : `<button type="button" class="opt" data-act="again">${esc(x.tr("end.again"))}</button>`}<a class="opt ghost" href="./${q}">${esc(x.tr("end.home"))}</a></div>` +
+    `<div class="e-dets">${det("day", x.tr("end.dayTitle"), `<ul class="day">${lines.join("")}</ul>`)}${det("lead", x.tr("end.leadTitle"), `<div class="leads">${leadRows}</div>`)}</div>` +
+    `<a class="e-jump" href="#end-board">${esc(x.tr("end.board"))}</a></div>`;
 }
 
 // ---------------------------------------------------------------- the whole table
@@ -841,8 +866,10 @@ export function tableHTML(view, choices, lang, opts = {}) {
   // Three columns on a wide desk (the players; the issues and the map; the notes and the decision). On a
   // phone the columns dissolve (display: contents) and style.css puts the pieces in one order.
   if (v.phase === "end") {
-    return `<div class="tbl end" data-phase="end">${headerHTML(v, choices, x, o)}<div class="col cl">${playersHTML(v, x, o)}${feedHTML(v, x, o)}</div>` +
-      `<div class="col cc">${map}</div><div class="col cr">${endHTML(v, x, o)}${nowHTML(x, o)}${resultHTML(o, x)}</div></div>`;
+    // The count (#33) leads: on a phone it is the first thing under the top row and the board follows ("see the final
+    // board", #end-board); on a wide desk it sits in the middle column above the map.
+    return `<div class="tbl end" data-phase="end">${headerHTML(v, choices, x, o)}<div class="col cl"><i id="end-board" class="e-mark"></i>${playersHTML(v, x, o)}${feedHTML(v, x, o)}</div>` +
+      `<div class="col cc">${endHTML(v, x, o)}${map}</div><div class="col cr">${nowHTML(x, o)}${resultHTML(o, x)}</div></div>`;
   }
   return `<div class="tbl" data-phase="${esc(v.phase)}">${headerHTML(v, choices, x, o)}<div class="col cl">${playersHTML(v, x, o)}${feedHTML(v, x, o)}</div>` +
     `<div class="col cc">${trackHTML(v, x, o)}${helpHTML(x, o)}${v.phase === "debate" ? debateHTML(v, x) : ""}${map}</div>` +

@@ -81,7 +81,7 @@ export default {
       menu: { quit: "Abandon this game", confirm: "Abandon this game and go back to setup?", skip: "Click to skip the animation", label: "Menu" },
       hdr: {
         ph: { action: "Action {n}/4", order: "Order", momentum: "Momentum", save: "Set aside", debate: "Forum", election: "Election day", end: "The count" },
-        turn: "Turn {n}", initiative: "Initiative: {who}", star: "Initiative", mom: "Momentum", bag: "Bag", feed: "Record", momL: "Momentum", slotsL: "Issue slots", tap: "Tap for an explanation",
+        turn: "Turn {n}", endDate: "18 March", initiative: "Initiative: {who}", star: "Initiative", mom: "Momentum", bag: "Bag", feed: "Record", momL: "Momentum", slotsL: "Issue slots", tap: "Tap for an explanation",
         yourTurn: "Your move", busy: "{who} is acting…", waitHint: "The bots are acting. You can look through your hand meanwhile.",
         slot: { 1: "Slot 1", 2: "Slot 2", 3: "Slot 3" },
         phase: { action: "Action phase {n} / 4", order: "Pick your place in the order", momentum: "Momentum phase", save: "Set aside", debate: "The Policy Forum", election: "Election day · canvassing", end: "The count" },
@@ -189,6 +189,15 @@ export default {
         dayTitle: "Election day", canvass: "{who} canvasses {cards} {cards#card|cards}: {fill} filled, {take} taken", strategic: "Strategic voting: {text}", strategicNone: "Strategic voting: no swing blocks move", endorse: "Endorsements: {text}",
         leadTitle: "Counties led", history: "History: Chen 39.3%, Soong 36.8%, Lien 23.1%; a margin of about 310,000 votes; turnout 82.7%.",
         again: "Play again", home: "Home",
+        // Election night (#33)
+        stamp: "Elected", heroKicker: "Count complete · 10th President-elect", heroLine: "{votes} · {share} of the vote", heroAlt: "Election night: {who} is elected",
+        vfull: "{n}M votes", vfull0: "0 votes", vu: "M votes", vu0: "votes",
+        blk: "{n} {n#block|blocks}", resTitle: "Votes", turnout: "Turnout {pct} · {n} / {all} {all#block|blocks}",
+        lead: "{who} leads {other} by {votes} votes ({n} {n#block|blocks}). ", nonvote: "1 block = 100,000 votes; {votes} votes ({n} {n#block|blocks}) were not cast.",
+        youWho: "You ({name})", rank1: "1st", rank2: "2nd", rank3: "3rd", youLine: "{rank} · {votes}", youShare: "{share} of the vote, {cmp}",
+        cmpLess: "{d} points below the real 2000 result", cmpMore: "{d} points above the real 2000 result", cmpSame: "the same as the real 2000 result",
+        cmpTitle: "Against the real 2000", nowL: "This game", thenL: "Real 2000", turnCmp: "Turnout: {now} here, {then} in 2000. In 2000 Chen won by about 310,000 votes.",
+        board: "See the final board and the record ▾",
       },
     },
     // The room page (#15): host, join, lobby, multiplayer table
