@@ -141,7 +141,8 @@ export function stepBot(session) {
   if (!todo.length) return session;
   const r = E.makeRng(0); r.state = session.rng;
   const { move: m, why } = chooseMove(session.st, todo[0], session.level, () => r.next());
-  return { ...move(session, todo[0], m, why), rng: r.state };
+  // A bot has moved: what the human did before it is final (#43).
+  return { ...move(session, todo[0], m, why), rng: r.state, undo: [], drew: false };
 }
 
 export function advance(session) {
@@ -177,7 +178,26 @@ export function choices(session, lang) {
 }
 
 export function act(session, m) {
-  return move(session, session.seat, m);
+  const next = move(session, session.seat, m);
+  if (session.tut) return next;
+  // 悔一步 (#43): the session as it stood before this move is kept (without its own history), in the human's
+  // current action only. A move that drew something random (the engine's rng moved) can't be taken back:
+  // the history is dropped and `drew` remembers it, so the panel can say why. A bot moving clears both.
+  if (next.st.rng !== session.st.rng) return { ...next, undo: [], drew: true };
+  const { undo, ...prev } = session;
+  return { ...next, undo: (undo || []).concat([prev]).slice(-UNDO_MAX) };
+}
+
+const UNDO_MAX = 8;
+
+export function canUndo(session) {
+  return !session.tut && !!(session.undo && session.undo.length);
+}
+
+export function undo(session) {
+  if (!canUndo(session)) return session;
+  const rest = session.undo.slice(0, -1), prev = session.undo[session.undo.length - 1];
+  return { ...prev, advisor: session.advisor, undo: rest, drew: session.drew };
 }
 
 // The region the human's pawn stands in: the one the map opens first.
@@ -201,6 +221,7 @@ export function screen(session, lang, opts = {}) {
   const changed = [...changedCounties(rec), ...changedCounties((session.mine && session.mine.lines) || [], true)];
   const html = tableHTML(v, d.choices, lang, {
     feed: session.feed, wait: botsToMove(session), advisor: { on: !!session.advisor, why: d.why },
+    undo: session.tut ? null : canUndo(session) ? "on" : session.drew ? "off" : null,
     recent: recentLines(rec, v, x), result: resultBlock(session.mine, x), changed, ...opts,
   });
   return session.tut ? decorate(html, session, lang, opts) : html;

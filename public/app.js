@@ -70,6 +70,14 @@ if (typeof document !== "undefined") {
     let ui = { sel: null, picks: [], help: null, moves: false, confirm: null, county: null, seat: null, narrow: narrowNow() };
     let timer = null;
     const save = () => store.set(KEY, session);
+    // A line that shows for a moment and goes (#43: "went back one step").
+    let noticeTimer = null;
+    const notice = (text) => {
+      let n = $("#notice");
+      if (!n) { n = document.createElement("div"); n.id = "notice"; n.className = "notice"; n.setAttribute("role", "status"); document.body.appendChild(n); }
+      n.textContent = text; n.hidden = false;
+      clearTimeout(noticeTimer); noticeTimer = setTimeout(() => { n.hidden = true; }, 1800);
+    };
 
     const draw = () => {
       syncUrl();
@@ -135,6 +143,12 @@ if (typeof document !== "undefined") {
       } else if (d.confirm && d.move) {
         // The candidate card is once a game: ask first (the table draws the question).
         ui.confirm = d.move; ui.sel = null; draw(); toAct();
+      } else if (d.undo) {
+        if (!session.tut && Solo.canUndo(session)) {
+          session = Solo.undo(session);
+          ui = { ...ui, sel: null, picks: [], moves: false, confirm: null, county: null };
+          save(); pump(); window.scrollTo({ top: 0 }); notice(S.undo.done);
+        }
       } else if (d.move) {
         const m = JSON.parse(d.move);
         session = session.tut ? Tut.act(session, m) : Solo.act(session, m);
