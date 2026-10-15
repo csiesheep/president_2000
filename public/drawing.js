@@ -4,9 +4,28 @@
 // Importing it in node is harmless: nothing runs until drawInto() is called.
 let lastAdvised = null;
 
+// A redraw swaps the whole stage, which would make every picture a brand-new <img> that blinks while it
+// decodes (#28). So the <img> elements that were on the stage keep their place: after the swap, a new <img>
+// whose markup is identical to one that was just removed is replaced by that very element.
+const imgKey = new WeakMap();
+const keyOf = (im) => imgKey.get(im) || im.outerHTML;
+function keepImages(root, html) {
+  const pool = new Map();
+  for (const im of root.querySelectorAll("img")) {
+    const k = keyOf(im);
+    if (!pool.has(k)) pool.set(k, []);
+    pool.get(k).push(im);
+  }
+  root.innerHTML = html;
+  for (const im of root.querySelectorAll("img")) {
+    const k = im.outerHTML, list = pool.get(k);
+    if (list && list.length) { const was = list.shift(); im.replaceWith(was); imgKey.set(was, k); } else imgKey.set(im, k);
+  }
+}
+
 export function drawInto(root, html) {
   const old = root.querySelector(".hs"), left = old ? old.scrollLeft : 0;
-  root.innerHTML = html;
+  keepImages(root, html);
   const hs = root.querySelector(".hs");
   if (!hs) { lastAdvised = null; return; }
   const adv = hs.querySelector(".hc.adv");
