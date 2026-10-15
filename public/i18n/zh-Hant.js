@@ -61,7 +61,7 @@ export default {
     // 方向 C（#26）：首頁的盒蓋、玩家板、候選人牌
     look: {
       home: { meta: "3 人 · 9 回合", sub: "宋楚瑜、連戰、陳水扁。把方塊放上 24 個縣市，搶到投票日。", play: "單人開打", playSub: "對三種難度的 AI", host: "開房", hostSub: "傳代碼給朋友", join: "加入", joinSub: "輸入 4 碼代碼", boxTitle: "盒子裡有什麼", box: "70 張事件牌 · 24 個縣市的地方牌 · 一袋方塊 · 24 個縣市的棋盤 · 三個議題槽。打法跟實體桌遊一樣：出牌、放方塊、抽袋子檢定。", rules: "翻開規則書" },
-      board: { label: "玩家板", cubes: "{n} 顆在盤上", mom: "動能", hand: "手牌 {n} · 已留 {k}", bag: "袋中 {n}" },
+      board: { label: "玩家板", cubes: "{n} 顆在盤上", mom: "動能", hand: "手牌 {n} · 已留 {k}", bag: "袋中 {n}", votes: "0萬票", votesNone: "票" },
       card: { seal: "整局一次", used: "已用" },
     },
     solo: {
@@ -77,8 +77,9 @@ export default {
         levelNote: { 1: "助選員只會填塊，不搶、不觸發、不封鎖。", 2: "總幹事會算棄保、搶塊、觸發與封鎖。", 3: "操盤手還會留牌打政見發表會、卡議題平手。" },
         start: "開始選戰 · 1999 年 11 月", note: "九個回合。進度存在這個分頁，重新整理會回到同一個畫面。", home: "← 首頁",
       },
-      menu: { quit: "放棄這局", confirm: "放棄這一局，回到設定？", skip: "點一下跳過動畫" },
+      menu: { quit: "放棄這局", confirm: "放棄這一局，回到設定？", skip: "點一下跳過動畫", label: "選單" },
       hdr: {
+        ph: { action: "行動 {n}/4", order: "選順位", momentum: "動能階段", save: "留牌", debate: "政見發表會", election: "投票日", end: "開票結果" },
         turn: "第 {n} 回合", initiative: "主動權 {who}", star: "主動權", mom: "動能", bag: "袋子", feed: "紀錄", first: "先", momL: "動能", slotsL: "議題槽", tap: "點一下看說明",
         yourTurn: "輪到你", busy: "{who} 行動中…", waitHint: "對手行動中。你可以先翻看手牌。",
         slot: { 1: "第一槽", 2: "第二槽", 3: "第三槽" },
@@ -88,7 +89,7 @@ export default {
       map: {
         title: "各區票勢", here: "{who}在此", endorse: "背書", media: "媒體", blocks: "{n} 塊", empty: "空 {n}", boss: "{who}是地方大老",
         legendEmpty: "空的游離塊", legendGrey: "沒投票的無色塊", changed: "剛剛有變動",
-        board: "台灣地圖", hint: "點縣市看票塊，在框裡下指令。", popNone: "這個縣市現在沒有可以做的事。", popGrey: "無色 {n}", popClose: "關閉", islands: "外島", legendPawn: "圓標是候選人所在的縣市", legendCubes: "陳宋連的方塊", popMove: "移到這裡 · 移動後剩 {left} CP",
+        you: "你", board: "台灣地圖", hint: "點縣市看票塊，在框裡下指令。", popNone: "這個縣市現在沒有可以做的事。", popGrey: "無色 {n}", popClose: "關閉", islands: "外島", legendPawn: "圓標是候選人所在的縣市", legendCubes: "陳宋連的方塊", popMove: "移到這裡 · 移動後剩 {left} CP",
         short: {
           "台北市": "台北市", "台北縣": "台北縣", "基隆市": "基隆市", "桃園縣": "桃園",
           "新竹縣": "新竹", "新竹市": "新竹市", "苗栗縣": "苗栗", "台中縣": "台中",

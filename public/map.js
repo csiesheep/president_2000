@@ -73,13 +73,9 @@ const CITY = { "台北市": [121.55, 25.05], "基隆市": [121.73, 25.12], "新�
 const ANCHOR = { "台北縣": [121.78, 24.95], "宜蘭縣": [121.66, 24.6], "桃園縣": [121.2, 24.9], "新竹縣": [121.17, 24.67], "苗栗縣": [120.93, 24.47], "台中縣": [121.08, 24.25], "彰化縣": [120.5, 23.97], "南投縣": [120.97, 23.78], "雲林縣": [120.42, 23.69], "嘉義縣": [120.65, 23.42], "台南縣": [120.4, 23.16], "高雄縣": [120.68, 22.93], "屏東縣": [120.66, 22.45], "花蓮縣": [121.4, 23.88], "台東縣": [121.12, 22.98], "澎湖縣": [119.45, 23.82] };
 // The cities' papers out at sea (desktop), in lon/lat.
 const CALL = { "台北市": [122.3, 25.2], "基隆市": [122.38, 24.93], "新竹市": [120.42, 24.95], "台中市": [120.1, 24.3], "嘉義市": [119.95, 23.38], "台南市": [119.85, 23.0], "高雄市": [119.95, 22.62] };
-// A county's bar on the phone board (lon, lat). Nudged by hand so no two 30 × 30 touch areas overlap.
-const BAR = {
-  "台北市": [121.38, 25.2], "基隆市": [121.86, 25.2], "台北縣": [121.72, 24.93], "桃園縣": [121.09, 24.96], "新竹市": [120.78, 24.9], "新竹縣": [121.2, 24.69],
-  "宜蘭縣": [121.7, 24.62], "苗栗縣": [120.9, 24.45], "台中市": [120.55, 24.2], "台中縣": [121.2, 24.22], "彰化縣": [120.4, 23.93], "南投縣": [120.97, 23.9],
-  "雲林縣": [120.42, 23.66], "嘉義市": [120.28, 23.38], "嘉義縣": [120.72, 23.6], "台南市": [120.18, 23.1], "台南縣": [120.58, 23.14], "高雄市": [120.28, 22.75],
-  "高雄縣": [120.82, 22.87], "屏東縣": [120.62, 22.4], "花蓮縣": [121.4, 23.85], "台東縣": [121.14, 23.1], "澎湖縣": [119.58, 23.66],
-};
+// The seven cities' papers out at sea on the phone board (lon, lat): where the layout starts from. The paper is
+// then pushed off whatever it would touch (see place). The desktop has CALL above.
+const SEA = { "台北市": [120.95, 25.55], "基隆市": [122.05, 25.5], "新竹市": [120.45, 24.95], "台中市": [120.08, 24.3], "嘉義市": [119.82, 23.62], "台南市": [119.75, 23.05], "高雄市": [119.85, 22.55] };
 
 function clipHalf(poly, a, b, c, label) {
   const out = [];
@@ -96,12 +92,11 @@ function clipHalf(poly, a, b, c, label) {
 }
 
 const MODES = {
-  desk: { k: 161, x0: 149, y0: -10, w: 776, h: 566 },
-  phone: { k: 117, x0: -2, y0: 0, w: 368, h: 418 },
+  desk: { k: 161, x0: 149, y0: -10, w: 776, h: 566, lon0: 119.3, lat0: 25.45 },
+  phone: { k: 132, x0: 0, y0: 0, w: 370, h: 530, lon0: 119.32, lat0: 25.72 },
 };
 
-function geo({ k, x0, y0 }) {
-  const lon0 = 119.3, lat0 = 25.45;
+function geo({ k, x0, y0, lon0, lat0 }) {
   const P = (lon, lat) => [(lon - lon0) * COS * k + x0, (lat0 - lat) * k + y0];
   const pathOf = (pts) => "M" + pts.map((p) => f1(p.x ?? p[0]) + " " + f1(p.y ?? p[1])).join("L") + "Z";
   const seedList = [];
@@ -141,25 +136,57 @@ const slotOf = (b) => (b.o >= 0 ? SEATS[b.o] : b.t === "G" ? "green" : b.t === "
 const ORDER = { chen: 0, soong: 1, lien: 2, green: 3, blue: 4, grey: 5 };
 const sortedSlots = (blocks) => blocks.map(slotOf).sort((a, b) => ORDER[a] - ORDER[b]);
 
+
+// ---------------------------------------------------------------- the paper of one county (#29)
+// Every county is one paper: its name over a grid of blocks. All the blocks on the board are the same size
+// (the cubes of the three candidates are all one size, the empty ones a hair smaller), so a county with
+// more blocks has a bigger paper. Position is a pure function of (screen size, language): see relax().
+
+const GEOM = { desk: { sz: 6.5, gap: 1.5, font: 10 }, phone: { sz: 7, gap: 1.5, font: 9 } };
+const colsPhone = (n) => Math.max(1, Math.min(7, Math.ceil(Math.sqrt(n * 1.5))));
+const colsDesk = (name) => (name === "台北市" ? 10 : name === "台北縣" ? 8 : CALL[name] ? 6 : 5);
+const blocksIn = (k) => COUNTIES[k][2] + COUNTIES[k][3] + COUNTIES[k][4];
+
 function slotRect(kind, k, x, y, sz) {
   const a = `data-slot="${kind}" data-of="${k}"`;
   const i = SEATS.indexOf(kind);
-  if (i >= 0) return `<rect ${a} x="${f1(x)}" y="${f1(y)}" width="${sz}" height="${sz}" rx="1.2" fill="${SEAT_COL[0 + i]}"/>`;
+  if (i >= 0) return `<rect ${a} x="${f1(x)}" y="${f1(y)}" width="${sz}" height="${sz}" rx="1.2" fill="${SEAT_COL[i]}"/>`;
   const st = kind === "green" ? `fill="#e3efe2" stroke="${SEAT_COL[0]}" stroke-width="1.2"` : kind === "blue" ? `fill="#e1e8f4" stroke="${SEAT_COL[2]}" stroke-width="1.2"` : `fill="#f6efdd" stroke="#8a7658" stroke-width=".9" stroke-dasharray="1.6 1.2"`;
   return `<rect ${a} x="${f1(x + 0.6)}" y="${f1(y + 0.6)}" width="${f1(sz - 1.2)}" height="${f1(sz - 1.2)}" rx="1.2" ${st}/>`;
 }
 
-// The pawns standing in county k: a round marker in the candidate's colour with the flag number, hung off
-// the top-right corner of the paper.
+// ---- the candidates standing on the map: a round picture on the paper's top-right corner, lapping over its top edge
+const R = 11; // the picture's radius; the ring is 2.6 more
+const STEP = 16; // two or three on one county stand in a row going left, each one 16 from the last
+const youW = (d) => Math.max(16, Math.ceil(textW(d.ui.solo.map.you, 9) + 6)); // the width of the red "你" / "You" tag on the left of your own candidate
+// Everything the candidates of one county can ever draw (worst case: all three, you among them), as a box measured
+// from the paper's top-right corner (right, top): x from -(49 + tag) to +13.4, y from -14.2 to +15.8.
+const zoneOf = (right, top, yw) => { const l = right - 49 - yw; return { x: l, y: top - 14.2, w: right + 13.4 - l, h: 30 }; };
+
+// The candidates in county k, right to left. Yours is the last, so its tag is on the far left and nothing covers it.
+function standing(v, k) {
+  const here = SHOW_ORDER.filter((p) => v.pos[p] === k && p !== v.seat);
+  if (v.pos[v.seat] === k) here.push(v.seat);
+  return here;
+}
 function pawns(v, k, d, right, top) {
-  let s = "", n = 0;
-  for (let p = 0; p < 3; p++) {
-    if (v.pos[p] !== k) continue;
-    const cx = right - 4 - n * 9.5, cy = top;
-    s += `<g data-pawn="${SEATS[p]}" data-of="${k}" aria-hidden="true"><circle cx="${f1(cx)}" cy="${f1(cy)}" r="4.6" fill="${SEAT_COL[p]}" stroke="${PAPER}" stroke-width="1.3"/>` +
-      `<text x="${f1(cx)}" y="${f1(cy + 2.1)}" text-anchor="middle" font-size="6" font-weight="900" fill="#fff" font-family="'Noto Sans TC', sans-serif">${NO[p]}</text></g>`;
-    n++;
-  }
+  let s = "";
+  standing(v, k).forEach((p, j) => {
+    const cx = right - 1 - STEP * j, cy = top, me = p === v.seat;
+    const bx = cx + R * 0.78, by = cy + R * 0.72;
+    s += `<g data-pawn="${SEATS[p]}" data-of="${k}"${me ? " data-me" : ""} aria-hidden="true">` +
+      `<ellipse cx="${f1(cx + 1)}" cy="${f1(cy + R + 2)}" rx="${f1(R * 0.9)}" ry="2.6" fill="rgba(43,33,24,.35)"/>` +
+      `<circle cx="${f1(cx)}" cy="${f1(cy)}" r="${R + 2.6}" fill="${SEAT_COL[p]}" stroke="${PAPER}" stroke-width="1.4"/>` +
+      `<image href="art/candidates/${SEATS[p]}.webp" x="${f1(cx - R)}" y="${f1(cy - R)}" width="${2 * R}" height="${2 * R}" preserveAspectRatio="xMidYMin slice" clip-path="url(#tw-pc)"/>` +
+      `<circle cx="${f1(bx)}" cy="${f1(by)}" r="5.6" fill="${SEAT_COL[p]}" stroke="${PAPER}" stroke-width="1.2"/>` +
+      `<text x="${f1(bx)}" y="${f1(by + 3.1)}" text-anchor="middle" font-size="8.5" font-weight="900" fill="#fff" font-family="'Noto Serif TC', serif">${NO[p]}</text>`;
+    if (me) {
+      const w = youW(d), tx = cx - R - 5 - w;
+      s += `<rect x="${f1(tx)}" y="${f1(cy - 14)}" width="${w}" height="13" rx="2.5" fill="${RED}"/>` +
+        `<text x="${f1(tx + w / 2)}" y="${f1(cy - 4.2)}" text-anchor="middle" font-size="9" font-weight="900" fill="#fbf6e9" font-family="'Noto Sans TC', sans-serif">${esc(d.ui.solo.map.you)}</text>`;
+    }
+    s += `</g>`;
+  });
   return s;
 }
 
@@ -171,78 +198,105 @@ function labelOf(v, k, d, lang) {
   return [nameOf(d, lang, k), tr(M.blocks, { n: blocks.length }), ...own, ...here].join(" · ");
 }
 
-// The county's wrapper: one focusable element carrying the flags. `inner` is its paper.
+// The county's wrapper: one focusable element carrying the flags. `inner` is its paper and its candidates.
 function county(v, k, d, lang, o, inner) {
   const chg = (o.changed || []).includes(k), sel = o.selected === k;
   return `<g class="tw-c" data-county="${k}" tabindex="0" role="button" aria-label="${esc(labelOf(v, k, d, lang))}"${chg ? " data-changed" : ""}${sel ? " data-selected" : ""}>${inner}</g>`;
 }
 
-// ---------------------------------------------------------------- the two papers
-
-// Desktop: the name and the grid of blocks on a paper centred on (cx, cy). Returns { svg, box }.
-function paper(v, k, d, lang, o, cx, cy, { cols, bold = false }) {
-  const sz = 6.5, gap = 1.5, font = 10;
-  const sl = sortedSlots(v.counties[k].blocks), c = Math.min(sl.length, cols), rows = Math.ceil(sl.length / c);
-  const label = shortOf(d, k), gw = c * sz + (c - 1) * gap;
-  const w = Math.max(gw, textW(label, font) + 2) + 8, h = font + 6 + rows * (sz + gap) + 3;
-  const x0 = cx - w / 2, y0 = cy - h / 2;
-  let s = `<rect class="tw-hit" x="${f1(cx - Math.max(w, 30) / 2)}" y="${f1(cy - Math.max(h, 30) / 2)}" width="${f1(Math.max(w, 30))}" height="${f1(Math.max(h, 30))}" fill="transparent"/>`;
-  s += `<rect class="tw-paper" x="${f1(x0)}" y="${f1(y0)}" width="${f1(w)}" height="${f1(h)}" rx="2.5" fill="${PAPER}" stroke="${INK}" stroke-width="${bold ? 1.3 : 0.9}" filter="url(#tw-sh)"/>`;
-  s += `<text x="${f1(x0 + 4)}" y="${f1(y0 + font + 1.5)}" font-family="'Noto Serif TC', serif" font-size="${font}" font-weight="900" fill="${INK}">${esc(label)}</text>`;
-  sl.forEach((kind, i) => { s += slotRect(kind, k, x0 + 4 + (i % c) * (sz + gap), y0 + font + 4 + Math.floor(i / c) * (sz + gap), sz); });
-  s += pawns(v, k, d, x0 + w + 1, y0 - 1);
-  s += `<rect class="tw-ring" x="${f1(x0 - 2)}" y="${f1(y0 - 2)}" width="${f1(w + 4)}" height="${f1(h + 4)}" rx="4" fill="none"/>`;
-  return { svg: county(v, k, d, lang, o, s), box: { cx, cy, w, h } };
+function paper(v, k, d, lang, o, mode, s) {
+  const { sz, gap, font } = GEOM[mode];
+  const sl = sortedSlots(v.counties[k].blocks), c = Math.max(1, Math.min(sl.length, s.cols));
+  const label = shortOf(d, k), x0 = s.cx - s.w / 2, y0 = s.cy - s.h / 2;
+  const hw = Math.max(s.w, 30), hh = Math.max(s.h, 30);
+  let t = `<rect class="tw-hit" x="${f1(s.cx - hw / 2)}" y="${f1(s.cy - hh / 2)}" width="${f1(hw)}" height="${f1(hh)}" fill="transparent"/>`;
+  t += `<rect class="tw-paper" data-paper="${k}" x="${f1(x0)}" y="${f1(y0)}" width="${f1(s.w)}" height="${f1(s.h)}" rx="2.5" fill="${PAPER}" stroke="${INK}" stroke-width="${s.bold ? 1.3 : 0.9}" filter="url(#tw-sh)"/>`;
+  t += `<text x="${f1(x0 + 4)}" y="${f1(y0 + font + 1)}" font-family="'Noto Serif TC', serif" font-size="${font}" font-weight="900" fill="${INK}">${esc(label)}</text>`;
+  sl.forEach((kind, i) => { t += slotRect(kind, k, x0 + 4 + (i % c) * (sz + gap), y0 + font + 4 + Math.floor(i / c) * (sz + gap), sz); });
+  t += pawns(v, k, d, x0 + s.w, y0);
+  t += `<rect class="tw-ring" x="${f1(x0 - 2)}" y="${f1(y0 - 2)}" width="${f1(s.w + 4)}" height="${f1(s.h + 4)}" rx="4" fill="none"/>`;
+  return county(v, k, d, lang, o, t);
 }
 
-// Phone: the name over a thin bar split in the proportion of the blocks.
-function bar(v, k, d, lang, o, cx, cy) {
-  const w = 30, sl = sortedSlots(v.counties[k].blocks), n = sl.length;
-  const seg = { chen: SEAT_COL[0], soong: SEAT_COL[1], lien: SEAT_COL[2], green: "#bcd9c3", blue: "#bccbe6", grey: "#e2d9c3" };
-  const label = shortOf(d, k), font = 7.5, bw = Math.max(w, textW(label, font) + 2) + 4;
-  let s = `<rect class="tw-hit" x="${f1(cx - 15.5)}" y="${f1(cy - 16)}" width="31" height="31" fill="transparent"/>`;
-  s += `<rect class="tw-paper" x="${f1(cx - bw / 2)}" y="${f1(cy - 11)}" width="${f1(bw)}" height="20" rx="2.5" fill="${PAPER}" stroke="${INK}" stroke-width=".8"/>`;
-  s += `<text x="${f1(cx)}" y="${f1(cy - 2.5)}" text-anchor="middle" font-family="'Noto Serif TC', serif" font-size="${font}" font-weight="900" fill="${INK}">${esc(label)}</text>`;
-  let x = cx - w / 2;
-  for (const kind of sl) { const ww = w / n; s += `<rect data-slot="${kind}" data-of="${k}" x="${f1(x)}" y="${f1(cy + 1)}" width="${f1(Math.max(ww - 0.6, 0.6))}" height="5" fill="${seg[kind]}"/>`; x += ww; }
-  s += pawns(v, k, d, cx + bw / 2 + 1, cy - 12);
-  s += `<rect class="tw-ring" x="${f1(cx - bw / 2 - 2)}" y="${f1(cy - 13)}" width="${f1(bw + 4)}" height="24" rx="4" fill="none"/>`;
-  return { svg: county(v, k, d, lang, o, s), box: { cx, cy: cy - 1, w: bw, h: 20 } };
+// ---------------------------------------------------------------- layout, memoised per board size and language
+
+// The size of county k's paper: the label and the grid of blocks, every block the same size.
+function paperSize(k, mode, d) {
+  const { sz, gap, font } = GEOM[mode], n = blocksIn(k), name = COUNTIES[k][0];
+  const cols = Math.max(1, Math.min(n, mode === "phone" ? colsPhone(n) : colsDesk(name))), rows = Math.ceil(n / cols);
+  const gw = cols * sz + (cols - 1) * gap, lw = textW(shortOf(d, k), font);
+  // The label keeps 11 clear on its right: that is where the candidates stand.
+  return { cols, w: Math.max(gw, lw + 11) + 8, h: font + 4 + rows * (sz + gap) - gap + 4 };
 }
 
-// ---------------------------------------------------------------- layout, memoised per board size
+// Push the papers apart until no paper touches another and no candidate (wherever up to three of them stand on
+// a county) can touch another county's paper. Each paper starts at its place on the map and is pulled back
+// towards it; the last rounds only push. Fixed iteration order and no randomness: one input, one layout.
+function relax(items, W, H, yw) {
+
+  const bounds = (a) => { // where the centre may be so that the paper and its candidates stay inside the board
+    const lo = Math.min(-a.w / 2, a.w / 2 - 49 - yw), hi = Math.max(a.w / 2, a.w / 2 + 13.4);
+    return { x0: 2 - lo, x1: W - 2 - hi, y0: 2 + a.h / 2 + 14.2, y1: H - 2 - Math.max(a.h / 2, 15.8 - a.h / 2) };
+  };
+  const clamp = (a) => { const b = bounds(a); a.x = Math.max(b.x0, Math.min(b.x1, a.x)); a.y = Math.max(b.y0, Math.min(b.y1, a.y)); };
+  const paperOf = (a) => ({ x: a.x - a.w / 2, y: a.y - a.h / 2, w: a.w, h: a.h });
+  const zoneOfItem = (a) => zoneOf(a.x + a.w / 2, a.y - a.h / 2, yw);
+  const push = (ra, a, rb, b, pad) => {
+    const ox = (ra.w + rb.w) / 2 + pad - Math.abs(rb.x + rb.w / 2 - ra.x - ra.w / 2), oy = (ra.h + rb.h) / 2 + pad - Math.abs(rb.y + rb.h / 2 - ra.y - ra.h / 2);
+    if (ox <= 0 || oy <= 0) return false;
+    const wa = a.pin ? 0 : b.pin ? 1 : 0.5, wb = 1 - wa;
+    if (ox < oy) { const sx = rb.x + rb.w / 2 >= ra.x + ra.w / 2 ? 1 : -1; a.x -= sx * ox * wa; b.x += sx * ox * wb; }
+    else { const sy = rb.y + rb.h / 2 >= ra.y + ra.h / 2 ? 1 : -1; a.y -= sy * oy * wa; b.y += sy * oy * wb; }
+    return true;
+  };
+  for (const a of items) if (a.pin) clamp(a);
+  for (let it = 0; it < 2400; it++) {
+    let moved = false;
+    for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) {
+      const a = items[i], b = items[j];
+      if (push(paperOf(a), a, paperOf(b), b, 3)) moved = true;
+      if (push(zoneOfItem(a), a, paperOf(b), b, 2)) moved = true;
+      if (push(zoneOfItem(b), b, paperOf(a), a, 2)) moved = true;
+    }
+    const pull = it < 1600 ? 0.03 : 0;
+    for (const a of items) { if (a.pin) continue; a.x += (a.tx - a.x) * pull; a.y += (a.ty - a.y) * pull; clamp(a); }
+    if (!moved && it > 1600) break;
+  }
+}
 
 const memo = {};
-function layout(mode) {
-  if (memo[mode]) return memo[mode];
-  const m = MODES[mode], g = geo(m);
-  const at = (lon, lat) => g.P(lon, lat);
-  const out = { m, g, spots: [] }; // spots[k] = { cx, cy, cols, bold, lead: [x, y] | null }
-  COUNTIES.forEach(([name], k) => {
-    if (mode === "phone") {
-      const [x, y] = name === "金馬" ? [35, 25] : at(...BAR[name]);
-      out.spots[k] = { cx: x, cy: y };
-    } else if (CALL[name]) {
-      const [x, y] = at(...CALL[name]), [px, py] = at(...CITY[name]);
-      out.spots[k] = { cx: x, cy: y, cols: name === "台北市" ? 10 : 6, bold: true, lead: [px, py] };
-    } else if (name === "金馬") {
-      out.spots[k] = { cx: 56, cy: 44, cols: 5 };
-    } else {
-      const [x, y] = at(...ANCHOR[name]);
-      out.spots[k] = { cx: x, cy: y, cols: name === "台北縣" ? 8 : 5 };
-    }
+function layout(mode, lang) {
+  const key = mode + "|" + lang;
+  if (memo[key]) return memo[key];
+  const m = MODES[mode], g = geo(m), d = dict(lang), at = (lon, lat) => g.P(lon, lat);
+  const items = COUNTIES.map(([name], k) => {
+    const z = paperSize(k, mode, d);
+    let tx, ty, lead = null, pin = false;
+    if (name === "金馬") { [tx, ty] = mode === "phone" ? [30, 36] : [56, 44]; pin = true; }
+    else if (mode === "phone") {
+      [tx, ty] = SEA[name] ? at(...SEA[name]) : name === "澎湖縣" ? at(119.5, 23.95) : at(...(CITY[name] || ANCHOR[name]));
+      lead = at(...(CITY[name] || ANCHOR[name]));
+    } else if (CALL[name]) { [tx, ty] = at(...CALL[name]); lead = at(...CITY[name]); }
+    else [tx, ty] = at(...ANCHOR[name]);
+    return { k, name, ...z, x: tx, y: ty, tx, ty, pin, lead, city: !!CITY[name], bold: !!CITY[name] };
   });
-  return (memo[mode] = out);
+  relax(items, m.w, m.h, youW(d));
+  const spots = items.map((a) => {
+    // a county that was pushed off its place gets a dotted line back to it (a city always has one, with a red dot)
+    const far = a.lead && Math.hypot(a.x - a.lead[0], a.y - a.lead[1]) > Math.min(a.w, a.h) / 2 + 3;
+    return { cx: f1(a.x), cy: f1(a.y), w: f1(a.w), h: f1(a.h), cols: a.cols, bold: a.bold, lead: far && (mode === "phone" || a.city) ? a.lead : null, dot: a.city };
+  });
+  return (memo[key] = { m, g, spots });
 }
 
 // Where the county box sits, as fractions of the board and the CSS that puts it there. Used by table.js.
-export function popPlace(k, narrow) {
-  const { m, spots } = layout(narrow ? "phone" : "desk"), s = spots[k];
+export function popPlace(k, narrow, lang = "zh-Hant") {
+  const { m, spots } = layout(narrow ? "phone" : "desk", lang), s = spots[k];
   const fx = s.cx / m.w, fy = s.cy / m.h, pc = (n) => f1(n * 100);
   const style = (rule) => `--ax:${f1(fx * 1000) / 1000};${rule}`;
   if (narrow) {
     const down = fy < 0.55;
-    return { cls: `pop-n ${down ? "dn" : "up"}`, style: style(down ? `top:${pc((s.cy + 20) / m.h)}%` : `bottom:${pc(1 - (s.cy - 22) / m.h)}%`) };
+    return { cls: `pop-n ${down ? "dn" : "up"}`, style: style(down ? `top:${pc((s.cy + s.h / 2 + 8) / m.h)}%` : `bottom:${pc(1 - (s.cy - s.h / 2 - 17) / m.h)}%`) };
   }
   const right = fx < 0.47, down = fy < 0.5;
   const horiz = right ? `left:calc(${pc(fx)}% + 54px)` : `right:calc(${pc(1 - fx)}% + 54px)`;
@@ -255,30 +309,24 @@ export function popPlace(k, narrow) {
 export function taiwanMap(view, lang, opts = {}) {
   const v = view, d = dict(lang), o = opts, M = d.ui.solo.map;
   const mode = o.narrow ? "phone" : "desk";
-  const L = layout(mode), { m, g } = L;
-  const INK_LINE = INK;
+  const L = layout(mode, lang), { m, g } = L;
   let svg = `<svg class="tw tw-${mode}" viewBox="0 0 ${m.w} ${m.h}" role="group" aria-label="${esc(M.board)}" font-family="'Noto Sans TC', sans-serif">` +
     `<defs><filter id="tw-sh" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="1" stdDeviation=".8" flood-color="#3c2410" flood-opacity=".35"/></filter>` +
     `<pattern id="tw-wv" width="40" height="18" patternUnits="userSpaceOnUse"><path d="M2 12q4-5 9 0t9 0" fill="none" stroke="#9fb3b0" stroke-width=".9" opacity=".5"/></pattern>` +
-    `<clipPath id="tw-cl"><path d="${g.coast}"/></clipPath></defs>` +
+    `<clipPath id="tw-cl"><path d="${g.coast}"/></clipPath><clipPath id="tw-pc" clipPathUnits="objectBoundingBox"><circle cx=".5" cy=".5" r=".5"/></clipPath></defs>` +
     `<rect width="${m.w}" height="${m.h}" fill="url(#tw-wv)"/>` +
     `<g clip-path="url(#tw-cl)">${g.fills}</g>` +
-    `<g clip-path="url(#tw-cl)"><path d="${g.county}" stroke="${INK_LINE}" stroke-width=".7" fill="none" stroke-dasharray="2.5 1.8"/><path d="${g.region}" stroke="${INK_LINE}" stroke-width="1.5" fill="none"/></g>` +
-    `<path d="${g.coast}" fill="none" stroke="${INK_LINE}" stroke-width="1.9"/><path d="${g.penghu}" fill="${TINT[6]}" stroke="${INK_LINE}" stroke-width="1.2"/>`;
-  if (mode === "desk") {
-    for (const s of L.spots) if (s && s.lead) {
-      svg += `<path d="M${f1(s.lead[0])} ${f1(s.lead[1])}L${f1(s.cx)} ${f1(s.cy)}" stroke="${INK}" stroke-width="1" stroke-dasharray="1 2.5" stroke-linecap="round"/>` +
-        `<circle cx="${f1(s.lead[0])}" cy="${f1(s.lead[1])}" r="3.2" fill="${RED}" stroke="${PAPER}" stroke-width="1"/>`;
-    }
-    svg += `<g><rect x="8" y="8" width="96" height="58" fill="rgba(251,246,233,.75)" stroke="${INK}" stroke-dasharray="3 2"/><text x="13" y="20" font-size="8.5" fill="#6a5a48">${esc(M.islands)}</text></g>`;
-  } else {
-    svg += `<rect x="6" y="6" width="58" height="34" fill="rgba(251,246,233,.75)" stroke="${INK}" stroke-dasharray="3 2"/>`;
+    `<g clip-path="url(#tw-cl)"><path d="${g.county}" stroke="${INK}" stroke-width=".7" fill="none" stroke-dasharray="2.5 1.8"/><path d="${g.region}" stroke="${INK}" stroke-width="1.5" fill="none"/></g>` +
+    `<path d="${g.coast}" fill="none" stroke="${INK}" stroke-width="1.9"/><path d="${g.penghu}" fill="${TINT[6]}" stroke="${INK}" stroke-width="1.2"/>`;
+  for (const s of L.spots) if (s && s.lead) {
+    svg += `<path d="M${f1(s.lead[0])} ${f1(s.lead[1])}L${f1(s.cx)} ${f1(s.cy)}" stroke="${INK}" stroke-width="1" stroke-dasharray="1 2.5" stroke-linecap="round"/>` +
+      (s.dot ? `<circle cx="${f1(s.lead[0])}" cy="${f1(s.lead[1])}" r="3.2" fill="${RED}" stroke="${PAPER}" stroke-width="1"/>` : "");
   }
+  const km = L.spots[COUNTIES.findIndex((c) => c[0] === "金馬")];
+  if (mode === "desk") svg += `<g><rect x="8" y="8" width="96" height="58" fill="rgba(251,246,233,.75)" stroke="${INK}" stroke-dasharray="3 2"/><text x="13" y="20" font-size="8.5" fill="#6a5a48">${esc(M.islands)}</text></g>`;
+  else svg += `<g><rect x="${f1(Math.max(3, km.cx - km.w / 2 - 6))}" y="${f1(Math.max(3, km.cy - km.h / 2 - 18))}" width="${f1(km.w + 12)}" height="${f1(km.h + 24)}" fill="rgba(251,246,233,.75)" stroke="${INK}" stroke-dasharray="3 2"/></g>`;
   let boxes = "";
-  COUNTIES.forEach((_, k) => {
-    const s = L.spots[k];
-    boxes += (mode === "phone" ? bar(v, k, d, lang, o, s.cx, s.cy) : paper(v, k, d, lang, o, s.cx, s.cy, s)).svg;
-  });
+  COUNTIES.forEach((_, k) => { boxes += paper(v, k, d, lang, o, mode, L.spots[k]); });
   svg += boxes + `</svg>`;
 
   const keyList = REGIONS.map((_, r) => {
