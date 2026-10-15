@@ -102,13 +102,19 @@ const W_MAIN = 0.65, W_OTHER = [0.3, 0.35];
 // 操盤手 discounts a green county held by one cube once more, and counts
 // every empty block in full on election day.
 const EW_GREEN = 0.5, EW_BLUE = 0.6, EW_ONE_CUBE = 0.85;
-// A region's media lead: a base, plus each own-camp fill it frees from a
-// boss check (up to 3 per county), times the odds of failing that check,
-// again for each later turn with an action phase at MEDIA_PERSIST (the lead
-// may be contested before then). Set in #10 so that all-操盤手 games run
-// about as many ads as the design simulator's bots (6.8 vs 6.3 a game);
-// counting the waiver once, the bots never advertised (0 in 200 games).
-const MEDIA_LEAD = 0.25, MEDIA_WAIVE = 0.35, MEDIA_PERSIST = 0.75;
+// v0.4 (#34): media is one national box and waives no check. Its leader gains
+// 1 momentum at the end of every action turn (§5.3 step 2) and may swap two
+// adjacent issue slots (MEDIA_SWAP); a lead now is worth that at this turn's
+// end, and MEDIA_PERSIST of it again for each later action turn (it may be
+// contested before then). A lead of one cube is worth MEDIA_THIN of that:
+// one ad can tie it.
+const MEDIA_SWAP = 0.4, MEDIA_PERSIST = 0.8, MEDIA_THIN = 0.7;
+// How much the ads estimate counts against campaign and issues. #34, all-操盤手 games, seeds 1…: with
+// MEDIA_PERSIST 0.5 and this at 1 the bots took 1.4 ads actions a game (宋 0.02; 300 games) and left
+// 連 an unopposed media lead; with 0.8 and 1.5 they take 10.5 (陳 5.8, 宋 1.4, 連 3.2; 600 games).
+// One seat at 0.8 / 1.5 against two at 0.5 / 1, 400 games a seat: win 陳 38.8 vs 36.3 %, 宋 29.0 vs
+// 31.8 %, 連 32.0 vs 32.0 % (one standard error of 400 games is about 2.4 points).
+const ADS_WEIGHT = 1.5;
 const ACTION_TURNS = [1, 2, 3, 4, 5, 7, 8];
 const ISSUE_CUBE = 0.12;   // an issue cube becomes a bag cube on election day
 const MEDIA_CUBE = 0.15;   // likewise a media cube
@@ -149,7 +155,7 @@ function see(st) {
       return { v, ty, G: e.G, B: e.B, N: e.N };
     }),
     pos: st.pos.slice(), mom: st.mom.slice(), bag: st.bag.slice(), rest: st.rest.slice(),
-    media: st.media.map((m) => m.slice()),
+    media: st.media.slice(),
     issues: st.issues.map((i) => ({ name: i.name, cubes: i.cubes.slice() })),
     endorse: st.endorse.slice(),
     active: st.active.slice(), played: { ...st.flags.played }, crossFree: st.flags.crossFree.slice(),
@@ -240,11 +246,9 @@ class Bot {
 
   // ---------------------------------------------------------------- checks (§8.1)
 
-  regionLeader(r) { return leaderOf(this.v.media[r]); }
   ownFree(q) { return (q === CHEN && this.v.active.includes("lee_yuan_tseh")) || (q === SOONG && this.v.active.includes("walk_everywhere")); }
   fillNeedsCheck(q, k) {
     if (this.ownFree(q)) return false;
-    if (this.regionLeader(REG[k]) === q) return false;
     const c = this.v.counties[k];
     for (let x = 0; x < 3; x++) if (x !== q && c.v[x] >= BOSS_THRESHOLD) return true;
     for (let x = 0; x < 3; x++) if (x !== q && this.v.pos[x] === k) return true;
@@ -372,59 +376,62 @@ class Bot {
     return { v: total, first };
   }
 
-  // Media: region leaders skip the boss / candidate checks there, the national
-  // leader may swap issue slots; every cube becomes a bag cube on election day.
+  // Media (v0.4, #34): the national leader's momentum and swap (above); every
+  // cube becomes a bag cube on election day.
   mediaVec(media) {
     const V = [0, 0, 0];
-    for (let r = 0; r < REGIONS.length; r++) {
-      const l = leaderOf(media[r]);
-      if (l < 0) continue;
-      // the checks the lead waives: own-camp fills where another seat is a boss
-      let waived = 0;
-      for (const k of INREG[r]) {
-        const c = this.v.counties[k];
-        if ([0, 1, 2].some((x) => x !== l && c.v[x] >= BOSS_THRESHOLD)) waived += Math.min(c[CAMP[l]], 3);
-      }
-      // a lead keeps waiving those checks every turn until someone contests it
-      const later = ACTION_TURNS.filter((t) => t > this.v.turn).length;
-      V[l] += MEDIA_LEAD + waived * (1 - this.share[l]) * MEDIA_WAIVE * (1 + MEDIA_PERSIST * later);
+    const t = this.v.turn;
+    const now = ACTION_TURNS.includes(t) && this.v.phase === "action" ? 1 : 0;
+    const later = ACTION_TURNS.filter((x) => x > t).length;
+    const l = leaderOf(media);
+    if (l >= 0 && now + later > 0) {
+      const second = Math.max(...media.filter((_, q) => q !== l));
+      V[l] += (MOMV + MEDIA_SWAP) * (now + MEDIA_PERSIST * later) * (media[l] - second >= 2 ? 1 : MEDIA_THIN);
     }
-    const nat = leaderOf([0, 1, 2].map((q) => media.reduce((s, m) => s + m[q], 0)));
-    if (nat >= 0) V[nat] += 0.4;
-    for (const m of media) for (let q = 0; q < 3; q++) V[q] += m[q] * MEDIA_CUBE;
+    for (let q = 0; q < 3; q++) V[q] += media[q] * MEDIA_CUBE;
     return V;
   }
-  mediaChange(r, q, n) {
+  // ΔV of q's media going up (n > 0) or down (n < 0) by |n|, never below 0.
+  mediaChange(q, n) {
     const before = this.mediaVec(this.v.media);
-    const m2 = this.v.media.map((m) => m.slice());
-    m2[r][q] = Math.max(0, m2[r][q] + n);
+    const m2 = this.v.media.slice();
+    m2[q] = Math.max(0, m2[q] + n);
     const after = this.mediaVec(m2);
     return [after[0] - before[0], after[1] - before[1], after[2] - before[2]];
   }
-  bestMedia(q = this.p, { pool = null, removeOnly = -1 } = {}) {
-    let best = null;
-    for (let r = 0; r < REGIONS.length; r++) {
-      if (pool && !pool.includes(r)) continue;
-      if (removeOnly >= 0) {
-        if (this.v.media[r][removeOnly] <= 0) continue;
-        const d = this.mediaChange(r, removeOnly, -1), ev = this.rel(d, q);
-        if (!best || ev > best.ev) best = { ev, r, d, target: removeOnly };
-        continue;
-      }
-      const d = this.mediaChange(r, q, 1), ev = this.rel(d, q);
-      if (!best || ev > best.ev) best = { ev, r, d };
-      if (pool) continue;
-      for (let x = 0; x < 3; x++) {
-        if (x === q || this.v.media[r][x] <= 0) continue;
-        const d2 = this.mediaChange(r, x, -1), ev2 = this.rel(d2, q);
-        if (ev2 > best.ev) best = { ev: ev2, r, d: d2, target: x };
-      }
+  // The better of putting one of q's cubes in and taking one of an opponent's out.
+  bestMedia(q = this.p) {
+    const d = this.mediaChange(q, 1);
+    let best = { ev: this.rel(d, q), d };
+    for (let x = 0; x < 3; x++) {
+      if (x === q || this.v.media[x] <= 0) continue;
+      const d2 = this.mediaChange(x, -1), ev2 = this.rel(d2, q);
+      if (ev2 > best.ev) best = { ev: ev2, d: d2, target: x };
     }
     return best;
   }
+  // The value for q of k media steps, each the best single put or cut after the ones before
+  // (v0.4: taking the lead can need more than one, e.g. 3 to pass 連's opening 2).
+  mediaPlan(k, q = this.p) {
+    const saved = this.v.media.slice(), out = [0];
+    for (let i = 0; i < k; i++) {
+      const b = this.bestMedia(q);
+      if (b.target != null) this.v.media[b.target]--; else this.v.media[q]++;
+      out.push(out[i] + b.ev);
+    }
+    this.v.media = saved;
+    return out;
+  }
+  // cp support checks, each succeeding with q's share of the bag: the expected value of the
+  // successes, spent as mediaPlan spends them.
   adsValue(cp) {
-    const b = this.bestMedia();
-    return cp * this.share[this.p] * Math.max(b ? b.ev : 0, 0.15) * 0.85;
+    const p = this.share[this.p], plan = this.mediaPlan(cp);
+    let v = 0, c = 1;
+    for (let k = 0; k <= cp; k++) {
+      v += c * Math.pow(p, k) * Math.pow(1 - p, cp - k) * plan[k];
+      c = (c * (cp - k)) / (k + 1);
+    }
+    return v * ADS_WEIGHT;
   }
 
   cpValue(cp) {
@@ -510,12 +517,8 @@ class Bot {
   vMom(q, n) { const V = [0, 0, 0]; V[q] = n >= 0 ? n * MOMV : -Math.min(this.v.mom[q], -n) * MOMV; return V; }
   vBag(q, n) { const V = [0, 0, 0]; V[q] = n * BAGV; return V; }
   vIssue(...changes) { return this.issueChange(changes); }
-  vMedia(q, n, { pool = null, target = -1 } = {}) {
-    const b = this.bestMedia(q, { pool, removeOnly: target });
-    const V = [0, 0, 0];
-    if (b) add3(V, b.d, n > 1 ? 1 + 0.75 * (n - 1) : 1);
-    return V;
-  }
+  // A media event (v0.4): q +n, or with target, the target −n (never below 0); no choice, no check.
+  vMedia(q, n, { target = -1 } = {}) { return target >= 0 ? this.mediaChange(target, -n) : this.mediaChange(q, n); }
   // Rest of this turn for a 本回合 card that waives checks for q.
   playsLeft(q) { return Math.max(0, HAND.play - this.v.step - (this.v.pending && this.v.pending.seat === q ? 1 : 0)); }
 
@@ -738,15 +741,17 @@ class Bot {
     return { move: legal.find((m) => m.type === "done"), why: { key: "ads_done" } };
   }
 
-  mediaPick(legal, key = null) {
+  mediaPick(legal) {
     let best = null;
     for (const m of legal) {
-      const d = m.target == null ? this.mediaChange(m.region, this.p, 1) : this.mediaChange(m.region, m.target, -1);
+      const d = m.target == null ? this.mediaChange(this.p, 1) : this.mediaChange(m.target, -1);
       const ev = this.rel(d);
       if (!best || ev > best.ev) best = { m, ev };
     }
     const m = best.m;
-    return { move: m, why: { key: key || (m.target == null ? "media_lead" : "media_cut"), region: REGIONS[m.region], gain: r2(best.ev) } };
+    const why = { key: m.target == null ? "media_lead" : "media_cut", gain: r2(best.ev) };
+    if (m.target != null) why.target = SEATS[m.target];
+    return { move: m, why };
   }
 
   issue(legal) {
@@ -789,10 +794,6 @@ class Bot {
         if (s.toBag) ev -= this.W[p][m.target] * BAGV;
       } else if (m.type === "convert") {
         ev = this.rel(this.delta(m.county, [["conv"]]));
-      } else if (m.type === "media") {
-        const d = m.target == null ? this.mediaChange(m.region, p, 1) : this.mediaChange(m.region, m.target, -1);
-        ev = this.rel(d);
-        if (s.pick === "same" && s.left > 1) ev *= 1.5;
       } else if (m.type === "pick") {
         ev = m.seat === p ? 10 : -this.W[p][m.seat];
       } else ev = 0;
@@ -802,7 +803,6 @@ class Bot {
     const key = m.type === "remove" ? "effect_remove" : m.type === "convert" ? "effect_convert" : m.type === "media" ? "effect_media" : m.type === "pick" ? "effect_tvbs" : "effect_place";
     const why = { key, card: this.v.pending.fx.card, gain: r2(best.ev) };
     if (m.county != null) why.county = COUNTIES[m.county][0];
-    if (m.region != null) why.region = REGIONS[m.region];
     if (m.type === "pick") why.seat = SEATS[m.seat];
     return { move: m, why };
   }
@@ -987,13 +987,13 @@ const EV = {
   },
   lu_running_mate: (b) => placeAt(b, CHEN, "桃園縣", 2),
   lo_propaganda: (b) => b.vMedia(CHEN, 2),
-  hsieh_kaohsiung: (b) => sum(placeAt(b, CHEN, "高雄市", 2), b.mediaChange(REGIONS.indexOf("高屏"), CHEN, 1)),
+  hsieh_kaohsiung: (b) => sum(placeAt(b, CHEN, "高雄市", 2), b.vMedia(CHEN, 1)),
   dpp_counties: (b) => b.vPlace(CHEN, 3, { pool: DPP97, check: true }),
   three_three_three: (b) => sum(b.vIssue(["econ", CHEN, 2]), b.vPlace(CHEN, 1, { own: true, check: true })),
   no_nuke4: (b) => sum(b.vIssue(["econ", CHEN, 1], ["econ", LIEN, -1]), b.vMom(SOONG, 1)),
   lin_chairman: (b) => sum(b.vIssue(["clean", CHEN, 1]), b.vMom(CHEN, 1)),
   lee_yuan_tseh: (b) => sum(b.vMom(CHEN, 2), freeTurn(b, CHEN, 0.35)),
-  advisory_group: (b) => sum(b.vIssue(["clean", CHEN, 1], ["econ", CHEN, 1]), b.vMedia(CHEN, 1, { pool: [REGIONS.indexOf("中彰投"), REGIONS.indexOf("北北基")] })),
+  advisory_group: (b) => sum(b.vIssue(["clean", CHEN, 1], ["econ", CHEN, 1]), b.vMedia(CHEN, 1)),
   million_rally: (b) => sum(b.vPlace(CHEN, 3), b.vMom(CHEN, 1)),
   dump_lien_save_chen: (b) => b.vSwap(CHEN, LIEN),
   hsu_wen_long: (b) => sum(placeAt(b, CHEN, "台南縣", 1), placeAt(b, CHEN, "台南市", 1)),
@@ -1011,7 +1011,7 @@ const EV = {
   veterans_village: (b) => sum(b.vPlace(SOONG, 2, { check: true }), b.vRemove(SOONG, LIEN, 1)),
   quake_bond: (b) => sum(placeAt(b, SOONG, "南投縣", 1), placeAt(b, SOONG, "台中縣", 1)),
   li_ao_endorses: (b) => sum(b.vRemove(SOONG, LIEN, 1, { pool: [ci("台北市")] }), placeAt(b, SOONG, "台北市", 1), b.vRemove(SOONG, LIEN, 1, { pool: [ci("新竹市")] }), placeAt(b, SOONG, "新竹市", 1)),
-  provincial_staff: (b) => sum(b.mediaChange(REGIONS.indexOf("中彰投"), SOONG, 1), [0, 0, -BAGV * Math.min(2, b.playsLeft(LIEN))]),
+  provincial_staff: (b) => sum(b.vMedia(SOONG, 1), [0, 0, -BAGV * Math.min(2, b.playsLeft(LIEN))]),
   lee_authorized: (b) => sum(b.vPlace(SOONG, Math.floor((b.yang || 4) / 2), { own: true, pick: "free", fromBag: true }), b.vIssue(["clean", SOONG, 1])),
   dump_lien_save_soong: (b) => b.vSwap(SOONG, LIEN),
   new_party_backs_soong: (b) => b.vPlace(SOONG, 2, { pool: INREG[0] }),

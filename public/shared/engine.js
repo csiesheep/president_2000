@@ -96,7 +96,7 @@ export function createGame(seed, opts = {}) {
     mom: START_MOMENTUM.slice(),
     bag: [BAG_SEED, BAG_SEED, BAG_SEED],
     rest: [0, 0, 0],
-    media: START_MEDIA.map((m) => m.slice()),
+    media: START_MEDIA.slice(), // v0.4 (#34): one national box, [陳, 宋, 連]
     issues: shuffle(rng, ISSUES.slice()).map((name) => ({ name, cubes: [0, 0, 0] })),
     endorse: REGIONS.map(() => -1),
     endorseDeck: shuffle(rng, [0, 1, 2, 3, 4, 5, 6, 0, 1, 2, 3, 4, 5, 6]),
@@ -226,19 +226,17 @@ function leader(arr) {
 }
 const cubesIn = (st, k, p) => st.counties[k].blocks.filter((b) => b.o === p).length;
 const regionOf = (k) => COUNTIES[k][1];
-const regionMediaLeader = (st, r) => leader(st.media[r]);
-const nationalMediaLeader = (st) => leader([0, 1, 2].map((p) => st.media.reduce((s, m) => s + m[p], 0)));
+const nationalMediaLeader = (st) => leader(st.media);
 // 裁決 5: every seat with ≥ 4 cubes in the county is a boss there.
 const bosses = (st, k) => [0, 1, 2].filter((p) => cubesIn(st, k, p) >= BOSS_THRESHOLD);
 const otherCamp = (seat) => (CAMP[seat] === "G" ? "B" : "G");
 const emptyOf = (st, k, t) => st.counties[k].blocks.some((b) => b.o < 0 && b.t === t);
 
 // §8.1: does placing on a block of `seat`'s own camp in county k need a check?
-// (Cross-camp fills and steals always do.) Regional media advantage waives
-// the boss and opposing-candidate checks.
+// (Cross-camp fills and steals always do.) v0.4 (#34, §8.1): media waives
+// nothing; v0.3's regional media advantage is gone.
 function fillNeedsCheck(st, seat, k) {
   if (ownCampFree(st, seat)) return false; // #5: 李遠哲挺扁 / 走透透 this turn
-  if (regionMediaLeader(st, regionOf(k)) === seat) return false;
   if (bosses(st, k).some((p) => p !== seat)) return true;
   if ([0, 1, 2].some((p) => p !== seat && st.pos[p] === k)) return true;
   return false;
@@ -303,7 +301,7 @@ const EFFECTS = {
   lee_yuan_tseh: (st) => addMom(st, CHEN, 2),
   walk_everywhere: () => {},
   chang_running_mate: (st) => { st.flags.crossFree[SOONG] = 2; }, // #5 裁決 9: the first 2
-  provincial_staff: (st) => { st.media[REGIONS.indexOf("中彰投")][SOONG]++; },
+  provincial_staff: (st) => { st.media[SOONG]++; }, // v0.4 (#34): 媒體宋 +1
 };
 
 // ------------------------------------------------------------------ 本回合 flags (#5)
@@ -339,21 +337,20 @@ function endTurnFlags(st) {
 // ------------------------------------------------------------------ events that need a choice (#4)
 //
 // An effect is a program: a queue of steps run in the order of the card text
-// (#4 裁決 1). Automatic steps (momentum, issue, bag, a named region's media)
-// resolve at once; a choice step asks its `seat` (#4 裁決 4: the card's owner,
-// or for 外力 cubes the seat whose cubes they are; TVBS 民調's tie goes to the
-// player) until it has made `left` picks or has no legal pick left, which skips
-// it (#4 裁決 3, 8). The queue lives in st.pending.fx, so it is plain data.
+// (#4 裁決 1). Automatic steps (momentum, issue, bag, media) resolve at once;
+// a choice step asks its `seat` (#4 裁決 4: the card's owner, or for 外力
+// cubes the seat whose cubes they are; TVBS 民調's tie goes to the player)
+// until it has made `left` picks or has no legal pick left, which skips it
+// (#4 裁決 3, 8). The queue lives in st.pending.fx, so it is plain data.
 //
 // Choice steps (op): place (an empty floating block, own camp `fill` or the
 // other camp `cross`; never grey — 裁決 5), remove (a target's cube, back to
 // supply), convert (an empty grey block becomes an empty green one — 裁決 9),
-// media (own media cube; `target` removes one of the target's), tvbs.
-// `pool` limits the counties (or regions) offered; `pick` is "distinct" (a
-// county or region picked once is used, success or not — 裁決 2), "same"
-// (every pick in the first one's county or region — 裁決 7, 14) or "free".
-// `check`: place — §8.1 (cross always, own camp on bosses / opposing candidate
-// unless the region's media leader); remove — one support check per cube (#4
+// tvbs. `pool` limits the counties offered; `pick` is "distinct" (a county
+// picked once is used, success or not — 裁決 2), "same" (every pick in the
+// first one's county — 裁決 7, 14) or "free".
+// `check`: place — §8.1 (cross always, own camp on bosses / opposing
+// candidate); remove — one support check per cube (#4
 // 裁決 6, Q5 default). `then`: steps run in the picked county right after each
 // pick. `fallback`: steps run instead when the step had no pick at all.
 // Event cubes ignore the candidate's position and media cubes never check
@@ -361,18 +358,20 @@ function endTurnFlags(st) {
 // §8.2, not the supply) with `tally` (a st.flags counter of cubes removed);
 // place `fromBag` (each cube comes out of the seat's bag; none left, the step
 // is over). Automatic `momTo` / `issueTo` set a value.
+// v0.4 (#34): media is one national box, so a media step is automatic, with
+// nothing to choose and no check (orchestrator 裁決): `media(seat, n)` puts n
+// of seat's cubes there; with `target` it takes up to n of the target's, never
+// below 0 (宋媒體 −2 on 宋 with 1 takes 1).
 const countiesIn = (...regions) => COUNTIES.map((c, k) => k).filter((k) => regions.includes(REGIONS[regionOf(k)]));
 const ks = (...names) => names.map((n) => { const k = countyIndex(n); if (k < 0) throw new Error("engine: no county " + n); return k; });
-const rs = (...names) => names.map((n) => REGIONS.indexOf(n));
 const step = (op, seat, left, o = {}) => ({ op, seat, left, pool: o.pool ?? null, pick: o.pick ?? "distinct", check: !!o.check, own: !!o.own, target: o.target ?? -1, then: o.then ?? null, fallback: o.fallback ?? null, toBag: !!o.toBag, fromBag: !!o.fromBag, tally: o.tally ?? null, used: [], picked: 0 });
 const place = (seat, n, o) => step("place", seat, n, o);
 const placeAt = (seat, county, n, o = {}) => step("place", seat, n, { ...o, pool: ks(county), pick: "same" });
 const removeFrom = (seat, target, n, o = {}) => step("remove", seat, n, { ...o, target });
-const media = (seat, n, o) => step("media", seat, n, o);
+const media = (seat, n, o = {}) => ({ op: "media", seat, n, target: o.target ?? -1 });
 const mom = (p, n) => ({ op: "mom", p, n });
 const iss = (name, p, n) => ({ op: "issue", name, p, n });
 const bag = (p, n) => ({ op: "bag", p, n });
-const mediaAt = (region, p, n) => ({ op: "mediaAt", r: REGIONS.indexOf(region), p, n });
 
 // §14.3 text → program. `by` is the seat resolving the event.
 const PROGRAMS = {
@@ -380,11 +379,12 @@ const PROGRAMS = {
   taiwan_son: () => [place(CHEN, 3, { pool: countiesIn("雲嘉南", "高屏") })],
   future_resolution: () => [iss("cross", CHEN, 1), step("convert", CHEN, 1)],
   lu_running_mate: () => [placeAt(CHEN, "桃園縣", 2)],
-  lo_propaganda: () => [media(CHEN, 2, { pick: "same" })],
-  hsieh_kaohsiung: () => [placeAt(CHEN, "高雄市", 2), mediaAt("高屏", CHEN, 1)],
+  // v0.4 (#34): the nine media cards name the national box; their numbers are the old regional ones summed.
+  lo_propaganda: () => [media(CHEN, 2)],
+  hsieh_kaohsiung: () => [placeAt(CHEN, "高雄市", 2), media(CHEN, 1)],
   dpp_counties: () => [place(CHEN, 3, { check: true, pool: ks("台北縣", "桃園縣", "新竹縣", "台中縣", "台中市", "台南縣", "台南市", "高雄縣", "屏東縣", "宜蘭縣", "嘉義市") })],
   three_three_three: () => [iss("econ", CHEN, 2), place(CHEN, 1, { own: true, check: true })], // 裁決 10
-  advisory_group: () => [iss("clean", CHEN, 1), iss("econ", CHEN, 1), media(CHEN, 1, { pool: rs("中彰投", "北北基") })],
+  advisory_group: () => [iss("clean", CHEN, 1), iss("econ", CHEN, 1), media(CHEN, 1)],
   million_rally: () => [place(CHEN, 3), mom(CHEN, 1)],
   dump_lien_save_chen: () => swap(CHEN, LIEN),
   hsu_wen_long: () => [placeAt(CHEN, "台南縣", 1), placeAt(CHEN, "台南市", 1)],
@@ -452,12 +452,6 @@ function stepMoves(st, s) {
         for (const t of ["G", "B", "N"]) if (st.counties[k].blocks.some((b) => b.o === s.target && b.t === t)) out.push({ type: "remove", county: k, target: s.target, t });
       } else if (emptyOf(st, k, "N")) out.push({ type: "convert", county: k });
     }
-  } else if (s.op === "media") {
-    for (let r = 0; r < REGIONS.length; r++) {
-      if (!open(r)) continue;
-      if (s.target < 0) out.push({ type: "media", region: r });
-      else if (st.media[r][s.target] > 0) out.push({ type: "media", region: r, target: s.target });
-    }
   } else if (s.op === "tvbs") {
     const min = Math.min(...st.mom);
     for (let p = 0; p < 3; p++) if (st.mom[p] === min) out.push({ type: "pick", seat: p });
@@ -484,7 +478,10 @@ function runProgram(st) {
     if (s.op === "mom") { addMom(st, s.p, s.n); q.shift(); continue; }
     if (s.op === "issue") { addIssue(st, s.name, s.p, s.n); q.shift(); continue; }
     if (s.op === "bag") { st.bag[s.p] += s.n; q.shift(); continue; }
-    if (s.op === "mediaAt") { st.media[s.r][s.p] = Math.max(0, st.media[s.r][s.p] + s.n); q.shift(); continue; }
+    if (s.op === "media") {
+      if (s.target < 0) st.media[s.seat] += s.n; else st.media[s.target] = Math.max(0, st.media[s.target] - s.n);
+      q.shift(); continue;
+    }
     if (s.op === "momTo") { st.mom[s.p] = s.v; q.shift(); continue; }
     if (s.op === "issueTo") { issueCubes(st, s.name)[s.p] = s.v; q.shift(); continue; }
     if (s.left <= 0) { q.shift(); continue; }
@@ -518,9 +515,6 @@ function applyEffect(st, seat, m) {
   } else if (s.op === "convert") {
     key = m.county;
     st.counties[key].blocks.find((b) => b.o < 0 && b.t === "N").t = "G";
-  } else if (s.op === "media") {
-    key = m.region;
-    if (m.target == null) st.media[key][seat]++; else st.media[key][m.target]--;
   } else if (s.op === "tvbs") {
     addMom(st, m.seat, 1);
   }
@@ -672,14 +666,12 @@ function campaignMoves(st, seat, pd) {
   return out;
 }
 
-// §7.2, 裁決 7: after a successful ad the player must place one of their own
-// media cubes in any region or remove one opponent's cube from a region.
+// §7.2 (v0.4, #34), 裁決 7: after a successful ad the player must put one of
+// their own cubes in the national media box ({ type: "media" }) or take one of
+// an opponent's out of it ({ type: "media", target }, that opponent having one).
 function mediaMoves(st, seat) {
-  const out = [];
-  for (let r = 0; r < REGIONS.length; r++) out.push({ type: "media", region: r });
-  for (let r = 0; r < REGIONS.length; r++) {
-    for (let target = 0; target < 3; target++) if (target !== seat && st.media[r][target] > 0) out.push({ type: "media", region: r, target });
-  }
+  const out = [{ type: "media" }];
+  for (let target = 0; target < 3; target++) if (target !== seat && st.media[target] > 0) out.push({ type: "media", target });
   return out;
 }
 
@@ -867,8 +859,8 @@ function applyAds(st, seat, pd, m) {
 }
 
 function applyMedia(st, seat, pd, m) {
-  if (m.target == null) st.media[m.region][seat]++;
-  else st.media[m.region][m.target]--;
+  if (m.target == null) st.media[seat]++;
+  else st.media[m.target]--;
   pd.stage = "ads";
   if (pd.cp <= 0) endAction(st);
 }
@@ -937,13 +929,16 @@ function startMomentum(st) {
   // (1) decay: 宋、連 halve rounding down, 陳 rounding up
   st.mom = st.mom.map((x, p) => (p === CHEN ? Math.ceil(x / 2) : Math.floor(x / 2)));
   st.log.push({ t: "momentum", step: "decay", mom: st.mom.slice() });
-  // (2) the national media leader may swap two adjacent slots
+  // (2) v0.4 (#34, owner "2b + B"): the media leader gains 1 momentum, after the halving, so that
+  // point is halved only at the next turn's end (orchestrator 裁決, #34); a tie is nobody.
   const nat = nationalMediaLeader(st);
+  if (nat >= 0) { st.mom[nat] += 1; st.log.push({ t: "momentum", step: "media", seat: nat, mom: st.mom.slice() }); }
+  // (3) the media leader may swap two adjacent slots
   if (nat >= 0) { st.mstep = "swap"; st.pending = { stage: "swap", seat: nat }; return; }
   momentumRewards(st);
 }
 
-// (3) slot 2's leader picks first, then slot 1, then slot 3; (4) issue decay.
+// (4) slot 2's leader picks first, then slot 1, then slot 3; (5) issue decay.
 function momentumRewards(st) {
   const second = leader(st.issues[1].cubes);
   if (second >= 0) { st.mstep = "reward"; st.pending = { stage: "reward", seat: second }; return; }
@@ -1218,9 +1213,9 @@ function startElection(st) {
   st.phase = "election"; st.step = 0; st.idx = 0; st.actor = -1; st.pending = null; st.mstep = null;
   st.saved = [false, false, false];
   const mom = st.mom.slice();
-  const add = [0, 1, 2].map((p) => st.media.reduce((s, m) => s + m[p], 0) + st.issues.reduce((s, i) => s + i.cubes[p], 0) + 2 * st.mom[p]);
+  const add = [0, 1, 2].map((p) => st.media[p] + st.issues.reduce((s, i) => s + i.cubes[p], 0) + 2 * st.mom[p]);
   for (let p = 0; p < 3; p++) st.bag[p] += add[p];
-  st.media = st.media.map(() => [0, 0, 0]);
+  st.media = [0, 0, 0];
   for (const i of st.issues) i.cubes = [0, 0, 0];
   st.mom = [0, 0, 0];
   st.log.push({ t: "convert", bag: add, mom });

@@ -8,7 +8,8 @@
 //
 // What a test or a page can read off the string: data-county (+ data-changed / data-selected) on one element
 // per county, data-slot + data-of on every vote block, data-pawn + data-of on every candidate, and
-// data-region + data-media + data-endorse on every media region (the key under the map).
+// data-region + data-endorse on every region and one data-media-national="<陳>,<宋>,<連>" line (the key under the
+// map; rulebook v0.4, #34: media is one national box).
 //
 // The geometry is hand-drawn from rough coordinates (the owner did not approve downloading county borders):
 // a coastline, one Voronoi cell per seed point for the counties of the main island, and the seven cities
@@ -350,14 +351,16 @@ export function taiwanMap(view, lang, opts = {}) {
   svg += boxes + `</svg>`;
 
   const keyList = REGIONS.map((_, r) => {
-    const med = v.media[r], endorse = v.endorse[r];
-    const medTxt = SHOW_ORDER.filter((p) => med[p] > 0).map((p) => `${cand(d, p).short} ${med[p]}`).join(" · ");
-    const parts = [medTxt ? `${M.media} ${medTxt}` : "", endorse >= 0 ? `${M.endorse} ${cand(d, endorse).short}` : ""].filter(Boolean).join(" · ");
+    const endorse = v.endorse[r];
+    const parts = endorse >= 0 ? `${M.endorse} ${cand(d, endorse).short}` : "";
     const name = lang === "en" ? d.regions[REGIONS[r]] : REGIONS[r];
-    return `<li data-region="${r}" data-media="${med.join(",")}" data-endorse="${endorse}"><i class="sw" style="background:${TINT[r]}"></i><b>${esc(name)}</b>${parts ? `<span>${esc(parts)}</span>` : ""}</li>`;
+    return `<li data-region="${r}" data-endorse="${endorse}"><i class="sw" style="background:${TINT[r]}"></i><b>${esc(name)}</b>${parts ? `<span>${esc(parts)}</span>` : ""}</li>`;
   }).join("");
+  // The national media box, all three always shown, 陳 宋 連 (#34): "全國媒體 陳 0 · 宋 0 · 連 2".
+  const med = v.media;
+  const media = `<p class="ct tw-media" data-media-national="${med.join(",")}"><b>${esc(M.national)}</b> ${esc([0, 1, 2].map((p) => `${cand(d, p).short} ${med[p]}`).join(" · "))}</p>`;
   const sq = (cls) => `<i class="lb ${cls}"></i>`;
   const legend = `<p class="legend tw-leg"><span>${sq("chen")}${sq("soong")}${sq("lien")} ${esc(M.legendCubes)}</span><span>${sq("green")}${sq("blue")} ${esc(M.legendEmpty)}</span><span>${sq("grey")} ${esc(M.legendGrey)}</span><span><i class="lb pw"></i>${esc(M.legendPawn)}</span></p>`;
   return `<section class="t-map" aria-label="${esc(M.board)}"><h3 class="t-h">${esc(M.board)}</h3><p class="ct tw-hint">${esc(M.hint)}</p>` +
-    `<div class="tw-box">${svg}${pics.join("")}${o.overlay || ""}</div><ul class="tw-reg">${keyList}</ul>${legend}</section>`;
+    `<div class="tw-box">${svg}${pics.join("")}${o.overlay || ""}</div><ul class="tw-reg">${keyList}</ul>${media}${legend}</section>`;
 }
