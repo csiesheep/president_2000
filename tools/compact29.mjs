@@ -15,7 +15,7 @@
 //       in that top band; quitting (#quit) and the language link (#glang) are hidden until the menu
 //       opens, then on screen and on top where they are drawn; Escape closes the menu;
 //     - on the map a candidate's cube is at least 6 px and all cubes one size (±1.5); each candidate's
-//       picture ([data-pawn] image) at least 20 px wide;
+//       picture ([data-pawn] image) at least 20 px wide, and a tap on it reaches its county (#31);
 //     - nothing in a candidate panel sticks out of it, and the page does not scroll sideways;
 //   desk 1440×900, zh
 //     - the candidate panels start within 80 px of the top (today 131), the candidate pictures on the map
@@ -71,10 +71,17 @@ const MEASURE = `(()=>{
     return { ...R(s), round }; });
   const now = document.querySelector("[data-now]");
   const cubes = [...document.querySelectorAll(".tw [data-slot]")].filter((e) => ["chen", "soong", "lien"].includes(e.dataset.slot)).map((e) => e.getBoundingClientRect().width);
-  const pics = [...document.querySelectorAll(".tw-box [data-pawn-pic], .tw [data-pawn] image")].map((e) => e.getBoundingClientRect().width);
+  const picEls = [...document.querySelectorAll(".tw-box [data-pawn-pic], .tw [data-pawn] image")];
+  const pics = picEls.map((e) => e.getBoundingClientRect().width);
+  // A tap on a candidate's picture lands on its county (the picture must not swallow it, #31): the element at the
+  // picture's centre belongs to the data-county of the county the candidate stands in.
+  const taps = picEls.map((e) => { e.scrollIntoView({ block: "center" }); const r = e.getBoundingClientRect(), t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    const want = e.getAttribute("data-of") || (e.closest("[data-pawn]") || {}).getAttribute?.("data-of"), c = t && t.closest && t.closest("[data-county]");
+    return { ok: !!c && c.getAttribute("data-county") === want, hit: t ? (t.getAttribute("data-pawn-pic") ? "the picture" : t.localName) : "nothing" }; });
+  scrollTo(0, 0);
   const adv = document.querySelector("[data-advisor]"), menu = document.querySelector("[data-menu]");
   return JSON.stringify({ panels, issues, now: now && vis(now) ? R(now).y : null, cubes: cubes.length ? [Math.min(...cubes), Math.max(...cubes)] : null, pics,
-    adv: adv && vis(adv) ? R(adv) : null, menu: menu && vis(menu) ? { ...R(menu), exp: menu.getAttribute("aria-expanded") } : null,
+    taps, adv: adv && vis(adv) ? R(adv) : null, menu: menu && vis(menu) ? { ...R(menu), exp: menu.getAttribute("aria-expanded") } : null,
     quitVis: vis(document.getElementById("quit")), langVis: vis(document.getElementById("glang")), quitTop: onTop(document.getElementById("quit")), langTop: onTop(document.getElementById("glang")),
     sw: document.documentElement.scrollWidth, iw: innerWidth });
 })()`;
@@ -117,6 +124,7 @@ try {
     }
     rule(!!m.cubes && m.cubes[0] >= 6 && m.cubes[1] - m.cubes[0] <= 1.5, `${tag}: map cubes ${m.cubes ? m.cubes.map((n) => n.toFixed(1)).join("…") : "none"} px (≥ 6, one size)`);
     rule(m.pics.length === 3 && m.pics.every((w) => w >= 20), `${tag}: candidate pictures on the map ${m.pics.map((w) => w.toFixed(1)).join("/") || "none"} px (3, ≥ 20)`);
+    rule(m.taps.length === 3 && m.taps.every((x) => x.ok), `${tag}: a tap on a candidate's picture reaches its county (${m.taps.map((x) => (x.ok ? "✓" : "hits " + x.hit)).join(", ") || "none"})`);
     rule(m.sw <= m.iw, `${tag}: no sideways scroll (${m.sw} ≤ ${m.iw})`);
     t.close();
   }
@@ -127,6 +135,7 @@ try {
     const top = m.panels.length ? Math.min(...m.panels.map((p) => p.y)) : null;
     rule(top != null && top <= 80, `desk: candidate panels start at ${top == null ? "—" : Math.round(top)} px (≤ 80)`);
     rule(m.pics.length === 3 && m.pics.every((w) => w >= 20), `desk: candidate pictures on the map ${m.pics.map((w) => w.toFixed(1)).join("/") || "none"} px (3, ≥ 20)`);
+    rule(m.taps.length === 3 && m.taps.every((x) => x.ok), `desk: a tap on a candidate's picture reaches its county (${m.taps.map((x) => (x.ok ? "✓" : "hits " + x.hit)).join(", ") || "none"})`);
     let reach = m.quitTop && m.langTop;
     if (!reach && m.menu) { await t.ev(`document.querySelector("[data-menu]").click()`); await sleep(400); const o = JSON.parse(await t.ev(MEASURE)); reach = o.quitTop && o.langTop; }
     rule(!!reach, `desk: quit and language reachable (on screen, or one menu away)`);
