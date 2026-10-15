@@ -13,6 +13,9 @@
 //      the game's own code, where the human (陳) has just acted and the bots are about to play, so the page
 //      animates their moves; counting starts once the table is first drawn (#31: before, this window waited
 //      for the human and measured nothing).
+//   D. the solo setup screen (1440 and 390 wide): tap each of the three candidates and a bot level; the page only
+//      marks which one is picked, so no picture should be rebuilt (#39, owner 2026-10-15: "單人對戰，選候選人時，所有
+//      候選人的圖會閃動" - every tap rewrote the screen and rebuilt all three pictures).
 // Pass: no <img> rebuilt in any window (owner, 2026-10-15: "玩 tutorial 時，圖片會一直閃動").
 // It also prints how many times the table was swapped as a whole, for the record.
 import { spawn } from "node:child_process";
@@ -113,13 +116,24 @@ try {
     results.push({ window: `C solo, rivals moving (${w})`, ...JSON.parse(await p.ev(READ)) });
     p.close();
   }
+  for (const [w, h, mob] of [[1440, 900, false], [390, 844, true]]) {
+    const p = await tab(br, `${base}?play`, w, h, mob);
+    const seats = JSON.parse(await p.ev(`JSON.stringify([...document.querySelectorAll("[data-seat]")].map((b) => b.getAttribute("data-seat")))`));
+    await p.ev(WATCH);
+    const order = seats.slice(1).concat(seats.slice(0, 1)); // every seat, the first-picked one last, so each tap changes the pick
+    for (const seat of order) { await p.ev(`(()=>{ const b = document.querySelector('[data-seat="${seat}"]'); b && b.click(); return 1; })()`); await sleep(400); }
+    await p.ev(`(()=>{ const b = [...document.querySelectorAll("[data-level]")].find((x) => x.getAttribute("aria-pressed") !== "true"); b && b.click(); return 1; })()`); await sleep(400);
+    const step = await p.ev(`((document.querySelector('[data-seat][aria-pressed="true"]') || {}).dataset || {}).seat || null`);
+    results.push({ window: `D solo setup, tap 3 candidates and a level (${w})`, expect: order.length === 3 ? order[2] : "three candidates", step, ...JSON.parse(await p.ev(READ)) });
+    p.close();
+  }
 } finally { br.close(); }
 
 // A window counts only if something on the page changed in it (the step moved on, or the table was
 // redrawn); a window where nothing happened proves nothing and is reported, not passed.
 let bad = 0, measured = 0;
 for (const r of results) {
-  const happened = r.tableSwaps > 0 || r.newImg > 0 || /tutorial/.test(r.window);
+  const happened = r.tableSwaps > 0 || r.newImg > 0 || /tutorial|setup/.test(r.window);
   if (!happened) { console.log(`… ${r.window}: nothing was redrawn in this window, nothing measured`); continue; }
   measured++;
   if (r.expect && r.step !== r.expect) { bad++; console.log(`✗ ${r.window}: the walk stopped at ${r.step}, not ${r.expect} (instrument did not reach the window)`); continue; }
