@@ -8,7 +8,7 @@
 // canvas KxzB6DUEdDH45zSVb477NQ). Contract: every event or local card the table draws — each card in the hand (data-sel,
 // or data-pick while keeping cards) and the big card face (an element with data-face="<card id>") — carries
 // data-camp="chen|soong|lien|ext|local" from the card's owner (a local card is local), and data-cp="<its CP>" on the
-// element that shows the CP. Reports 尚未實作 until a hand card has data-camp.
+// element that shows the CP. Since #36 landed, a hand without data-camp is a failure (it reported 尚未實作 before).
 import test from "node:test";
 import assert from "node:assert/strict";
 import { R, section, check, ok, nonEmpty, summary } from "./harness.js";
@@ -40,7 +40,7 @@ const POOL = hands();
 const handCards = (html) => tags(html, "data-sel").concat(tags(html, "data-pick")).filter((t) => CARD[t.v]);
 const gate = (fn) => () => {
   const ne = nonEmpty(POOL.length, "有手牌的局面"); if (ne !== true) return ne;
-  if (!POOL.some((p) => handCards(S.screen(p.s, "zh-Hant")).some((t) => attr(t.tag, "data-camp")))) return "TODO: 手牌還沒有 data-camp（#36）";
+  if (!POOL.some((p) => handCards(S.screen(p.s, "zh-Hant")).some((t) => attr(t.tag, "data-camp")))) return "手牌又沒有 data-camp 了（#36 已上線，這是退步，不是尚未實作）";
   return fn();
 };
 
@@ -80,7 +80,7 @@ check("大張牌面：選一張手牌時的牌面（data-face）有 data-camp，
 // Owner, 2026-10-15: 「候選人牌也改版」 — the candidate card in the same look as #36 (version two). Contract: the candidate card
 // at the end of the hand carries data-cand="<seat key>" and data-camp="<seat key>", data-cp="<its CP>" on the element that
 // shows the CP, and the seat's picture art/candidates/<seat key>.webp; once used it carries data-used and is disabled.
-// Reports 尚未實作 until a candidate card has data-cand.
+// Since #37 landed, a candidate card without data-cand is a failure (it reported 尚未實作 before).
 section("37 候選人牌：陣營色");
 
 const SEAT_KEYS = ["chen", "soong", "lien"];
@@ -94,7 +94,7 @@ const CAND = SEAT_KEYS.map((key, seat) => {
 });
 const candGate = (fn) => () => {
   const ne = nonEmpty(CAND.filter((c) => c.used && candEl(S.screen(c.s, "zh-Hant"))).length, "畫得出候選人牌、而且能用的開局"); if (ne !== true) return ne;
-  if (!CAND.some((c) => /\sdata-cand="/.test(candEl(S.screen(c.s, "zh-Hant"))))) return "TODO: 候選人牌還沒有 data-cand（#37）";
+  if (!CAND.some((c) => /\sdata-cand="/.test(candEl(S.screen(c.s, "zh-Hant"))))) return "候選人牌又沒有 data-cand 了（#37 已上線，這是退步，不是尚未實作）";
   return fn();
 };
 
