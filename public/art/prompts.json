@@ -1,0 +1,713 @@
+{
+ "candidates/chen.webp": {
+  "prompt": "A young green sapling growing out of cracked asphalt at sunrise, plain green flags waving in the background, hopeful. Style: flat silkscreen pop poster, three flat colors emerald green, sunflower yellow and black, bold simple shapes, slight print misregistration, youthful energy. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000031820,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "裂開柏油長出綠芽",
+  "aspect": "3:4 (Portrait Standard)",
+  "note": "owner-selected sample p2k_v2_cand_chen_00001.png"
+ },
+ "candidates/lien.webp": {
+  "prompt": "A heavy navy blue armchair in a stately high-ceilinged hall with tall windows, a vase of white plum blossoms beside it, plain blue banners, calm and steady. Style: formal 1990s official government poster, clean vector illustration, deep navy blue and white with gold accents, symmetrical stately composition, smooth gradient sky. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000031822,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "深藍扶手椅與白梅",
+  "aspect": "3:4 (Portrait Standard)",
+  "note": "owner-selected sample p2k_v2_cand_lien_00001.png"
+ },
+ "candidates/soong.webp": {
+  "prompt": "A pair of muddy rubber boots and a plain orange vest resting on a wooden bench at the edge of a rice paddy at dusk, a country road behind. Style: old Taiwanese hand-painted signboard art, thick oil paint on board, warm orange cream and brown palette, nostalgic 1980s hand-painted movie poster technique. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000031821,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "水田邊的雨鞋與橙色背心",
+  "aspect": "3:4 (Portrait Standard)",
+  "note": "owner-selected sample p2k_v2_cand_soong_00001.png"
+ },
+ "cards/advisory_group.webp": {
+  "prompt": "A big round table surrounded by many chairs, papers and a desk lamp glowing in the center, a bookshelf behind. Style: layered cut-paper papercraft diorama, many layers of green paper with soft shadows between layers, handmade miniature, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032013,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "圓桌周圍一圈椅子，桌上攤著文件和一盞檯燈",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/alternation.webp": {
+  "prompt": "A grey chair sliding off a stage platform down the steps while a new green chair is pushed up onto the platform. Style: layered cut-paper papercraft diorama, many layers of green paper with soft shadows between layers, handmade miniature, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032002,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "舊的灰色椅子被推下臺階，綠色新椅子被推上講台",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/chang_chiu.webp": {
+  "prompt": "A green cloth bag spilling many small green cubes onto the ground, coconut palm trees of Pingtung and a clipboard beside it. Style: layered cut-paper papercraft diorama, many layers of green paper with soft shadows between layers, handmade miniature, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032019,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "綠色布袋倒出許多綠色小方塊，後面是屏東椰子樹",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/chang_doctors.webp": {
+  "prompt": "A stethoscope and a medicine bag on a table, a white hospital building on a hill in the mountains of Nantou behind. Style: claymation plasticine miniature set, warm orange and tan modeling clay with fingerprints visible, soft studio light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032034,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "聽診器、藥袋和山坡上的白色醫院",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/chang_running_mate.webp": {
+  "prompt": "A tandem bicycle for two parked on a country dirt road at golden hour, rice fields on both sides, an orange sash tied to the handlebars. Style: claymation plasticine miniature set, warm orange and tan modeling clay with fingerprints visible, soft studio light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032022,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "一輛雙人協力腳踏車停在鄉間小路上",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/chang_yung_fa.webp": {
+  "prompt": "A large container ship stacked with plain solid green containers crossing a paper sea, the ship hull completely smooth and unmarked with no lettering at all, harbor cranes behind, a plain white paper airplane flying above. Everything is made of layered cut green paper, visible paper edges and paper texture, no photographic elements.. Style: layered cut-paper papercraft diorama, many layers of green paper with soft shadows between layers, handmade miniature, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000033017,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "裝滿貨櫃的紙貨輪駛過海面，上空一架客機飛過",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/diligent.webp": {
+  "prompt": "A desk with a glowing lamp at night in a provincial office, tall stacks of documents and a thermos flask, window dark outside. Style: claymation plasticine miniature set, warm orange and tan modeling clay with fingerprints visible, soft studio light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032020,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "深夜仍亮著燈的辦公桌，成疊公文和一只保溫杯",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/dpp_counties.webp": {
+  "prompt": "A row of tiny paper town halls, each with a plain solid green pennant on its roof, lined up along a green hillside. Style: layered cut-paper papercraft diorama, many layers of green paper with soft shadows between layers, handmade miniature, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032008,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "一排小紙屋，每間屋頂各插一面純綠小旗",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/dump_lien_save_chen.webp": {
+  "prompt": "A green paper lifeboat carrying a small sapling rowing away from a sinking dark blue paper ship. Style: layered cut-paper papercraft diorama, many layers of green paper with soft shadows between layers, handmade miniature, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032015,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "綠色紙救生艇載著樹苗，駛離正在下沉的藍色紙船",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/dump_lien_save_soong.webp": {
+  "prompt": "A tower of blue building blocks collapsing and falling apart beside a stable tower of orange blocks that stands firm. Style: claymation plasticine miniature set, warm orange and tan modeling clay with fingerprints visible, soft studio light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032032,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "一座倒塌的藍色積木塔，旁邊橙色積木塔穩穩立著",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/east_coast.webp": {
+  "prompt": "A stilt granary on posts and rice terraces beside the Pacific Ocean on the east coast of Taiwan, coastal mountain range and a railway track behind, nothing alive in the scene.. Style: claymation plasticine miniature set, warm orange and tan modeling clay with fingerprints visible, soft studio light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032526,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "太平洋邊的稻田與高腳穀倉，後面是海岸山脈",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/econ_cabinet.webp": {
+  "prompt": "A clean factory building model with a chimney, a computer chip, a brass gear and a stack of coins on a brass pedestal, Hsinchu science park feel. Style: polished wood and brass scale model with navy blue painted tin parts, museum display miniature, glossy, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032059,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "潔淨廠房、齒輪、晶片和一疊硬幣，立在黃銅底座上",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/expel_soong.webp": {
+  "prompt": "A heavy wooden gate shut with a big brass padlock, a single small orange chair left outside alone on the pavement All surfaces are completely blank, plain and unmarked, with no writing and no text-like patterns.. Style: polished wood and brass scale model with navy blue painted tin parts, museum display miniature, glossy, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032040,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "上了大黃銅鎖的木門，門外孤零零一張橙色小椅子",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/farmers_association.webp": {
+  "prompt": "A grain warehouse with stacked rice sacks in front, a brass platform scale and a small old tractor, Yunlin farmland. Style: polished wood and brass scale model with navy blue painted tin parts, museum display miniature, glossy, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032051,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "穀倉前堆著米袋、黃銅磅秤和一輛小拖拉機",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/future_resolution.webp": {
+  "prompt": "Documents spread on a wooden table beside a fountain pen, a small green cut-out island of Taiwan standing upright on the papers. Style: layered cut-paper papercraft diorama, many layers of green paper with soft shadows between layers, handmade miniature, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032004,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "桌上攤開的一疊文件，旁邊立著綠色台灣島剪紙",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/hakka_vote.webp": {
+  "prompt": "A Hakka three-sided courtyard farmhouse on a hillside with white tung blossoms falling like snow, blue cloth drying on a line. Style: claymation plasticine miniature set, warm orange and tan modeling clay with fingerprints visible, soft studio light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032025,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "丘陵上的客家三合院，油桐花像雪一樣飄落",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/hand_in_hand.webp": {
+  "prompt": "A string of identical navy blue tin lanterns connected by a rope across a whole street from one side to the other. Style: polished wood and brass scale model with navy blue painted tin parts, museum display miniature, glossy, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032046,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "一串用繩子相連的藍色鐵皮燈籠橫跨整條街",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/hsieh_kaohsiung.webp": {
+  "prompt": "Paper boats floating on the Love River of Kaohsiung with a small arched bridge and old riverside buildings and trees. Style: layered cut-paper papercraft diorama, many layers of green paper with soft shadows between layers, handmade miniature, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032007,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "高雄愛河上的紙船與橫跨河面的小橋",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/hsu_hsin_liang.webp": {
+  "prompt": "A single country road splitting at a Y junction in rice fields, a blank wooden signpost with two plain arrow-shaped boards, a third new narrow dirt path leading off into a bamboo grove, clearly visible three paths. Style: claymation plasticine miniature set, warm orange and tan modeling clay with fingerprints visible, soft studio light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032539,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "三叉路口的空路牌，一條新岔出的小徑穿過竹林",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/hsu_wen_long.webp": {
+  "prompt": "A violin resting on a paper lawn in front of a small factory with a sculpture garden fountain in Tainan. Everything is made of layered cut green paper, visible paper edges and paper texture, no photographic elements.. Style: layered cut-paper papercraft diorama, many layers of green paper with soft shadows between layers, handmade miniature, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032516,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "小提琴躺在綠色紙工廠與噴水池雕像園前",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/kmt_anniversary.webp": {
+  "prompt": "A grand banquet hall with round tables covered in navy blue tablecloths and a tall tiered cake in the center, brass chandeliers. Style: polished wood and brass scale model with navy blue painted tin parts, museum display miniature, glossy, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032060,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "寬敞宴會廳的圓桌鋪藍色桌巾，中央一座高高的蛋糕",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/kneel_for_votes.webp": {
+  "prompt": "A worn kneeling cushion at the foot of stone steps on a dusty farm road in Yunlin, a closed ballot box waiting on the steps All surfaces are completely blank, plain and unmarked, with no writing and no text-like patterns.. Style: claymation plasticine miniature set, warm orange and tan modeling clay with fingerprints visible, soft studio light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032036,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "路邊臺階前一只磨舊的蒲團，後面是緊閉的投票箱",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/lee_alarm.webp": {
+  "prompt": "A brass alarm bell swinging on a tall tower, a flashing warning lamp beneath it, dusk sky. Style: polished wood and brass scale model with navy blue painted tin parts, museum display miniature, glossy, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032056,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "高塔上搖晃的黃銅警鐘，鐘下閃著警示燈",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/lee_attacks_soong.webp": {
+  "prompt": "A heavy brass mallet resting beside a split and cracked orange wooden block on a workbench. Style: polished wood and brass scale model with navy blue painted tin parts, museum display miniature, glossy, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032048,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "一支黃銅木槌旁，一塊裂開的橙色木塊",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/lee_authorized.webp": {
+  "prompt": "A sealed blank envelope sliding under the gap of a closed wooden door in a dim corridor All surfaces are completely blank, plain and unmarked, with no writing and no text-like patterns.. Style: claymation plasticine miniature set, warm orange and tan modeling clay with fingerprints visible, soft studio light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032031,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "一封封好的信封從門縫塞進一扇緊閉的門",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/lee_campaigns.webp": {
+  "prompt": "A brass microphone stand on an outdoor stage decorated with a flower garland and navy blue bunting, evening light. Style: polished wood and brass scale model with navy blue painted tin parts, museum display miniature, glossy, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032047,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "戶外舞台上的麥克風架、花環和藍色彩旗",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/lee_secret_help.webp": {
+  "prompt": "A back door left ajar with a shaft of lamp light spilling out onto a dark alley, a small pot with a green sapling outside the door. The door, the frame and all walls are made of smooth plain grey cardboard, absolutely no newspaper, no printed pattern.. Style: sculpture made of crumpled newspaper and grey cardboard, monochrome, harsh side light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000033067,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "半開的後門透出一道光，門外放著一盆綠色幼苗",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/lee_yuan_tseh.webp": {
+  "prompt": "A paper atom model with orbiting green rings, glass laboratory flasks filled with green liquid and a gold medal on a lab bench. Everything is made of layered cut green paper, visible paper edges and paper texture, no photographic elements.. Style: layered cut-paper papercraft diorama, many layers of green paper with soft shadows between layers, handmade miniature, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032512,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "紙做的原子模型、玻璃燒瓶和一枚金色獎章",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/li_ao_endorses.webp": {
+  "prompt": "A tall stack of old books with a calligraphy brush standing in an ink stone and a small megaphone resting on top. Style: claymation plasticine miniature set, warm orange and tan modeling clay with fingerprints visible, soft studio light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032029,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "一疊舊書上插著一支筆，旁邊放著硯台與小喇叭",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/lien_siew.webp": {
+  "prompt": "Two interlocking brass gears, one navy blue and one polished brass, turning together on a velvet base. Style: polished wood and brass scale model with navy blue painted tin parts, museum display miniature, glossy, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032045,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "兩個咬合轉動的黃銅齒輪，一個深藍一個黃銅",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/lin_chairman.webp": {
+  "prompt": "A wooden gavel on a small desk with a single pine tree and layered misty Yilan mountains behind it, quiet and serious. Style: layered cut-paper papercraft diorama, many layers of green paper with soft shadows between layers, handmade miniature, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032011,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "宜蘭山邊的小書桌上一支木槌，後面是孤松與山",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/lo_propaganda.webp": {
+  "prompt": "A megaphone, rolled-up blank posters and a paintbrush dripping green paint on a workbench. Style: layered cut-paper papercraft diorama, many layers of green paper with soft shadows between layers, handmade miniature, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032006,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "擴音器、成捲的海報和一支沾綠漆的刷子",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/local_factions.webp": {
+  "prompt": "Rows of brass stakes each tied with a navy blue ribbon stretching across the flat farmland of Changhua. Style: polished wood and brass scale model with navy blue painted tin parts, museum display miniature, glossy, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032050,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "彰化田野裡一排排繫著藍布條的黃銅木樁",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/lu_running_mate.webp": {
+  "prompt": "Two identical green chairs side by side on a stage, a paper airplane taking off from an airport runway behind them. Style: layered cut-paper papercraft diorama, many layers of green paper with soft shadows between layers, handmade miniature, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032005,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "並排的兩張綠色紙椅，背景是桃園機場起降的紙飛機",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/ma_campaigns.webp": {
+  "prompt": "A navy blue bicycle leaning against a brass street lamp at a tree-lined corner of old Taipei, low buildings, morning light. Style: polished wood and brass scale model with navy blue painted tin parts, museum display miniature, glossy, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032052,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "台北林蔭街角，一輛深藍腳踏車靠在路燈旁",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/ma_leaks_polls.webp": {
+  "prompt": "A round brass dial gauge with a completely blank face with only thin tick marks and a needle leaning to one side, standing on a lectern, absolutely no numerals and no markings on the dial. All surfaces completely plain.. Style: polished wood and brass scale model with navy blue painted tin parts, museum display miniature, glossy, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032555,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "講台上一只圓形黃銅儀表，指針偏向一邊",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/massive_ads.webp": {
+  "prompt": "A giant printing press feeding out rolls of blank posters, mountains of blank flyers piled beside it, a billboard truck outside All surfaces are completely blank, plain and unmarked, with no writing and no text-like patterns.. Style: polished wood and brass scale model with navy blue painted tin parts, museum display miniature, glossy, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032054,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "巨大印刷機吐出成捲的海報，旁邊堆成山的傳單",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/members_return.webp": {
+  "prompt": "A flock of navy blue tin pigeons flying back to a brass dovecote at sunset. Style: polished wood and brass scale model with navy blue painted tin parts, museum display miniature, glossy, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032058,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "藍色鐵皮鴿子成群飛回黃銅鴿舍",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/military_civil.webp": {
+  "prompt": "Four hats in a row on a shelf: a plain army cap, a plain police cap, a graduation mortarboard, an office visor, every cap completely plain and smooth with no badge, no emblem, no insignia, no pin. Style: claymation plasticine miniature set, warm orange and tan modeling clay with fingerprints visible, soft studio light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032038,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "架上並排的四頂帽子：軍帽、警帽、教師方帽、公務員遮陽帽",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/million_rally.webp": {
+  "prompt": "A vast plaza completely filled with thousands of small plain solid green flags on sticks like a sea, in front of a grand old government building, every flag and every roof flag perfectly plain solid green, no red anywhere, no emblem. Everything is made of layered cut green paper, visible paper edges and paper texture, no photographic elements.. Style: layered cut-paper papercraft diorama, many layers of green paper with soft shadows between layers, handmade miniature, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032514,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "廣場上成千上萬面純綠色小旗插成的海洋",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/million_signatures.webp": {
+  "prompt": "A tall tower of stacked blank petition sheets with a red ink pad and a calligraphy brush beside it on a table All surfaces are completely blank, plain and unmarked, with no writing and no text-like patterns.. Style: claymation plasticine miniature set, warm orange and tan modeling clay with fingerprints visible, soft studio light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032024,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "疊成高塔的連署書，旁邊有印泥和毛筆",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/new_middle.webp": {
+  "prompt": "A straight green path running between two opposing paper mountains toward a calm horizon, a quiet strait of water ahead. Style: layered cut-paper papercraft diorama, many layers of green paper with soft shadows between layers, handmade miniature, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032001,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "兩座對立的紙山之間，一條筆直的綠色中間道路",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/new_party_backs_soong.webp": {
+  "prompt": "A plain solid yellow pennant planted on a hilltop next to an orange pennant, overlooking old Taipei low rooftops and mountains, no skyscrapers. Style: claymation plasticine miniature set, warm orange and tan modeling clay with fingerprints visible, soft studio light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032033,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "山坡上一面純黃小旗插在橙色旗旁，俯瞰台北舊屋頂",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/no_nuke4.webp": {
+  "prompt": "A seaside reactor dome and cooling tower on a cliff, a striped barrier gate lowered across the access road in front. Style: layered cut-paper papercraft diorama, many layers of green paper with soft shadows between layers, handmade miniature, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032010,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "海邊的反應爐圓頂前，一道放下的柵欄擋住道路",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/party_assets_ads.webp": {
+  "prompt": "Blank billboard frames on the rooftops by Keelung harbor, bundles of blank white paper rolls tied with rope in the foreground, ships with plain unmarked hulls and rainy hills behind. All surfaces are completely blank, plain and unmarked, with no writing and no text-like patterns.. Style: polished wood and brass scale model with navy blue painted tin parts, museum display miniature, glossy, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032544,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "基隆港邊屋頂上的空白廣告看板和成捆報紙",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/party_congress.webp": {
+  "prompt": "A huge auditorium seen from the back, hundreds of identical seats in rows facing a stage with navy blue curtains and a lectern. Style: polished wood and brass scale model with navy blue painted tin parts, museum display miniature, glossy, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032057,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "從後方看的大禮堂，數百張一模一樣的座椅與藍色布幕",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/party_machine.webp": {
+  "prompt": "Many identical tour buses parked in long orderly rows in front of a grand symmetrical building, plain navy blue flags on every bus, organized and powerful. Style: polished wood and brass scale model with navy blue painted tin parts, museum display miniature, glossy, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000031825,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "許多一模一樣的遊覽車整齊停在宏偉對稱的大樓前，每輛插著純藍旗",
+  "aspect": "3:2 (Photo)",
+  "note": "owner-selected sample p2k_v3_card_lien_00001.png"
+ },
+ "cards/party_unity.webp": {
+  "prompt": "Brass puzzle pieces fitting into a navy blue circular board, one last piece hovering above the gap. Style: polished wood and brass scale model with navy blue painted tin parts, museum display miniature, glossy, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032053,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "黃銅拼圖一片片嵌進深藍圓盤，最後一片正要放下",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/pla_drill_rumor.webp": {
+  "prompt": "A map table with a sea chart, small cardboard model warships and pointer sticks scattered across it, lit by a single hanging lamp, seen from far away. Style: sculpture made of crumpled newspaper and grey cardboard, monochrome, harsh side light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032069,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "地圖桌上的海圖，上面散放小硬紙板艦艇與指示棒，吊燈照著",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/poll_lead.webp": {
+  "prompt": "A bar chart made of blocks where one tall orange bar towers over several short grey bars, on a small stand, no numbers. Style: claymation plasticine miniature set, warm orange and tan modeling clay with fingerprints visible, soft studio light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032023,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "一排長條圖，橙色那根高高超過其他灰色的",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/poll_published.webp": {
+  "prompt": "A bar chart and a pie chart on an easel with a pointer stick, abstract shapes only and no readable figures All surfaces are completely blank, plain and unmarked, with no writing and no text-like patterns.. Style: sculpture made of crumpled newspaper and grey cardboard, monochrome, harsh side light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032061,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "畫架上的長條圖與圓餅圖，旁邊一支指示棒",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/provincial_build.webp": {
+  "prompt": "A construction site with a crane, a road roller and a bridge under construction, orange traffic cones in a row. Style: claymation plasticine miniature set, warm orange and tan modeling clay with fingerprints visible, soft studio light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032037,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "工地上的起重機、壓路機和一座興建中的橋，橙色三角錐成排",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/provincial_staff.webp": {
+  "prompt": "An old office with wooden window frames, grey steel filing cabinets, a rotary dial telephone and a typewriter on a desk. Style: claymation plasticine miniature set, warm orange and tan modeling clay with fingerprints visible, soft studio light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032030,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "舊木窗辦公室裡的鐵檔案櫃和一具撥盤電話",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/quake_bond.webp": {
+  "prompt": "A relief tent camp after an earthquake with a big steaming pot of soup, neatly stacked plain smooth cardboard supply boxes with nothing printed on them, a cracked road and a mended wall. All surfaces completely plain and unmarked.. Style: claymation plasticine miniature set, warm orange and tan modeling clay with fingerprints visible, soft studio light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032528,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "災區的帳篷營、冒煙的大鍋湯和整齊堆起的物資箱",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/shifting_story.webp": {
+  "prompt": "A brass weather vane on a rooftop, shown with multiple ghost images pointing in several different directions against a stormy sky. Style: polished wood and brass scale model with navy blue painted tin parts, museum display miniature, glossy, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032042,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "屋頂上的黃銅風向雞，指向數個不同方向的殘影",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/soong_friends.webp": {
+  "prompt": "A round banquet table in a community hall laden with bowls, dishes, teacups and a teapot, folding chairs around it. Style: claymation plasticine miniature set, warm orange and tan modeling clay with fingerprints visible, soft studio light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032035,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "社區活動中心的圓桌宴席，擺滿碗盤和茶壺",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/south_rally.webp": {
+  "prompt": "A big outdoor rally stage in front of a southern Taiwan temple courtyard, strings of light bulbs and tall loudspeaker towers, night, the courtyard completely empty, nobody there. Everything is made of layered cut green paper, visible paper edges and paper texture, no photographic elements.. Style: layered cut-paper papercraft diorama, many layers of green paper with soft shadows between layers, handmade miniature, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032518,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "南部廟埕前搭起的大舞台，掛滿成串燈泡和喇叭",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/stability.webp": {
+  "prompt": "A brass anchor and a sailing ship model resting in a calm still harbor bay at dawn. Style: polished wood and brass scale model with navy blue painted tin parts, museum display miniature, glossy, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032049,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "平靜港灣裡的黃銅船錨和一艘帆船模型",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/stock_crash.webp": {
+  "prompt": "A stock exchange price board with plunging jagged line charts and big downward arrows in red and green, papers flying in the air, abstract shapes only and no readable figures. Style: sculpture made of crumpled newspaper and grey cardboard, monochrome, harsh side light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000031827,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "股市價格板，急遽下墜的折線圖和大箭頭，紙張滿天飛",
+  "aspect": "3:2 (Photo)",
+  "note": "owner-selected sample p2k_v3_card_ext_00001.png"
+ },
+ "cards/strait_tension.webp": {
+  "prompt": "A lighthouse on a cliff with stormy waves in a narrow strait below and heavy storm clouds, no ships. Style: sculpture made of crumpled newspaper and grey cardboard, monochrome, harsh side light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032062,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "澎湖懸崖上的燈塔，下方是翻湧的海峽和烏雲",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/sweep_black_gold.webp": {
+  "prompt": "A sturdy straw broom sweeping a heap of black lumps and gold coins and gold ingots out of an old Taiwanese street, coins scattering. Style: layered cut-paper papercraft diorama, many layers of green paper with soft shadows between layers, handmade miniature, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000031823,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "掃帚把黑煤塊和金幣掃出巷口",
+  "aspect": "3:2 (Photo)",
+  "note": "owner-selected sample p2k_v3_card_chen_00001.png"
+ },
+ "cards/taiwan_son.webp": {
+  "prompt": "Wide view of green rice paddies and a traditional red brick farmhouse with a tile roof, irrigation canal, a rising sun low over the horizon, rows of rice seedlings in the foreground. Everything is made of layered cut green paper, visible paper edges and paper texture, no photographic elements.. Style: layered cut-paper papercraft diorama, many layers of green paper with soft shadows between layers, handmade miniature, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032500,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "雲嘉南的稻田與紅瓦農舍，朝陽升在田野遠處",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/three_three_three.webp": {
+  "prompt": "A neat row of small paper houses, a bundle of gold keys hanging on the front door of the nearest house, a few gold coins. Style: layered cut-paper papercraft diorama, many layers of green paper with soft shadows between layers, handmade miniature, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032009,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "一排整齊的紙房子，門前掛著一串金鑰匙",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/tvbs_poll.webp": {
+  "prompt": "An old CRT television with rabbit-ear antenna on a stool, the screen showing only abstract bars, no readable figures All surfaces are completely blank, plain and unmarked, with no writing and no text-like patterns.. Style: sculpture made of crumpled newspaper and grey cardboard, monochrome, harsh side light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032068,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "凳子上一台老式映像管電視和天線，螢幕上只有抽象長條",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/us_congress.webp": {
+  "prompt": "A domed legislative building made of grey cardboard with wide front steps and a podium. Style: sculpture made of crumpled newspaper and grey cardboard, monochrome, harsh side light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032065,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "灰色硬紙板做的圓頂議事廳，前面有台階和講台",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/veterans_village.webp": {
+  "prompt": "A narrow lane of a military dependents' village with low bamboo-wall houses, laundry hanging on lines, a bicycle and a camphor tree. Style: claymation plasticine miniature set, warm orange and tan modeling clay with fingerprints visible, soft studio light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032027,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "眷村窄巷，矮房、竹籬笆和樟樹下曬的衣服",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/walk_everywhere.webp": {
+  "prompt": "A long winding country road through green rice paddies and betel nut palms toward small farming villages, rows of plain orange campaign flags on bamboo poles lining the road, a small jeep far away. Style: claymation plasticine miniature set, warm orange and tan modeling clay with fingerprints visible, soft studio light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people.",
+  "seed": 2000031824,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "一條蜿蜒的鄉間公路穿過稻田通向農村，路邊插滿橙色旗",
+  "aspect": "3:2 (Photo)",
+  "note": "owner-selected sample p2k_v3_card_soong_00001.png"
+ },
+ "cards/white_paper.webp": {
+  "prompt": "A thick stack of blank-cover documents tied with a band on a long conference table with a fountain pen, a plain grey wall behind, no windows. All surfaces are completely blank, plain and unmarked, with no writing and no text-like patterns.. Style: sculpture made of crumpled newspaper and grey cardboard, monochrome, harsh side light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032563,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "會議桌上一疊厚厚的空白封面文件和一支鋼筆",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/yang_exposes.webp": {
+  "prompt": "A lectern with a microphone under a spotlight, an open briefcase beside it spilling plain blank white sheets of paper and plain manila folders across the floor. All papers are completely blank, no printed lines.. Style: polished wood and brass scale model with navy blue painted tin parts, museum display miniature, glossy, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032541,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "講台上一支麥克風，旁邊公事包倒出一地文件",
+  "aspect": "3:2 (Photo)"
+ },
+ "cards/zhu_rongji.webp": {
+  "prompt": "A press conference table with a row of microphones and a glass of water in front of a blank wall, ominous side light, no people All surfaces are completely blank, plain and unmarked, with no writing and no text-like patterns.. Style: sculpture made of crumpled newspaper and grey cardboard, monochrome, harsh side light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032064,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "記者會桌上一排麥克風和一杯水，背景空白",
+  "aspect": "3:2 (Photo)"
+ },
+ "issues/clean.webp": {
+  "prompt": "A single pure white lotus flower rising clean and upright above dark muddy pond water, half-sunken gold coins and black sludge in the mud below, lotus leaves around it; integrity rising out of the mud. Style: flat mid-century modern poster illustration, limited palette of cream, brick red and charcoal, simple geometric shapes. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000031817,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "白蓮出淤泥",
+  "aspect": "4:3 (Standard)",
+  "note": "owner-selected sample p2k_v2_issue_clean_00002.png"
+ },
+ "issues/cross.webp": {
+  "prompt": "The Taiwan Strait seascape: a white lighthouse on a rocky shore, a cargo ship on the horizon, choppy grey-blue water, a faint distant coastline across the sea. Style: flat mid-century modern poster illustration, limited palette of cream, brick red and charcoal, simple geometric shapes. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000031819,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "台灣海峽燈塔",
+  "aspect": "4:3 (Standard)",
+  "note": "owner-selected sample p2k_v2_issue_cross_00001.png"
+ },
+ "issues/econ.webp": {
+  "prompt": "A steaming bowl of white rice in front of a busy morning market stall with vegetables, a factory chimney and harbor container cranes in the distance. Style: flat mid-century modern poster illustration, limited palette of cream, brick red and charcoal, simple geometric shapes. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000031818,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "一碗飯與市場、工廠、港口",
+  "aspect": "4:3 (Standard)",
+  "note": "owner-selected sample p2k_v2_issue_econ_00001.png"
+ },
+ "local/changhua.webp": {
+  "prompt": "The Baguashan giant Buddha statue on a hill above Changhua city and tile-roofed old street houses of Lukang. Style: model railway diorama miniature town, tilt-shift macro photograph, tiny detailed buildings. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032079,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "彰化縣　八卦山大佛與鹿港老街的瓦屋",
+  "aspect": "3:2 (Photo)"
+ },
+ "local/chiayi-city.webp": {
+  "prompt": "A fountain roundabout in Chiayi city beside old Japanese-era wooden forestry buildings with tiled roofs. Style: model railway diorama miniature town, tilt-shift macro photograph, tiny detailed buildings. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032083,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "嘉義市　噴水圓環與舊林業局日式木造建築",
+  "aspect": "3:2 (Photo)"
+ },
+ "local/chiayi-county.webp": {
+  "prompt": "The Alishan forest railway little red train winding through towering cypress forest on a mountain. Style: model railway diorama miniature town, tilt-shift macro photograph, tiny detailed buildings. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032082,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "嘉義縣　阿里山森林小火車穿過紅檜林",
+  "aspect": "3:2 (Photo)"
+ },
+ "local/hsinchu-city.webp": {
+  "prompt": "The old stone Hsinchu railway station with a baroque facade and a nearby City God temple, windswept trees. Style: model railway diorama miniature town, tilt-shift macro photograph, tiny detailed buildings. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032075,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "新竹市　新竹舊火車站與強風中的城隍廟",
+  "aspect": "3:2 (Photo)"
+ },
+ "local/hsinchu-county.webp": {
+  "prompt": "Beipu Hakka old street with traditional tile-roofed shophouses and bamboo trays of drying persimmons. Style: model railway diorama miniature town, tilt-shift macro photograph, tiny detailed buildings. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032074,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "新竹縣　北埔客家老街與曬柿餅的竹篩",
+  "aspect": "3:2 (Photo)"
+ },
+ "local/hualien.webp": {
+  "prompt": "Taroko marble gorge with steep cliffs, a green river and a small bridge between the mountain walls. Style: model railway diorama miniature town, tilt-shift macro photograph, tiny detailed buildings. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032090,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "花蓮縣　太魯閣大理石峽谷與山壁間的小橋",
+  "aspect": "3:2 (Photo)"
+ },
+ "local/kaohsiung-city.webp": {
+  "prompt": "The Dragon and Tiger Pagodas on Lotus Pond in Kaohsiung with harbor cranes and container ships in the distance. Style: model railway diorama miniature town, tilt-shift macro photograph, tiny detailed buildings. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032086,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "高雄市　蓮池潭龍虎塔與港口吊車",
+  "aspect": "3:2 (Photo)"
+ },
+ "local/kaohsiung-county.webp": {
+  "prompt": "The old wooden Qishan railway station with a gabled roof surrounded by banana plantations. Style: model railway diorama miniature town, tilt-shift macro photograph, tiny detailed buildings. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032087,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "高雄縣　旗山老火車站與香蕉園",
+  "aspect": "3:2 (Photo)"
+ },
+ "local/keelung.webp": {
+  "prompt": "Keelung harbor with cranes and ships, hillside houses and a white Guanyin statue on the hill, drizzling rain. Style: model railway diorama miniature town, tilt-shift macro photograph, tiny detailed buildings. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032072,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "基隆市　基隆港吊車、山坡民宅與白色觀音像",
+  "aspect": "3:2 (Photo)"
+ },
+ "local/kinma.webp": {
+  "prompt": "Kinmen southern Fujian red-brick houses with swallowtail roofs, a stone wind lion statue and sorghum fields, Matsu stone houses on a hill in the distance. Style: model railway diorama miniature town, tilt-shift macro photograph, tiny detailed buildings. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032093,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "金馬　金門閩式紅磚古厝燕尾屋脊、風獅爺石像、遠處馬祖石屋",
+  "aspect": "3:2 (Photo)"
+ },
+ "local/miaoli.webp": {
+  "prompt": "The ruined red-brick arch bridge of Sanyi in Miaoli surrounded by hills covered in white tung blossoms. Style: model railway diorama miniature town, tilt-shift macro photograph, tiny detailed buildings. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032076,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "苗栗縣　三義紅磚拱橋斷橋與油桐花山",
+  "aspect": "3:2 (Photo)"
+ },
+ "local/nantou.webp": {
+  "prompt": "Sun Moon Lake with a pagoda pavilion on the shore, tea terraces on the hills and mist over mountains. Style: model railway diorama miniature town, tilt-shift macro photograph, tiny detailed buildings. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032080,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "南投縣　日月潭湖面、涼亭和山坡茶園",
+  "aspect": "3:2 (Photo)"
+ },
+ "local/penghu.webp": {
+  "prompt": "Penghu basalt column coast, coral stone wall vegetable gardens and the long white cross-sea bridge. Style: model railway diorama miniature town, tilt-shift macro photograph, tiny detailed buildings. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032092,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "澎湖縣　玄武岩柱海岸、咾咕石牆菜園與白色跨海大橋",
+  "aspect": "3:2 (Photo)"
+ },
+ "local/pingtung.webp": {
+  "prompt": "The white Eluanbi lighthouse on a coral reef coast with coconut palms and turquoise sea in Pingtung. Style: model railway diorama miniature town, tilt-shift macro photograph, tiny detailed buildings. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032088,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "屏東縣　鵝鑾鼻白色燈塔、珊瑚礁海岸與椰子樹",
+  "aspect": "3:2 (Photo)"
+ },
+ "local/taichung-city.webp": {
+  "prompt": "Taichung Park lake pavilion with a curved bridge and the old Japanese-era red-brick Taichung railway station nearby. Style: model railway diorama miniature town, tilt-shift macro photograph, tiny detailed buildings. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032078,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "台中市　台中公園湖心亭與日治時期紅磚火車站",
+  "aspect": "3:2 (Photo)"
+ },
+ "local/taichung-county.webp": {
+  "prompt": "Dajia Mazu temple with an ornate roof and a courtyard with plain solid color pennants flying, completely plain with no markings, a few tiny model figures far away, fireworks smoke. Style: model railway diorama miniature town, tilt-shift macro photograph, tiny detailed buildings. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032577,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "台中縣　大甲媽祖廟與遶境隊伍的純色彩旗",
+  "aspect": "3:2 (Photo)"
+ },
+ "local/tainan-city.webp": {
+  "prompt": "The old city of Tainan: a red-brick tower with curved double-eaved Chinese roofs, a temple swallowtail roof ridge decorated with ceramic figures, banyan tree. Style: model railway diorama miniature town, tilt-shift macro photograph, tiny detailed buildings. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000031826,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "台南市　赤崁樓紅磚高塔，雙層翹簷屋頂，廟宇燕尾屋脊與榕樹",
+  "aspect": "3:2 (Photo)",
+  "note": "owner-selected sample p2k_v3_card_local_00001.png"
+ },
+ "local/tainan-county.webp": {
+  "prompt": "The white salt mountains of Qigu next to fish farm ponds and a lagoon, flat southwestern coast. Style: model railway diorama miniature town, tilt-shift macro photograph, tiny detailed buildings. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032084,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "台南縣　七股白色鹽山與魚塭",
+  "aspect": "3:2 (Photo)"
+ },
+ "local/taipei-city.webp": {
+  "prompt": "A red-brick colonial government building with a tall central tower, a banyan-lined avenue with old buses, low-rise Taipei city of the 1990s, no skyscrapers. Style: model railway diorama miniature town, tilt-shift macro photograph, tiny detailed buildings. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032070,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "台北市　紅磚殖民風格大樓與林蔭大道、舊式公車",
+  "aspect": "3:2 (Photo)"
+ },
+ "local/taipei-county.webp": {
+  "prompt": "Tamsui riverside old street with a red-brick fort, fishing boats and a ferry on the river estuary, hills behind. Style: model railway diorama miniature town, tilt-shift macro photograph, tiny detailed buildings. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032071,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "台北縣　淡水河口的紅色古堡、漁船與老街",
+  "aspect": "3:2 (Photo)"
+ },
+ "local/taitung.webp": {
+  "prompt": "The arched Sanxiantai footbridge crossing to a rocky island on the Pacific coast of Taitung. Style: model railway diorama miniature town, tilt-shift macro photograph, tiny detailed buildings. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032091,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "台東縣　三仙台跨海拱橋與太平洋海岸礁岩",
+  "aspect": "3:2 (Photo)"
+ },
+ "local/taoyuan.webp": {
+  "prompt": "An international airport terminal with jets taxiing, irrigation ponds and farmland and tea hills around it. Style: model railway diorama miniature town, tilt-shift macro photograph, tiny detailed buildings. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032073,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "桃園縣　機場起降的客機、埤塘與田野",
+  "aspect": "3:2 (Photo)"
+ },
+ "local/yilan.webp": {
+  "prompt": "Lanyang plain rice paddies with a traditional courtyard farmhouse and the turtle-shaped Guishan Island offshore. Style: model railway diorama miniature town, tilt-shift macro photograph, tiny detailed buildings. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032089,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "宜蘭縣　蘭陽平原稻田、三合院農舍與海上龜山島",
+  "aspect": "3:2 (Photo)"
+ },
+ "local/yunlin.webp": {
+  "prompt": "The ornate Beigang Chaotian temple with a swallowtail roof surrounded by peanut fields and irrigation channels. Style: model railway diorama miniature town, tilt-shift macro photograph, tiny detailed buildings. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032081,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "雲林縣　北港朝天宮廟頂與花生田",
+  "aspect": "3:2 (Photo)"
+ }
+}
