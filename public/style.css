@@ -468,8 +468,13 @@ html { scroll-padding-bottom: 190px; }
 .pop-n.up .pop-arrow { bottom: -7px; border-right: 1.5px solid var(--m-ink); border-bottom: 1.5px solid var(--m-ink); }
 .pop-h { display: flex; align-items: baseline; gap: 8px; }
 .pop-h b { flex: 1; min-width: 0; font: 900 17px/1.25 "Noto Serif TC", var(--disp); }
-.pop-h span { font-size: 11px; color: #5a4a3a; white-space: nowrap; }
-.pop-x { flex: none; width: 32px; height: 32px; margin: -6px -6px -6px 0; border: 0; background: transparent; color: #5a4a3a; font: 400 22px/1 var(--disp); cursor: pointer; border-radius: 4px; }
+/* The county's picture (#41, P1 9): across the box's top edge, the box's own padding and border cancelled; it shrinks (to 72px) before a button is pushed away. */
+.pop-art { position: relative; flex: none; margin: -10.5px -12.5px -2px; height: clamp(72px, 15dvh, 118px); overflow: hidden; border-radius: 5px 5px 0 0; background: #d9cdb4; }
+.pop-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pop-fade { position: absolute; left: 0; right: 0; bottom: 0; height: 40%; background: linear-gradient(rgba(251, 246, 233, 0), #fbf6e9); }
+.pop-reg { position: absolute; left: 12px; top: 10px; background: rgba(20, 14, 8, .55); color: #fffaf0; font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 10px; white-space: nowrap; }
+.pop-x { position: absolute; right: 8px; top: 8px; width: 36px; height: 36px; border: 0; border-radius: 18px; background: rgba(20, 14, 8, .55); color: #fffaf0; font: 400 22px/1 var(--disp); padding: 0; cursor: pointer; }
+@media (min-width: 700px) { .pop-art { height: clamp(100px, 18dvh, 150px); } .pop-reg { left: 14px; top: 12px; font-size: 12.5px; } .pop-x { right: 10px; top: 10px; } }
 .pop-b { display: flex; flex-direction: column; gap: 4px; }
 .pbs { display: flex; flex-wrap: wrap; gap: 3px; }
 .pb { display: inline-block; width: 13px; height: 13px; border-radius: 2px; box-sizing: border-box; }
