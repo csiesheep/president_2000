@@ -78,7 +78,8 @@ export default {
         levelNote: { 1: "The Volunteer only fills blocks: no taking, triggering or blocking.", 2: "The Campaign chief counts strategic voting, takes blocks, triggers and blocks.", 3: "The Strategist also saves cards for the Policy Forum and cuts issue leads to a tie." },
         start: "Start the campaign", note: "Nine turns. Progress is kept in this tab; a reload brings you back to the same screen.", home: "← Home",
       },
-      menu: { quit: "Abandon this game", confirm: "Abandon this game and go back to setup?", skip: "Click to skip the animation", label: "Menu" },
+      menu: { quit: "Abandon this game", confirm: "Abandon this game and go back to setup?", skip: "Click to skip the animation", label: "Menu",
+        speed: "Rivals' speed", slow: "Slow", normal: "Normal", fast: "Fast", step: "Step", stepNote: "Step: the rivals stop after each move until you tap Next.", sound: "Sound", volume: "Volume", next: "Next" },
       hdr: {
         ph: { action: "Action {n}/4", order: "Order", momentum: "Momentum", save: "Set aside", debate: "Forum", election: "Election day", end: "The count" },
         turn: "Turn {n}", endDate: "18 March", initiative: "Initiative: {who}", star: "Initiative", mom: "Momentum", bag: "Bag", feed: "Record", momL: "Momentum", slotsL: "Issue slots", tap: "Tap for an explanation",

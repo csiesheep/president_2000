@@ -149,7 +149,7 @@ export function bindMenu(menu) {
     const b = ev.target.closest && ev.target.closest("[data-menu], [data-menu-top]");
     if (b) { set(!open, b); return; }
     if (open && !menu.contains(ev.target)) set(false);
-    else if (open && ev.target.closest("button, a")) setTimeout(() => set(false), 0);
+    else if (open && ev.target.closest("button:not([data-speed]):not([data-sound]), a")) setTimeout(() => set(false), 0);
   });
   document.addEventListener("keydown", (ev) => {
     if (ev.key !== "Escape" || !open) return;

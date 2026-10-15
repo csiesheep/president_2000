@@ -598,7 +598,8 @@ function panelHTML(v, ch, x, o) {
   const hand = sourceCards(v);
   if (!ch.length) {
     const sel = o.sel && hand.includes(o.sel) ? o.sel : null;
-    return sel ? sheetHTML(v, ch, x, sel) : `<p class="pr dim">${esc(o.waitHint || x.tr("hdr.waitHint"))}</p>`;
+    const next = o.botnext ? `<div class="opts"><button type="button" class="opt" data-botnext="1">${esc(o.botnext)}</button></div>` : ""; // step by step (#42)
+    return (sel ? sheetHTML(v, ch, x, sel) : `<p class="pr dim">${esc(o.waitHint || x.tr("hdr.waitHint"))}</p>`) + next;
   }
   const cardMoves = ch.filter((c) => c.move.card && (c.move.type === "play" || c.move.type === "reveal" || c.move.type === "canvass"));
   // A hand card tapped in a step that plays no card (order, momentum, keeping all) still opens its face (with "not now"), as it does when waiting.

@@ -9,6 +9,7 @@
 //   p2000.room.level    the bot level the host last picked
 //   p2000.advisor       whether the advisor switch is on (shared with the solo page)
 import * as RC from "./roomclient.js";
+import * as Sound from "./sound.js";
 import { esc } from "./table.js";
 import { drawInto, narrowNow, watchNarrow, bindCounty, bindSeat, bindMenu } from "./drawing.js";
 
@@ -24,6 +25,7 @@ export function mount({ T, lang, qs, store, $ }) {
   $("#room").hidden = false;
   $("#rmenub").setAttribute("aria-label", T.ui.solo.menu.label);
   const menu = bindMenu($("#rmenu"));
+  Sound.mountMenu($("#rmenu"), T.ui.solo.menu);
   $("#rhome").href = "./" + (en ? "?lang=en" : "");
   $("#rhome").textContent = T.ui.solo.setup.home;
   const other = new URLSearchParams(location.search);
@@ -184,6 +186,10 @@ export function mount({ T, lang, qs, store, $ }) {
     }
     else if (d.sel != null) { ui.sel = d.sel || null; if (ui.sel) ui.confirm = null; draw(); if (ui.sel) toAct(); }
     else if (d.pick != null) { ui.picks = ui.picks.includes(d.pick) ? ui.picks.filter((x) => x !== d.pick) : [...ui.picks, d.pick]; draw(); }
+  });
+  stage.addEventListener("click", (ev) => { // a hand card or a county tapped (#42)
+    const c = ev.target.closest("[data-sel], [data-county]");
+    if (c && (c.dataset.county != null || c.dataset.sel)) Sound.play("tap");
   });
   bindCounty(stage, { get: () => ui.county, set: (k) => { ui.county = k; }, redraw: () => draw() });
   bindSeat(stage, { get: () => ui.seat, set: (p) => { ui.seat = p; }, redraw: () => draw() });
