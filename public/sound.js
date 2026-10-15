@@ -84,7 +84,7 @@ function synth(ac, out, name, n, at0) {
     s.buffer = b; bq.type = ftype; bq.frequency.setValueAtTime(f0, at); bq.frequency.exponentialRampToValueAtTime(f1, at + dur); bq.Q.value = q;
     env(g, at, peak, dur); s.connect(bq); bq.connect(g); g.connect(out); s.start(at); s.stop(at + dur + 0.03);
   };
-  if (name === "tap") { hiss("bandpass", 3200, 2800, 0.9, 0.08, 0.35); tone("sine", 2400, 1800, 0.05, 0.03); } // the faint tone is the paper's edge catching
+  if (name === "tap") hiss("bandpass", 3200, 2800, 0.9, 0.08, 0.35);
   if (name === "play") { hiss("lowpass", 1400, 900, 0.7, 0.12, 0.5); tone("sine", 150, 55, 0.12, 0.6); }
   if (name === "cube") { const k = n || 0; tone("triangle", 820 + k * 90, 700 + k * 90, 0.05, 0.35); hiss("bandpass", 2200 + k * 180, 2200 + k * 180, 6, 0.04, 0.25); }
   if (name === "uncube") { tone("triangle", 640, 420, 0.07, 0.3); hiss("bandpass", 1500, 1200, 6, 0.04, 0.2); }
