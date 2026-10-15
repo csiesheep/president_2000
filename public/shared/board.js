@@ -1,5 +1,5 @@
 // The board as data: 25 counties (金門+連江 merged as 金馬), 154 vote blocks,
-// seven media regions, the opening position. Numbers follow the rulebook
+// seven regions and one national media box (v0.4, #34), the opening position. Numbers follow the rulebook
 // (vault: Projects/president_2000/president_2000 - rulebook.md, v0.3, §3–4;
 // v0.3 opens 陳 −1 and 連 +1 in each of 台北市 and 台北縣, owner ruling in #2).
 // Phase 0: written by the kickoff session, not independently verified.
@@ -44,7 +44,9 @@ export const COUNTIES = [
 
 export const START_COUNTY = { chen: "台南縣", soong: "南投縣", lien: "台北市" };
 export const START_MOMENTUM = [3, 2, 1];
-export const START_MEDIA = [[0, 0, 1], [0, 0, 0], [0, 0, 1], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]];
+// v0.4 (#34, owner 2026-10-15 "2b + B"; rulebook §3.2, §四.5): one national media box, [陳, 宋, 連];
+// 連 opens with 2 there. The seven regions stay for movement, campaign reach and endorsements.
+export const START_MEDIA = [0, 0, 2];
 export const BAG_SEED = 12;
 export const BOSS_THRESHOLD = 4; // 地方大老: 4 cubes; counties under 4 blocks never have one
 export const ISSUES = ["cross", "clean", "econ"]; // 兩岸 / 清廉 / 經濟民生

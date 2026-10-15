@@ -89,9 +89,9 @@ function regionDistance(a, b) {
 const moveCost = (seat, from, to) => { const d = regionDistance(REGION_OF[from], REGION_OF[to]); return seat === 1 ? Math.min(d, 1) : d; };
 
 // §8.1: does a same-camp fill of county k need a support check? (Read from the rules page, "支持檢定".)
+// Rulebook v0.4 (#34): media waives no check.
 function fillNeedsCheck(v, seat, k) {
   if ((seat === 0 && v.active.includes("lee_yuan_tseh")) || (seat === 1 && v.active.includes("walk_everywhere"))) return false;
-  if (leader(v.media[REGION_OF[k]]) === seat) return false;
   if ([0, 1, 2].some((p) => p !== seat && cubesIn(v, k, p) >= BOSS_THRESHOLD)) return true;
   if ([0, 1, 2].some((p) => p !== seat && v.pos[p] === k)) return true;
   return false;
@@ -149,7 +149,7 @@ export function labelMove(v, m, lang) {
     case "steal": return tr("o.steal", { county: x.county(m.county), who: x.short(m.target), kind: tr("o.block." + m.t) }) + suffix;
     case "done": return tr("o.done");
     case "ad": return tr("o.ad") + suffix;
-    case "media": return m.target == null ? tr("o.mediaPlace", { region: x.region(m.region) }) : tr("o.mediaRemove", { region: x.region(m.region), who: x.short(m.target) });
+    case "media": return m.target == null ? tr("o.mediaPlace") : tr("o.mediaRemove", { who: x.short(m.target) }); // v0.4 (#34): the national box
     case "issue": {
       const cost = v.pending && v.pending.placed ? 2 : 1;
       return m.target == null ? tr("o.issuePlace", { issue: x.issue(m.issue), cost }) : tr("o.issueRemove", { issue: x.issue(m.issue), who: x.short(m.target), cost });
@@ -261,7 +261,7 @@ export function recentLines(entries, v, x) {
       case "steal": case "remove": part(e.seat, e.k + (e.ok ? "" : "Fail"), { county, target }); break;
       case "move": part(e.seat, "move", { county: x.county(e.to) }); break;
       case "ad": part(e.seat, e.ok ? "adOk" : "adFail", {}); break;
-      case "media": part(e.seat, e.target == null ? "media" : "mediaRemove", { region: x.region(e.region), target }); break;
+      case "media": part(e.seat, e.target == null ? "media" : "mediaRemove", { target }); break;
       case "issue": part(e.seat, e.target == null ? "issue" : "issueRemove", { issue: x.issue(e.issue), target }); break;
       case "say": break;
       default: line(e.seat ?? null, feedLine(e, v, x));
@@ -686,7 +686,7 @@ export function feedLine(e, v, x) {
       return tr("f." + e.k + (e.ok ? "Ok" : "Fail"), { who: who(e.seat), county: x.county(e.county), target: e.target != null ? who(e.target) : "" });
     case "move": return tr("f.move", { who: who(e.seat), county: x.county(e.to) });
     case "ad": return tr(e.ok ? "f.adOk" : "f.adFail", { who: who(e.seat) });
-    case "media": return e.target == null ? tr("f.mediaPlace", { who: who(e.seat), region: x.region(e.region) }) : tr("f.mediaRemove", { who: who(e.seat), region: x.region(e.region), target: who(e.target) });
+    case "media": return e.target == null ? tr("f.mediaPlace", { who: who(e.seat) }) : tr("f.mediaRemove", { who: who(e.seat), target: who(e.target) });
     case "issue": return e.target == null ? tr("f.issuePlace", { who: who(e.seat), issue: x.issue(e.issue) }) : tr("f.issueRemove", { who: who(e.seat), issue: x.issue(e.issue), target: who(e.target) });
     case "swap": return tr("f.swap", { who: who(e.seat) });
     case "reward": return tr(e.pick === "mom" ? "f.rewardMom" : "f.rewardEndorse", { who: who(e.seat) });
@@ -707,6 +707,7 @@ export function feedLine(e, v, x) {
     case "result": return tr("f.result");
     // The end-of-turn settlement (solo.js settleEntries): why momentum moved.
     case "decay": return tr("r.decay", { text: e.per.map((q, p) => `${who(p)} ${q[0]}→${q[1]}`).join(" · ") });
+    case "mediaBonus": return tr("r.mediaBonus", { who: who(e.seat) }); // v0.4 (#34): §5.3 step 2
     case "slot": return tr(e.slot === 1 ? "r.slot1" : "r.slot3", { issue: x.issue(e.issue), who: who(e.seat) });
     case "issueDecay": return tr("r.issueDecay");
     case "momNow": return tr("r.momNow", { text: SHOW_ORDER.map((p) => `${who(p)} ${e.mom[p]}`).join(" · ") });

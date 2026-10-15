@@ -75,7 +75,7 @@ function snapOf(view) {
     logLen: view.log.length,
     cnt: view.counties.map((c) => [0, 1, 2].map((p) => c.blocks.filter((b) => b.o === p).length)),
     pos: view.pos.slice(),
-    media: view.media.map((m) => m.slice()),
+    media: view.media.slice(),
     issues: Object.fromEntries(view.issues.map((i) => [i.name, i.cubes.slice()])),
     slots: view.issues.map((i) => ({ name: i.name, cubes: i.cubes.slice() })),
     mom: view.mom.slice(),
@@ -105,11 +105,12 @@ function diffFeed(prev, view, slice) {
     if (!gain.length && who != null) for (const l of loss) if (l.p !== who) for (let i = 0; i < l.n; i++) out.push({ k: "remove", seat: who, county: k, target: l.p, ok: true });
   });
   for (let p = 0; p < 3; p++) if (next.pos[p] !== prev.pos[p]) out.push({ k: "move", seat: p, to: next.pos[p] });
-  next.media.forEach((m, r) => {
-    const { gain, loss } = deltas(prev.media[r] || [0, 0, 0], m);
-    for (const g of gain) out.push({ k: "media", seat: g.p, region: r, target: null });
-    if (!gain.length && who != null) for (const l of loss) if (l.p !== who) out.push({ k: "media", seat: who, region: r, target: l.p });
-  });
+  // v0.4 (#34): one national media box; one entry per cube put in, or per cube of another seat taken out.
+  {
+    const { gain, loss } = deltas(Array.isArray(prev.media) && typeof prev.media[0] === "number" ? prev.media : [0, 0, 0], next.media);
+    for (const g of gain) for (let i = 0; i < g.n; i++) out.push({ k: "media", seat: g.p, target: null });
+    if (!gain.length && who != null) for (const l of loss) if (l.p !== who) for (let i = 0; i < l.n; i++) out.push({ k: "media", seat: who, target: l.p });
+  }
   // The end-of-turn settlement takes a cube off each issue's leader: that is not anyone's move.
   const settled = slice.some((e) => e.t === "momentum" && e.step === "done");
   for (const [name, cubes] of settled ? [] : Object.entries(next.issues)) {
@@ -138,7 +139,7 @@ function justNow(client, next, view) {
   if (next.fresh) return { rec: next.added, mine: null };
   const me = view.seat, slice = next.slice || [];
   const checks = slice.filter((e) => e.t === "check" && e.seat === me).map((e) => ({ ok: e.ok, drew: e.drew }));
-  const own = next.added.filter((e) => e.seat === me && !["turn", "slot", "endorseOne"].includes(e.k));
+  const own = next.added.filter((e) => e.seat === me && !["turn", "slot", "endorseOne", "mediaBonus"].includes(e.k));
   const declined = client.sentMove && client.sentMove.type === "pass";
   if ((!client.sentMove || declined) && !checks.length && !own.length) return { rec: (client.rec || []).concat(next.added).slice(-FEED_MAX), mine: client.mine };
   const tried = client.sentMove && ["fill", "cross", "steal", "grey", "remove"].includes(client.sentMove.type) && client.sentMove.county != null && !own.some((e) => e.county === client.sentMove.county)

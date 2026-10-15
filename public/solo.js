@@ -38,7 +38,7 @@ function describe(b, seat, m, a) {
     case "steal": case "remove":
       return [{ k: m.type, seat, county: m.county, target: m.target, ok: cnt(a, m.county, m.target) < cnt(b, m.county, m.target) }];
     case "ad": return [{ k: "ad", seat, ok: !!(a.pending && a.pending.stage === "media") }];
-    case "media": return [{ k: "media", seat, region: m.region, target: m.target ?? null }];
+    case "media": return [{ k: "media", seat, target: m.target ?? null }]; // v0.4 (#34): the national box
     case "issue": return [{ k: "issue", seat, issue: m.issue, target: m.target ?? null }];
     case "swap": return [{ k: "swap", seat }];
     case "reward": return m.pick === "mom" ? [{ k: "reward", seat, pick: "mom" }] : [];
@@ -88,6 +88,9 @@ export function settleEntries(momBefore, issues, slice) {
   const out = [];
   const dec = slice.find((e) => e.t === "momentum" && e.step === "decay");
   if (dec && momBefore) out.push({ k: "decay", per: dec.mom.map((after, p) => [momBefore[p], after]) });
+  // v0.4 (#34): the media leader's +1 right after the halving
+  const bonus = slice.find((e) => e.t === "momentum" && e.step === "media");
+  if (bonus) out.push({ k: "mediaBonus", seat: bonus.seat });
   const done = slice.find((e) => e.t === "momentum" && e.step === "done");
   if (done && issues) {
     const iss = issues.map((i) => ({ name: i.name, cubes: i.cubes }));
