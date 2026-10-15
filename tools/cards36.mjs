@@ -8,13 +8,18 @@
 // (tap it: [data-face]), and the cards on the rules page (rules#allcards, [data-camp]):
 //   - the card's own background is its camp's colour (±8 per channel): 陳 #2f7d46, 宋 #c25a12, 連 #2456a6,
 //     外力 #3d3732, 地方 #86683a;
-//   - no frame lines: the card, everything in it and their ::before / ::after have no border and no outline;
+//   - no frame lines: the card, everything in it and their ::before / ::after have no border, no outline and no
+//     inset box-shadow without blur (a line drawn as a shadow);
 //   - in the hand and the face, the picture is full-bleed at the top (its left, right and top edges are the card's,
 //     ±1 px, measured with the fan's rotation taken off) and the CP ([data-cp]) sits in the top-left corner;
 //   - text below the picture reads on the colour: contrast ≥ 4.5:1 against the card's colour;
 //   - the page does not scroll sideways.
+// Owner, 2026-10-15: 「候選人牌也改版」 (#37). The candidate card at the end of the hand ([data-cand]) is measured the same
+// way, in a saved game for each seat at 390 and for 宋 at 1440, with art/candidates/<seat>.webp as its picture; and once
+// used it is marked (data-used, disabled) and still in its colour without lines.
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
+import * as S from "../public/solo.js";
 
 const base = process.argv[2];
 if (!base) { console.log("usage: node tools/cards36.mjs <base url ending in /president_2000/>"); process.exit(2); }
@@ -39,7 +44,8 @@ async function tab(br, url, w, h, mobile) {
   const ev = async (expr) => { const r = await send("Runtime.evaluate", { expression: expr, awaitPromise: true, returnByValue: true }); return r.result ? r.result.value : undefined; };
   await send("Page.navigate", { url }); await sleep(2200);
   await ev("document.fonts.ready.then(()=>1)");
-  return { ev, close: () => { try { ws.close(); } catch { /* closed */ } } };
+  const go = async (u) => { await send("Page.navigate", { url: u }); await sleep(2200); await ev("document.fonts.ready.then(()=>1)"); };
+  return { ev, go, close: () => { try { ws.close(); } catch { /* closed */ } } };
 }
 
 // One card measured in the page: colour, lines, picture, CP, contrast. Returns a list of problems ([] = fine).
@@ -51,7 +57,10 @@ const CHECK = `window.__card = (el, opts) => {
   const bg = rgb(getComputedStyle(el).backgroundColor);
   if (bg.length < 3 || bg.some((v, i) => Math.abs(v - want[i]) > 8)) out.push("background " + getComputedStyle(el).backgroundColor + " is not " + camp + "'s rgb(" + want.join(",") + ")");
   const lined = (node, pseudo) => { const s = getComputedStyle(node, pseudo); if (pseudo && (s.content === "none" || s.content === "normal")) return false;
-    return ["Top","Right","Bottom","Left"].some((k) => parseFloat(s["border" + k + "Width"]) > 0 && s["border" + k + "Style"] !== "none") || (s.outlineStyle !== "none" && parseFloat(s.outlineWidth) > 0); };
+    // An inset box-shadow with no blur is a line too (the old candidate card drew its frame that way, #37).
+    const insetLine = (s.boxShadow || "").replace(/rgba?\\([^)]*\\)/g, "").split(",").some((sh) => { if (!/inset/.test(sh)) return false;
+      const n = (sh.match(/-?[\\d.]+px/g) || []).map(parseFloat); return (n[2] || 0) <= 1 && ((n[3] || 0) > 0 || Math.abs(n[0] || 0) > 0 || Math.abs(n[1] || 0) > 0); });
+    return ["Top","Right","Bottom","Left"].some((k) => parseFloat(s["border" + k + "Width"]) > 0 && s["border" + k + "Style"] !== "none") || (s.outlineStyle !== "none" && parseFloat(s.outlineWidth) > 0) || insetLine; };
   for (const node of [el, ...el.querySelectorAll("*")]) for (const ps of [null, "::before", "::after"]) if (lined(node, ps)) { out.push("a line on " + (node === el ? "the card" : node.tagName.toLowerCase() + "." + node.className) + (ps || "")); break; }
   const lum = (c) => { const v = c.map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
   const contrast = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
@@ -89,6 +98,34 @@ try {
     const face = JSON.parse(await t.ev(`(()=>{ const f = document.querySelector("[data-face][data-camp]"); return JSON.stringify(f ? { id: f.getAttribute("data-face"), bad: __card(f, { picture: true }) } : null); })()`));
     rule(!!face && face.id === opened && !face.bad.length, `${w}: the big card face of ${opened}${face ? (face.bad.length ? " — " + face.bad.join("; ") : " in its colour, no lines, picture full-bleed") : " not found ([data-face][data-camp])"}`);
     rule(JSON.parse(await t.ev(`JSON.stringify(document.documentElement.scrollWidth <= innerWidth)`)), `${w}: no sideways scroll`);
+    t.close();
+  }
+  // The candidate card (#37): a saved game for each seat at its first decision, and one where the seat has just used it.
+  const SEATS = ["chen", "soong", "lien"];
+  const games = SEATS.map((key, seat) => {
+    const s = S.advance(S.newSolo({ seat, level: 2, seed: 3700 + seat }));
+    const c = S.choices(s, "zh-Hant").find((x) => x.move.type === "candidate");
+    return { key, s, used: c ? S.act(s, c.move) : null };
+  });
+  const saved = async (s, w, h, mob) => {
+    const t = await tab(br, base, w, h, mob); // sessionStorage belongs to the tab: write it, then go to the table in the same tab
+    await t.ev(`(()=>{ sessionStorage.setItem("p2000.solo.session", ${JSON.stringify(JSON.stringify(s))}); return 1; })()`);
+    await t.go(`${base}?play`); await sleep(800); await t.ev(CHECK);
+    return t;
+  };
+  const candRow = (c) => `JSON.stringify((() => { const el = document.querySelector(".tbl [data-cand]"); if (!el) return null; const img = el.querySelector("img");
+    return { cand: el.getAttribute("data-cand"), used: el.hasAttribute("data-used"), disabled: !!el.disabled, src: img ? img.getAttribute("src") : null, bad: __card(el, { picture: ${c.picture} }) }; })())`;
+  for (const [key, w, h, mob] of [["chen", 390, 844, true], ["soong", 390, 844, true], ["lien", 390, 844, true], ["soong", 1440, 900, false]]) {
+    const g = games.find((x) => x.key === key), t = await saved(g.s, w, h, mob);
+    const m = JSON.parse(await t.ev(candRow({ picture: true })));
+    const art = m && m.src && new RegExp(`art/candidates/${key}\\.webp$`).test(m.src);
+    rule(!!m && m.cand === key && art && !m.used && !m.bad.length, `${w}: the candidate card of ${key}${m ? ` (data-cand ${m.cand}, picture ${m.src})` + (m.bad.length ? " — " + m.bad.join("; ") : art ? " in its colour, no lines, picture full-bleed, CP top-left, text readable" : " — the picture is not art/candidates/" + key + ".webp") : " not found ([data-cand])"}`);
+    t.close();
+  }
+  {
+    const g = games.find((x) => x.key === "lien"), t = await saved(g.used, 390, 844, true);
+    const m = JSON.parse(await t.ev(candRow({ picture: false })));
+    rule(!!m && m.used && m.disabled && !m.bad.length, `390: the used candidate card of lien${m ? ` (data-used ${m.used}, disabled ${m.disabled})` + (m.bad.length ? " — " + m.bad.join("; ") : m.used && m.disabled ? " marked used, in its colour, no lines" : " — not marked used") : " not found ([data-cand])"}`);
     t.close();
   }
   const r = await tab(br, `${base}rules#allcards`, 1280, 900, false);

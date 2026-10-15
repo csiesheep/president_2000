@@ -77,6 +77,55 @@ check("大張牌面：選一張手牌時的牌面（data-face）有 data-camp，
   return ok(true, `${n} 個牌面的陣營與 CP 都對`);
 }));
 
+// Owner, 2026-10-15: 「候選人牌也改版」 — the candidate card in the same look as #36 (version two). Contract: the candidate card
+// at the end of the hand carries data-cand="<seat key>" and data-camp="<seat key>", data-cp="<its CP>" on the element that
+// shows the CP, and the seat's picture art/candidates/<seat key>.webp; once used it carries data-used and is disabled.
+// Reports 尚未實作 until a candidate card has data-cand.
+section("37 候選人牌：陣營色");
+
+const SEAT_KEYS = ["chen", "soong", "lien"];
+const CAND_CP = { chen: 5, soong: 5, lien: 3 }; // rulebook §6.3 table: 陳 5 CP, 宋 5 CP, 連 3 CP (and 2 rest)
+const candEl = (html) => { const i = html.search(/<button[^<>]*class="[^"]*\bcandc\b/); if (i < 0) return null; return html.slice(i, html.indexOf("</button>", i) + 9); };
+// Each seat at its first decision, before and after it uses the candidate card.
+const CAND = SEAT_KEYS.map((key, seat) => {
+  const s = S.advance(S.newSolo({ seat, level: 2, seed: 3700 + seat }));
+  const c = S.choices(s, "zh-Hant").find((x) => x.move.type === "candidate");
+  return { key, seat, s, used: c ? S.act(s, c.move) : null };
+});
+const candGate = (fn) => () => {
+  const ne = nonEmpty(CAND.filter((c) => c.used && candEl(S.screen(c.s, "zh-Hant"))).length, "畫得出候選人牌、而且能用的開局"); if (ne !== true) return ne;
+  if (!CAND.some((c) => /\sdata-cand="/.test(candEl(S.screen(c.s, "zh-Hant"))))) return "TODO: 候選人牌還沒有 data-cand（#37）";
+  return fn();
+};
+
+check("候選人牌：三個座位都有 data-cand 與 data-camp（該座位）、data-cp（陳 5、宋 5、連 3），圖是 art/candidates/<座位>.webp", candGate(() => {
+  for (const c of CAND) {
+    const el = candEl(S.screen(c.s, "zh-Hant")), open = el.slice(0, el.indexOf(">") + 1);
+    if (attr(open, "data-cand") !== c.key || attr(open, "data-camp") !== c.key) return `${c.key}：候選人牌是 data-cand「${attr(open, "data-cand")}」data-camp「${attr(open, "data-camp")}」`;
+    const cp = tags(el, "data-cp")[0];
+    if (!cp || Number(cp.v) !== CAND_CP[c.key]) return `${c.key}：候選人牌的 data-cp 是「${cp && cp.v}」，應為 ${CAND_CP[c.key]}`;
+    if (!new RegExp(`<img[^<>]*\\ssrc="[^"]*art/candidates/${c.key}\\.webp"`).test(el)) return `${c.key}：候選人牌裡沒有 art/candidates/${c.key}.webp 的圖`;
+  }
+  return ok(true, "陳、宋、連三張候選人牌的陣營、CP 與圖都對");
+}));
+
+check("候選人牌：能用時照舊要再問一次（data-move candidate + data-confirm），寫「整局一次」；用過後是 data-used、disabled，寫「已用」", candGate(() => {
+  const L = { seal: "整局一次", used: "已用" };
+  for (const c of CAND) {
+    const before = candEl(S.screen(c.s, "zh-Hant")), b0 = before.slice(0, before.indexOf(">") + 1);
+    const mv = attr(b0, "data-move");
+    if (!mv || JSON.parse(mv.replace(/&quot;/g, '"')).type !== "candidate" || attr(b0, "data-confirm") !== "1") return `${c.key}：能用的候選人牌沒有 data-move candidate 與 data-confirm="1"（${b0.slice(0, 160)}）`;
+    if (/\sdata-used[\s=>]/.test(b0) || /\sdisabled[\s=>]/.test(b0)) return `${c.key}：還沒用的候選人牌就標成用過或 disabled`;
+    if (!before.includes(L.seal)) return `${c.key}：還沒用的候選人牌沒有寫「${L.seal}」`;
+    const after = candEl(S.screen(c.used, "zh-Hant"));
+    if (!after) return `${c.key}：用過之後（${c.used.st.pending && c.used.st.pending.stage} 步）候選人牌不見了`;
+    const a0 = after.slice(0, after.indexOf(">") + 1);
+    if (!/\sdata-used[\s=>]/.test(a0) || !/\sdisabled[\s=>]/.test(a0) || /\sdata-move=/.test(a0)) return `${c.key}：用過的候選人牌是 ${a0.slice(0, 160)}，應有 data-used、disabled、沒有 data-move`;
+    if (!after.includes(L.used) || after.includes(L.seal)) return `${c.key}：用過的候選人牌要寫「${L.used}」、不再寫「${L.seal}」`;
+  }
+  return ok(true, "三個座位：能用時再問一次、用過後標成已用");
+}));
+
 test("cards", () => {
   const s = summary();
   for (const p of R.pass) console.log(`  ✓ ${p.label}${p.msg ? " — " + p.msg : ""}`);
