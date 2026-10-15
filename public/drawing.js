@@ -48,7 +48,10 @@ function applyState(root, state) {
 
 export function drawInto(root, html, state = {}) {
   const old = root.querySelector(".hs"), left = old ? old.scrollLeft : 0;
+  // A folded note the player opened (the end page's election-day record, #33) stays open across a redraw.
+  const opened = new Set([...root.querySelectorAll("details[data-keep][open]")].map((d) => d.dataset.keep));
   keepImages(root, html);
+  for (const d of root.querySelectorAll("details[data-keep]")) if (opened.has(d.dataset.keep)) d.open = true;
   applyState(root, state);
   const hs = root.querySelector(".hs");
   if (!hs) { lastAdvised = null; return; }
