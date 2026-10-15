@@ -106,7 +106,7 @@ orch restore                            還原並驗證真的乾淨
 orch clean                              land 之前跑:樹上不可以有 FALSIFY
 ```
 
-瀏覽器量測（要 Chrome 與跑著的 dev server）：`node tools/imgchurn.mjs <base url>`，量教學與對手行動時有沒有新建 `<img>` 與地圖上的 SVG `<image>`（#28、#29）；`node tools/compact29.mjs <base url>`，量手機與桌機牌桌上方的高度、候選人與議題按鈕、選單、地圖方塊與候選人圖的大小（#29）；`node tools/polish30.mjs <base url>`，量決策按鈕有沒有被手牌蓋住（桌機不捲動、筆電與手機捲到按鈕）、360 寬手機的上方一列（#30）。peer 可以跑、不編輯。
+瀏覽器量測（要 Chrome 與跑著的 dev server）：`node tools/imgchurn.mjs <base url>`，量教學與對手行動時有沒有新建 `<img>` 與地圖上的 SVG `<image>`（#28、#29）；`node tools/compact29.mjs <base url>`，量手機與桌機牌桌上方的高度、候選人與議題按鈕、選單、地圖方塊與候選人圖的大小（#29）；`node tools/polish30.mjs <base url>`，量決策按鈕有沒有被手牌蓋住（桌機不捲動、筆電與手機捲到按鈕）、360 寬手機的上方一列（#30）；`node tools/end33.mjs <base url>`，量結局頁第一屏有沒有主視覺、當選人與三列得票（#33）。peer 可以跑、不編輯。
 
 慣例:驗證用的工作樹在 `../_wt/`;peer(子 agent)的工作樹由 Claude Code 開在 `.claude/worktrees/<name>/`,
 cwd 就是它。每個 `_wt/` 工作樹有 `__MARKER_ORCH.txt`(name + SHA);harness 是 `npm test`(`node --test`,

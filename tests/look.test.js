@@ -41,6 +41,7 @@ const CONTRACT = new Set([
   ...Object.values(COUNTY_SLUG).map((s) => `local/${s}.webp`),
   ...["clean", "econ", "cross"].map((k) => `issues/${k}.webp`),
   ...SEAT.map((k) => `candidates/${k}.webp`),
+  ...SEAT.map((k) => `end/${k}.webp`), // #32: the end page's hero
 ]);
 const LOCAL = Object.fromEntries(C.localCards().map((c) => [c.id, c]));
 const artOf = (id) => (LOCAL[id] ? `local/${COUNTY_SLUG[LOCAL[id].county]}.webp` : `cards/${id}.webp`);

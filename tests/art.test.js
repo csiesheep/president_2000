@@ -9,8 +9,10 @@
 //   local/<county slug>.webp     every county on the board            600×400
 //   issues/<issue>.webp          clean / econ / cross                 640×480
 //   candidates/<seat>.webp       chen / soong / lien                  480×640
+//   end/<seat>.webp              the end page's hero, by winner      900×600   (#32: owner chose the end page
+//                                "開票之夜", design canvas R26gizGsymbFUZnLxPoP7V; checked once public/art/end/ exists)
 //   prompts.json                 { "<path under public/art/>": { prompt, seed, model } } for every picture
-// Each picture ≤ 120 KB, all of them together ≤ 9 MB. No other file in those four folders.
+// Each picture ≤ 120 KB, all of them together ≤ 9 MB. No other file in those five folders.
 // Every check reports 尚未實作 until public/art/ exists.
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -32,7 +34,7 @@ const COUNTY_SLUG = {
 };
 const ISSUES = ["clean", "econ", "cross"];
 const SEATS = ["chen", "soong", "lien"];
-const SIZE = { cards: [600, 400], local: [600, 400], issues: [640, 480], candidates: [480, 640] };
+const SIZE = { cards: [600, 400], local: [600, 400], issues: [640, 480], candidates: [480, 640], end: [900, 600] };
 const MAX_FILE = 120 * 1024, MAX_TOTAL = 9 * 1024 * 1024;
 
 const ART = new URL("../public/art/", import.meta.url);
@@ -62,6 +64,10 @@ for (const c of C.EVENTS) expected.push(["cards", `${c.id}.webp`, `事件牌「$
 for (const [name] of B.COUNTIES) expected.push(["local", `${COUNTY_SLUG[name]}.webp`, `縣市「${name}」`]);
 for (const k of ISSUES) expected.push(["issues", `${k}.webp`, `議題 ${k}`]);
 for (const k of SEATS) expected.push(["candidates", `${k}.webp`, `候選人 ${k}`]);
+// #32: the end page's hero for each winner; required once public/art/end/ exists (尚未實作 before).
+const END = SEATS.map((k) => ["end", `${k}.webp`, `結局頁主視覺（${k} 當選）`]);
+const hasEnd = existsSync(new URL("end/", ART));
+if (hasEnd) expected.push(...END);
 const rel = (d, f) => `${d}/${f}`;
 const fileOf = (d, f) => new URL(`${d}/${f}`, ART);
 
@@ -145,13 +151,22 @@ c24("來歷：prompts.json 對每一張圖都記了 prompt、seed、model，而�
     if (!Number.isInteger(e.seed)) problems.push(`${k} 的 seed 不是整數`);
     if (typeof e.model !== "string" || !e.model.trim()) problems.push(`${k} 沒有 model`);
   }
-  const want = new Set(expected.map(([d, f]) => rel(d, f)));
+  const want = new Set(expected.concat(END).map(([d, f]) => rel(d, f)));
   for (const k of Object.keys(P)) {
     if (!want.has(k)) problems.push(`記錄了契約以外的 ${k}`);
     else if (!existsSync(new URL(k, ART))) problems.push(`記錄了不存在的 ${k}`);
   }
   if (problems.length) return problems.slice(0, 12).join("；") + (problems.length > 12 ? `……共 ${problems.length} 項` : "");
   return ok(true, `${expected.length} 張都有來歷`);
+});
+
+check("結局頁主視覺：public/art/end/ 有 chen、soong、lien 三張，900×600 WebP、各 ≤ 120 KB，prompts.json 有來歷（#32）", () => {
+  if (!hasEnd) return "TODO: public/art/end/ 還沒有（#32）";
+  const miss = END.filter(([d, f]) => !existsSync(fileOf(d, f))).map(([d, f]) => rel(d, f));
+  if (miss.length) return `少了 ${miss.join("、")}`;
+  const sizes = END.map(([d, f]) => { const b = readFileSync(fileOf(d, f)); return [rel(d, f), webpSize(b), b.length]; });
+  for (const [k, sz, n] of sizes) { if (!sz || sz[0] !== 900 || sz[1] !== 600) return `${k} 是 ${sz ? sz.join("×") : "非 WebP"}，應為 900×600`; if (n > MAX_FILE) return `${k} ${(n / 1024).toFixed(0)} KB，超過 120 KB`; }
+  return ok(true, `三張都在：${sizes.map(([k, , n]) => `${k} ${(n / 1024).toFixed(0)} KB`).join("、")}`);
 });
 
 test("art", () => {
