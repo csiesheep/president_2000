@@ -12,7 +12,8 @@
 //     inset box-shadow without blur (a line drawn as a shadow);
 //   - in the hand and the face, the picture is full-bleed at the top (its left, right and top edges are the card's,
 //     ±1 px, measured with the fan's rotation taken off) and the CP ([data-cp]) sits in the top-left corner;
-//   - text below the picture reads on the colour: contrast ≥ 4.5:1 against the card's colour;
+//   - text on the colour (below the picture and on its lower, fading half) reads: contrast ≥ 4.5:1 against the card's
+//     colour, at least one such text measured per card;
 //   - the page does not scroll sideways.
 // Owner, 2026-10-15: 「候選人牌也改版」 (#37). The candidate card at the end of the hand ([data-cand]) is measured the same
 // way, in a saved game for each seat at 390 and for 宋 at 1440, with art/candidates/<seat>.webp as its picture; and once
@@ -39,8 +40,15 @@ async function tab(br, url, w, h, mobile) {
   const ws = new WebSocket(t.webSocketDebuggerUrl);
   await new Promise((r) => (ws.onopen = r));
   let id = 0; const pend = new Map();
-  ws.onmessage = (ev) => { const m = JSON.parse(ev.data); if (m.id && pend.has(m.id)) { pend.get(m.id)(m); pend.delete(m.id); } };
-  const send = (method, params = {}) => new Promise((res) => { const i = ++id; pend.set(i, (m) => res(m.result || {})); ws.send(JSON.stringify({ id: i, method, params })); });
+  // A JavaScript dialog would block every evaluate after it: note it and close it.
+  const dialogs = [];
+  ws.onmessage = (ev) => { const m = JSON.parse(ev.data); if (m.id && pend.has(m.id)) { pend.get(m.id)(m); pend.delete(m.id); }
+    if (m.method === "Page.javascriptDialogOpening") { dialogs.push(`${m.params.type}: ${m.params.message}`); ws.send(JSON.stringify({ id: ++id, method: "Page.handleJavaScriptDialog", params: { accept: false } })); } };
+  // A reply that never comes used to leave the script hanging until node gave up with exit 13 and no message (#37);
+  // now it fails with the method's name.
+  const send = (method, params = {}) => new Promise((res, rej) => { const i = ++id;
+    const tm = setTimeout(() => { pend.delete(i); rej(new Error(`instrument: CDP ${method} got no reply in 20 s (${url} → ${String(params.expression || params.url || "").replace(/\s+/g, " ").slice(0, 90)}; dialogs seen: ${dialogs.join(" | ") || "none"})`)); }, 20000);
+    pend.set(i, (m) => { clearTimeout(tm); res(m.result || {}); }); ws.send(JSON.stringify({ id: i, method, params })); });
   await send("Page.enable");
   await send("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: 1, mobile });
   const ev = async (expr) => { const r = await send("Runtime.evaluate", { expression: expr, awaitPromise: true, returnByValue: true }); return r.result ? r.result.value : undefined; };
@@ -77,8 +85,21 @@ const CHECK = `window.__card = (el, opts) => {
     else { const ir = img.getBoundingClientRect(); if (Math.abs(ir.left - cr.left) > 1 || Math.abs(ir.right - cr.right) > 1 || Math.abs(ir.top - cr.top) > 1) out.push("picture not full-bleed (" + [ir.left - cr.left, cr.right - ir.right, ir.top - cr.top].map((n) => n.toFixed(1)).join("/") + ")");
       const cp = el.querySelector("[data-cp]");
       if (!cp) out.push("no [data-cp]"); else { const pr = cp.getBoundingClientRect(); if (pr.left - cr.left > cr.width * 0.4 || pr.top - cr.top > cr.height * 0.3) out.push("CP not top-left"); }
-      for (const node of el.querySelectorAll("*")) { if (![...node.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) continue; const r = node.getBoundingClientRect(); if (r.width === 0 || r.top < ir.bottom - 2) continue;
-        const c = contrast(rgb(getComputedStyle(node).color), bg); if (c < 4.5) { out.push("text 「" + node.textContent.trim().slice(0, 10) + "」 contrast " + c.toFixed(2)); break; } } }
+      // The text on the colour: below the picture and on its lower half, where it fades into the colour (the kind line
+      // and the name sit there; #37 found they were never measured, 「宋楚瑜」 was 3 px above the picture's bottom).
+      // Skipped: the CP tab, and text on its own see-through chip (the pill over the picture). Text on an opaque chip is
+      // measured against the chip; a see-through text colour is blended with what is behind it first.
+      const rgba = (s) => { const v = (s.match(/[\\d.]+/g) || []).map(Number); return { c: v.slice(0, 3), a: v.length > 3 ? v[3] : 1 }; };
+      let measured = 0;
+      for (const node of el.querySelectorAll("*")) { if (![...node.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) continue; if (node.closest("[data-cp]")) continue;
+        const r = node.getBoundingClientRect(); if (r.width === 0 || r.top < ir.top + ir.height / 2) continue;
+        let back = bg, chip = false;
+        for (let x = node; x && x !== el; x = x.parentElement) { const b = rgba(getComputedStyle(x).backgroundColor); if (b.a >= 0.9) { back = b.c; break; } if (b.a > 0.1) { chip = true; break; } }
+        if (chip) continue;
+        const f = rgba(getComputedStyle(node).color), fg = f.c.map((v, i) => f.a * v + (1 - f.a) * back[i]);
+        measured++;
+        const c = contrast(fg, back); if (c < 4.5) { out.push("text 「" + node.textContent.trim().slice(0, 10) + "」 contrast " + c.toFixed(2)); break; } }
+      if (!measured) out.push("no text on the colour was measured"); }
   }
   el.style.transform = tf; el.style.transition = tr; if (el.parentElement) el.parentElement.style.transform = parentTf || "";
   return out;
