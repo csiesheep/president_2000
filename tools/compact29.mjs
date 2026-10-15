@@ -71,7 +71,7 @@ const MEASURE = `(()=>{
     return { ...R(s), round }; });
   const now = document.querySelector("[data-now]");
   const cubes = [...document.querySelectorAll(".tw [data-slot]")].filter((e) => ["chen", "soong", "lien"].includes(e.dataset.slot)).map((e) => e.getBoundingClientRect().width);
-  const pics = [...document.querySelectorAll(".tw [data-pawn] image")].map((e) => e.getBoundingClientRect().width);
+  const pics = [...document.querySelectorAll(".tw-box [data-pawn-pic], .tw [data-pawn] image")].map((e) => e.getBoundingClientRect().width);
   const adv = document.querySelector("[data-advisor]"), menu = document.querySelector("[data-menu]");
   return JSON.stringify({ panels, issues, now: now && vis(now) ? R(now).y : null, cubes: cubes.length ? [Math.min(...cubes), Math.max(...cubes)] : null, pics,
     adv: adv && vis(adv) ? R(adv) : null, menu: menu && vis(menu) ? { ...R(menu), exp: menu.getAttribute("aria-expanded") } : null,

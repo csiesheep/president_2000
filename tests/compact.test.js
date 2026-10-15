@@ -98,14 +98,36 @@ const hrefOf = (tag) => attr(tag, "href") || attr(tag, "xlink:href") || "";
 const textOf = (body) => (body.match(/<text[^>]*>([^<]*)<\/text>/g) || []).map((t) => t.replace(/<[^>]*>/g, "")).join(" ");
 const centre = (r) => [r.x + r.w / 2, r.y + r.h / 2];
 
+// The ring of a candidate: its largest circle.
+function ringOf(body) {
+  let best = null;
+  for (const c of body.match(/<circle[^>]*>/g) || []) { const r = num(c, "r"); if (Number.isFinite(r) && (!best || r > best.r)) best = { cx: num(c, "cx"), cy: num(c, "cy"), r }; }
+  return best;
+}
+// #31: the picture is an HTML <img data-pawn-pic="<seat>"> laid over the map (iPhone Safari blanks an SVG <image>
+// for a moment whenever the map is redrawn), placed with left / top / width / height in % of the viewBox.
+// Before #31 it was an SVG <image> inside the candidate's <g>. pic = { kind, href, box (viewBox units), tag }.
+function picOf(html, body, seat, vb) {
+  const im = imageOf(body);
+  if (im) return { kind: "svg", href: hrefOf(im), box: rectOf(im), tag: im };
+  const t = tags(html, "data-pawn-pic").find((x) => x.v === seat);
+  if (!t || !vb) return null;
+  const st = attr(t.tag, "style") || "", pc = (k) => { const m = st.match(new RegExp(`(?:^|;)\\s*${k}\\s*:\\s*([\\d.]+)%`)); return m ? Number(m[1]) : NaN; };
+  return { kind: "html", href: attr(t.tag, "src") || "", box: { x: vb.x + (pc("left") * vb.w) / 100, y: vb.y + (pc("top") * vb.h) / 100, w: (pc("width") * vb.w) / 100, h: (pc("height") * vb.h) / 100 }, tag: t.tag, ofAttr: attr(t.tag, "data-of") };
+}
+const union = (a, b) => (!a ? b : !b || !okRect(b) ? a : { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.max(a.x + a.w, b.x + b.w) - Math.min(a.x, b.x), h: Math.max(a.y + a.h, b.y + b.h) - Math.min(a.y, b.y) });
+
 function mapParts(v, lang, narrow) {
   const html = taiwanMap(v, lang, { narrow });
-  const svg = (html.match(/<svg[\s\S]*?<\/svg>/) || [""])[0];
+  const svg = (html.match(/<svg[\s\S]*?<\/svg>/) || [""])[0], vb = viewBox(svg);
   const papers = {};
   for (const t of tags(svg, "data-paper")) papers[Number(t.v)] = rectOf(t.tag);
   const slots = tags(svg, "data-slot").map((t) => ({ kind: t.v, k: Number(attr(t.tag, "data-of")), r: rectOf(t.tag), tag: t.tag }));
-  const pawns = tags(svg, "data-pawn").map((t) => { const body = pawnBody(svg, t); return { seat: t.v, k: Number(attr(t.tag, "data-of")), tag: t.tag, body, box: pawnBox(body), img: imageOf(body) }; });
-  return { html, svg, vb: viewBox(svg), papers, slots, pawns, paperTags: Object.fromEntries(tags(svg, "data-paper").map((t) => [Number(t.v), t.tag])) };
+  const pawns = tags(svg, "data-pawn").map((t) => {
+    const body = pawnBody(svg, t), pic = picOf(html, body, t.v, vb);
+    return { seat: t.v, k: Number(attr(t.tag, "data-of")), tag: t.tag, body, box: union(pawnBox(body), pic && pic.box), pic, img: pic && pic.tag, ring: ringOf(body) };
+  });
+  return { html, svg, vb, papers, slots, pawns, paperTags: Object.fromEntries(tags(svg, "data-paper").map((t) => [Number(t.v), t.tag])) };
 }
 const MODES = [["phone", true], ["desk", false]];
 
@@ -148,7 +170,7 @@ const mapGate = (fn) => () => {
   return fn();
 };
 const pawnGate = (fn) => () => {
-  for (const [mode, narrow] of MODES) if (!mapParts(P0.v, P0.lang, narrow).pawns.some((p) => p.img)) return `TODO: ${mode} 地圖的候選人還沒有圖（#29）`;
+  for (const [mode, narrow] of MODES) if (!mapParts(P0.v, P0.lang, narrow).pawns.some((p) => p.pic)) return `TODO: ${mode} 地圖的候選人還沒有圖（#29）`;
   return fn();
 };
 const panelOf = (html, p) => {
@@ -236,25 +258,49 @@ check("框不重疊：任兩個縣市的框都不重疊（手機與桌機）", m
   return ok(true, "手機、桌機各 276 對框都不重疊");
 }));
 
-check("候選人是一張圖：三個 data-pawn 各有一張 art/candidates/<seat>.webp 的 <image>（至少 20×20），還有號次 陳 5、宋 1、連 2", pawnGate(() => {
+check("候選人是一張圖：三個 data-pawn 各有一張 art/candidates/<seat>.webp 的圖（至少 20×20，圓心對準候選人的色環），還有號次 陳 5、宋 1、連 2", pawnGate(() => {
   let n = 0;
   for (const [mode, narrow] of MODES) {
-    for (const p of POOL.slice(0, 12)) {
+    for (const p of POOL.slice(0, 12).concat(CROWD.filter((x, i) => i % 7 === 0).map((c) => ({ ...c, lang: "zh-Hant" })))) {
       const m = mapParts(p.v, p.lang, narrow);
       if (m.pawns.length !== 3) return `${mode} ${p.where}：有 ${m.pawns.length} 個 data-pawn`;
       for (const pw of m.pawns) {
         const s = SEAT.indexOf(pw.seat);
         if (/<g[\s>]/.test(pw.body.slice(1))) return `${mode}：${pw.seat} 的 <g data-pawn> 裡面還有 <g>（契約：裡面沒有 <g>）`;
-        if (!pw.img) return `${mode} ${p.where}：${pw.seat} 沒有 <image>`;
-        if (!hrefOf(pw.img).endsWith(`art/candidates/${pw.seat}.webp`)) return `${mode}：${pw.seat} 的圖是「${hrefOf(pw.img)}」`;
-        const r = rectOf(pw.img);
-        if (!okRect(r) || r.w < 20 || r.h < 20) return `${mode}：${pw.seat} 的圖是 ${okRect(r) ? r.w + "×" + r.h : "讀不到大小"}，至少 20×20`;
+        if (!pw.pic) return `${mode} ${p.where}：${pw.seat} 沒有圖`;
+        if (!pw.pic.href.endsWith(`art/candidates/${pw.seat}.webp`)) return `${mode}：${pw.seat} 的圖是「${pw.pic.href}」`;
+        const r = pw.pic.box;
+        if (!okRect(r) || r.w < 20 || r.h < 20) return `${mode}：${pw.seat} 的圖是 ${okRect(r) ? r.w.toFixed(1) + "×" + r.h.toFixed(1) : "讀不到大小：" + pw.pic.tag}，至少 20×20`;
+        if (!pw.ring) return `${mode}：${pw.seat} 沒有色環（<circle>）`;
+        const [cx, cy] = centre(r);
+        if (Math.hypot(cx - pw.ring.cx, cy - pw.ring.cy) > 1) return `${mode} ${p.where}：${pw.seat} 的圖中心 (${cx.toFixed(1)}, ${cy.toFixed(1)}) 沒對準色環 (${pw.ring.cx}, ${pw.ring.cy})`;
         if (!new RegExp(`(^|\\D)${NO[s]}(\\D|$)`).test(textOf(pw.body))) return `${mode}：${pw.seat} 的文字是「${textOf(pw.body)}」，沒有號次 ${NO[s]}`;
         n++;
       }
     }
   }
-  return ok(true, `${n} 個候選人都有圖與號次`);
+  return ok(true, `${n} 個候選人都有圖與號次，圖對準色環`);
+}));
+
+// #31, owner 2026-10-15 on iPhone Safari: 「遊戲中，地圖上候選人圈圈會一直閃動」— 圓圈裡的圖消失又出現. An SVG <image>
+// carried into a redrawn map blanks there; an HTML <img> kept across redraws does not (#28).
+check("候選人圖不在 SVG 裡：地圖沒有任何 <image>；每位候選人一張 <img data-pawn-pic=\"<seat>\" data-of=\"<縣>\">，在地圖框裡、svg 之外（#31）", pawnGate(() => {
+  let n = 0, old = 0;
+  for (const [mode, narrow] of MODES) {
+    for (const p of POOL.slice(0, 8)) {
+      const m = mapParts(p.v, p.lang, narrow);
+      if (/<image[\s>]/.test(m.svg)) { old++; continue; }
+      for (const pw of m.pawns) {
+        if (!pw.pic || pw.pic.kind !== "html") return `${mode} ${p.where}：${pw.seat} 沒有 <img data-pawn-pic>`;
+        if (Number(pw.pic.ofAttr) !== pw.k) return `${mode} ${p.where}：${pw.seat} 的 <img> data-of 是「${pw.pic.ofAttr}」，人在 ${pw.k}`;
+        if (!/<img\s/.test(pw.pic.tag)) return `${mode}：${pw.seat} 的 data-pawn-pic 不是 <img>：${pw.pic.tag}`;
+        n++;
+      }
+      if (tags(m.html, "data-pawn-pic").length !== 3) return `${mode} ${p.where}：有 ${tags(m.html, "data-pawn-pic").length} 張 data-pawn-pic`;
+    }
+  }
+  if (old) return `TODO: 地圖的候選人圖還是 SVG <image>（${old} 個地圖），iPhone Safari 重畫時會閃（#31）`;
+  return ok(true, `${n} 位候選人都是 <img data-pawn-pic>，地圖裡沒有 <image>`);
 }));
 
 check("你是哪一位：視角那位候選人有 data-me 與「你」/「You」，另外兩位沒有", pawnGate(() => {
@@ -288,8 +334,8 @@ check("候選人不蓋到別的縣市：一位、兩位、三位站在同一縣�
       }
       for (let a = 0; a < 3; a++) for (let b = a + 1; b < 3; b++) {
         const A = m.pawns[a], Bp = m.pawns[b];
-        if (A.k !== Bp.k || !A.img || !Bp.img) continue;
-        const [ax, ay] = centre(rectOf(A.img)), [bx, by] = centre(rectOf(Bp.img));
+        if (A.k !== Bp.k || !A.ring || !Bp.ring) continue;
+        const [ax, ay] = [A.ring.cx, A.ring.cy], [bx, by] = [Bp.ring.cx, Bp.ring.cy];
         if (Math.hypot(ax - bx, ay - by) < 8) return `${mode} ${c.where}：${A.seat} 和 ${Bp.seat} 在${name(A.k)}疊在一起（相隔 ${Math.hypot(ax - bx, ay - by).toFixed(1)}）`;
       }
     }

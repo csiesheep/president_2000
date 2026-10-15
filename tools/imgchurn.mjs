@@ -9,11 +9,15 @@
 // where no picture changes; moving an existing <img> back into place does not count:
 //   A. the tutorial's first two "next" presses (1440 wide and 390 wide);
 //   B. the rivals' turn after the tutorial's "end the action" (1440 wide);
-//   C. the rivals' moves at the start of a normal solo game (1440 wide).
+//   C. the rivals' moves in a normal solo game (1440 and 390 wide): the page is given a saved session, made with
+//      the game's own code, where the human (陳) has just acted and the bots are about to play, so the page
+//      animates their moves; counting starts once the table is first drawn (#31: before, this window waited
+//      for the human and measured nothing).
 // Pass: no <img> rebuilt in any window (owner, 2026-10-15: "玩 tutorial 時，圖片會一直閃動").
 // It also prints how many times the table was swapped as a whole, for the record.
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
+import * as S from "../public/solo.js";
 
 const base = process.argv[2];
 if (!base) { console.log("usage: node tools/imgchurn.mjs <base url ending in /president_2000/>"); process.exit(2); }
@@ -26,6 +30,18 @@ async function launch(port) {
   const proc = spawn(CHROME, ["--headless=new", "--disable-gpu", "--hide-scrollbars", `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, "about:blank"], { stdio: "ignore" });
   for (let i = 0; i < 60; i++) { try { if ((await fetch(`http://127.0.0.1:${port}/json/version`)).ok) break; } catch { /* starting */ } await sleep(200); }
   return { port, close: () => proc.kill() };
+}
+// A solo session (陳, level 2) where the human has just acted and the bots have moves queued.
+function botsAboutToMove() {
+  let s = S.advance(S.newSolo({ seat: 0, level: 2, seed: 7 }));
+  for (let n = 0; n < 40; n++) {
+    const ch = S.choices(s, "zh-Hant");
+    if (!ch.length) break;
+    const nx = S.act(s, ch[0].move);
+    if (S.botsToMove(nx).length) return nx;
+    s = S.advance(nx);
+  }
+  return null;
 }
 async function tab(br, url, w, h, mobile) {
   const t = await (await fetch(`http://127.0.0.1:${br.port}/json/new?about:blank`, { method: "PUT" })).json();
@@ -83,13 +99,20 @@ try {
     }
     t.close();
   }
-  const p = await tab(br, `${base}?play`, 1440, 900, false);
-  await p.ev(`(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.offsetParent&&/開始選戰|Start/.test(x.textContent)); b&&b.click(); return 1;})()`);
-  await sleep(300);
-  await p.ev(WATCH);
-  await sleep(8000);
-  results.push({ window: "C solo start, rivals moving (1440)", ...JSON.parse(await p.ev(READ)) });
-  p.close();
+  const queued = botsAboutToMove();
+  if (!queued) results.push({ window: "C solo, rivals moving", tableSwaps: 0, newImg: 0, newSrc: [], note: "no session with bots to move (instrument)" });
+  for (const [w, h, mob] of [[1440, 900, false], [390, 844, true]]) {
+    if (!queued) break;
+    const p = await tab(br, base, w, h, mob);
+    await p.ev(`(()=>{ sessionStorage.setItem("p2000.solo.session", ${JSON.stringify(JSON.stringify(queued))}); return 1; })()`);
+    // reload into ?play with the watcher armed at the first table draw (that draw itself builds the pictures)
+    await p.ev(`(()=>{ location.href = "?play"; return 1; })()`);
+    for (let i = 0; i < 50; i++) { await sleep(50); if (await p.ev(`!!document.querySelector("[data-county]")`)) break; }
+    await p.ev(WATCH);
+    await sleep(9000);
+    results.push({ window: `C solo, rivals moving (${w})`, ...JSON.parse(await p.ev(READ)) });
+    p.close();
+  }
 } finally { br.close(); }
 
 // A window counts only if something on the page changed in it (the step moved on, or the table was
