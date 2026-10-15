@@ -31,6 +31,34 @@ export default {
     restCubes: "Rest cubes {n}",
     // The advisor (#18): the switch above the table, the star on its pick, the line before its reason
     advisor: { label: "Advisor", on: "On", off: "Off", prefix: "Advisor:", starLabel: "Advisor's pick", note: "Marks the move your strategist would make, using only what you can see." },
+    // The tutorial (#27): one fixed game; the words in the bubble. {...} are filled by tutorial.js from the values on screen.
+    tutorial: {
+      home: { title: "Tutorial", sub: "Play through one action, hands on" },
+      setupLink: "First time? Try the tutorial first",
+      label: "Tutorial",
+      next: "Next", finish: "Start this game", skip: "Skip the tutorial",
+      hint: { county: "Tap the lit-up county on the map.", move: "Press the lit-up button; the others are locked for now." },
+      steps: {
+        welcome: "Welcome to the 2000 presidential race. You are {who} (number {no}, green cubes). Votes are counted on turn 9, election day: whoever has the most cubes on the board wins, and each cube is about 100,000 votes. This tutorial walks you through one action by hand.",
+        board: "This is your player board: {onboard} of your cubes are on the board, you have {mom} momentum (spend it to trigger or block events), {hand} cards in hand, and {bag} of your cubes in the bag (support checks draw from it).",
+        map: "The round marker on the map is your candidate, now in {county}. Tap {county} to see its blocks.",
+        blocks: "{county} has {blocks} blocks, each holding at most one cube. The small colored cubes are votes already placed (green Chen, orange Soong, blue Lien), light green and light blue are swing blocks still undecided, and grey is people who stayed home; CP cannot put cubes on grey.",
+        order: "You hold the initiative this turn, so you choose your place in the first action phase. Pick \"Act in position 1\" to play first.",
+        play: "Tap the card {card} in your hand, then choose \"{card}: use {cp} CP for an action\". CP are the points this action can spend, and this card has {cp}.",
+        kind: "{card} gives you {cp} CP. Choose Campaign: spend CP to put cubes into counties. (The other two, advertising and issues, come later.)",
+        county2: "A campaign starts with a county: in the region where your marker stands ({region}), each 1 CP puts down one block. Tap {county}.",
+        fill: "Choose \"fill 1 block\": put your cube on an empty light green block in {county} for 1 CP. This one needs no check (no one else is a local boss there and no rival candidate is present), so it just goes down. You have {left} CP left.",
+        county3: "Now one that needs a check. Tap {county} again.",
+        cross: "Choose \"cross-camp fill 1 block\": put your cube on an empty light blue block in {county} for 1 CP. A cross-camp block always needs a support check: draw one cube from the bag, and you succeed only if it is your color. The bag holds {mine} of your cubes out of {total}, so about {rate}%.",
+        resultOk: "It worked! You drew your own cube (it goes back in the bag) and {county} has one more of your cubes. You have {left} CP left. A check like this can also fail: if you draw someone else's cube nothing is placed, and the 1 CP is spent anyway.",
+        resultFail: "Missed. You drew a {who} cube; it goes back to {who}'s supply, so the bag is a little thinner. The 1 CP is spent anyway and {county} gets no new cube. Checks are always a risk. You have {left} CP left.",
+        endAction: "You have {left} CP left. It is fine not to spend them all: this card's CP only count for this action. Choose \"End the action\".",
+        opponents: "Now {a} and {b} act. This \"Just now\" box records what they did: which card they played, where they placed cubes, and whether their checks worked. Read it before each of your turns.",
+        issues: "This is the issue track. At the end of each turn, whoever has the most cubes on an issue card leads it and gets a reward: slot 1 gives 1 momentum and 1 endorsement, slot 2 gives 1 momentum or 1 endorsement, slot 3 gives 1 momentum. The Issue action puts cubes there: 1 CP for the first, 2 CP for each after, and no check.",
+        debate: "A preview: after four cards each turn, the 1 card left in your hand is set aside face down. Turn 6 is the Policy Forum, where everyone flips those cards to fight over issues, and the winner places 2 to 4 cubes without a check. Turn 9 is election day: canvassing first, then the swing-block shift and endorsements, and finally the count.",
+        finish: "Tutorial complete. You can play this game on to the end, or go back home and start a new one.",
+      },
+    },
     // Direction C (#26): the box lid on the home page, the player boards, the candidate card
     look: {
       home: { meta: "3 players · 9 turns", sub: "Soong, Lien, Chen. Put your blocks on 24 counties and get to election day.", play: "Play solo", playSub: "Against three levels of AI", host: "Host a room", hostSub: "Send the code to friends", join: "Join", joinSub: "Enter the 4-character code", boxTitle: "What's in the box", box: "70 event cards · a local card for each of 24 counties · a bag of cubes · a board of 24 counties · three issue slots. It plays like the tabletop game: play a card, place blocks, draw from the bag for support checks.", rules: "Open the rulebook" },

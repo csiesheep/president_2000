@@ -4,8 +4,9 @@
 import en from "./i18n/en.js";
 import zh from "./i18n/zh-Hant.js";
 import * as Solo from "./solo.js";
+import * as Tut from "./tutorial.js";
 import { mount as mountRoom } from "./roompage.js";
-import { drawInto, narrowNow, watchNarrow, bindCounty } from "./drawing.js";
+import { drawInto, narrowNow, watchNarrow, bindCounty, placeTutorial } from "./drawing.js";
 
 if (typeof document !== "undefined") {
   const qs = new URLSearchParams(location.search);
@@ -34,30 +35,45 @@ if (typeof document !== "undefined") {
   langLink.href = other ? "?lang=en" : "./";
   $("#rules").href = "rules" + (code === "en" ? "?lang=en" : "");
   $("#play").href = "?play" + (code === "en" ? "&lang=en" : "");
+  $("#tutorial").href = "?tutorial" +(code === "en" ? "&lang=en" : "");
   $("#host").href = "?host" + (code === "en" ? "&lang=en" : "");
   $("#join").href = "?join" + (code === "en" ? "&lang=en" : "");
   $("#home").href = "./" + (code === "en" ? "?lang=en" : "");
   $("#home").textContent = S.setup.home;
   $("#quit").textContent = S.menu.quit;
 
-  if (!qs.has("play") && (qs.has("host") || qs.has("join") || qs.has("room"))) {
+  const soloPage = qs.has("play") || qs.has("tutorial");
+  if (!soloPage && (qs.has("host") || qs.has("join") || qs.has("room"))) {
     mountRoom({ T, lang: code, qs, store, $ });
-  } else if (!qs.has("play")) {
+  } else if (!soloPage) {
     document.title = T.title;
   } else {
     $("#land").hidden = true;
     $("#solo").hidden = false;
     document.title = S.land.solo + " · " + T.title;
-    gLang.href = "?" + (other ? "play&lang=en" : "play");
     const stage = $("#stage");
     let session = store.get(KEY);
+    // ?tutorial (#27): a tutorial in progress is picked up again (a reload comes back to the same step);
+    // otherwise it starts the fixed game. The address turns into plain ?play once the tutorial is over.
+    let tutorialUrl = qs.has("tutorial") && !qs.has("play");
+    if (tutorialUrl && !(session && session.st && session.tut)) { session = Tut.newTutorial(); store.set(KEY, session); }
+    const syncUrl = () => {
+      if (tutorialUrl && !(session && session.tut)) {
+        tutorialUrl = false;
+        try { history.replaceState(null, "", "?play" + (code === "en" ? "&lang=en" : "")); } catch { /* no history: keep the address */ }
+      }
+      gLang.href = "?" + (tutorialUrl ? "tutorial" : "play") + (other ? "&lang=en" : "");
+    };
+    syncUrl();
     let ui = { sel: null, picks: [], help: null, moves: false, confirm: null, county: null, narrow: narrowNow() };
     let timer = null;
     const save = () => store.set(KEY, session);
 
     const draw = () => {
+      syncUrl();
       drawInto(stage, Solo.screen(session, code, { sel: ui.sel, picks: ui.picks, help: ui.help, moves: ui.moves, confirm: ui.confirm, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow }));
       $("#quit").hidden = false;
+      placeTutorial(stage);
     };
     const pump = () => {
       draw();
@@ -69,9 +85,11 @@ if (typeof document !== "undefined") {
       clearTimeout(timer); timer = null;
       session = Solo.advance(session); save(); draw();
     };
-    const toAct = () => { const a = $("#act"); if (a && a.scrollIntoView) a.scrollIntoView({ block: "start", behavior: "smooth" }); };
+    // (in the tutorial the bubble decides what scrolls)
+    const toAct = () => { if (session && session.tut) return; const a = $("#act"); if (a && a.scrollIntoView) a.scrollIntoView({ block: "start", behavior: "smooth" }); };
 
     const setup = () => {
+      syncUrl();
       $("#quit").hidden = true;
       const pick = store.get(SETUP) || { seat: 0, level: 2 };
       const seatOrder = [1, 2, 0], keys = ["chen", "soong", "lien"], no = [5, 1, 2];
@@ -83,7 +101,8 @@ if (typeof document !== "undefined") {
       const levels = [1, 2, 3].map((n) => `<button type="button" class="lv${pick.level === n ? " on" : ""}" data-level="${n}" aria-pressed="${pick.level === n}">${esc(T.bots[n])}</button>`).join("");
       stage.innerHTML = `<section class="setup"><p class="kicker">${esc(S.setup.kicker)}</p><h1 class="st">${esc(S.setup.title)}</h1><p class="sub">${esc(S.setup.sub)}</p>` +
         `<div class="cands">${cards}</div><h2 class="lh">${esc(S.setup.level)}</h2><div class="lvs">${levels}</div><p class="sub">${esc(S.setup.levelNote[pick.level])}</p>` +
-        `<button type="button" class="big go" data-start="1">${esc(S.setup.start)}</button><p class="note">${esc(S.setup.note)}</p></section>`;
+        `<button type="button" class="big go" data-start="1">${esc(S.setup.start)}</button><p class="note">${esc(S.setup.note)}</p>` +
+        `<p class="note"><a class="tutlink" href="?tutorial${code === "en" ? "&amp;lang=en" : ""}">${esc(T.ui.tutorial.setupLink)}</a></p></section>`;
     };
 
     stage.addEventListener("click", (ev) => {
@@ -91,7 +110,12 @@ if (typeof document !== "undefined") {
       if (timer) { skip(); if (t && t.tagName !== "A") return; }
       if (!t) return;
       const d = t.dataset;
-      if (d.seat != null) { const p = store.get(SETUP) || { seat: 0, level: 2 }; store.set(SETUP, { ...p, seat: +d.seat }); setup(); }
+      if (d.tut) {
+        // The tutorial's bubble: next, or out of the tutorial (what is left is a normal game).
+        session = d.tut === "skip" ? Tut.skip(session) : Tut.next(session);
+        ui = { ...ui, sel: null, picks: [], confirm: null, county: null };
+        save(); pump(); // the bubble scrolls the next target into view itself
+      } else if (d.seat != null) { const p = store.get(SETUP) || { seat: 0, level: 2 }; store.set(SETUP, { ...p, seat: +d.seat }); setup(); }
       else if (d.level != null) { const p = store.get(SETUP) || { seat: 0, level: 2 }; store.set(SETUP, { ...p, level: +d.level }); setup(); }
       else if (d.start) {
         const p = store.get(SETUP) || { seat: 0, level: 2 };
@@ -106,7 +130,8 @@ if (typeof document !== "undefined") {
         // The candidate card is once a game: ask first (the table draws the question).
         ui.confirm = d.move; draw(); toAct();
       } else if (d.move) {
-        session = Solo.act(session, JSON.parse(d.move));
+        const m = JSON.parse(d.move);
+        session = session.tut ? Tut.act(session, m) : Solo.act(session, m);
         ui.sel = null; ui.picks = []; ui.moves = false; ui.confirm = null; ui.county = null;
         save(); pump(); if (d.pop == null) window.scrollTo({ top: 0 }); // from the county box, stay on the map
       } else if (d.cancel) { ui.confirm = null; draw();
@@ -119,7 +144,11 @@ if (typeof document !== "undefined") {
       } else if (d.act === "again") { store.del(KEY); session = null; setup(); window.scrollTo(0, 0); }
     });
     // The map: a county opens its box; the phone and the desktop board are different drawings.
-    bindCounty(stage, { get: () => ui.county, set: (k) => { ui.county = k; }, redraw: () => { if (session && session.st) draw(); } });
+    bindCounty(stage, { get: () => ui.county, set: (k) => {
+      ui.county = k;
+      // Tapping the county the tutorial asked for is its step.
+      if (k != null && session && session.tut) { const n = Tut.openCounty(session, k); if (n !== session) { session = n; save(); } }
+    }, redraw: () => { if (session && session.st) draw(); } });
     watchNarrow((n) => { ui.narrow = n; if (session && session.st) draw(); });
     $("#quit").addEventListener("click", () => {
       if (!confirm(S.menu.confirm)) return;
