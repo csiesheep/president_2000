@@ -299,7 +299,7 @@ check("候選人圖不在 SVG 裡：地圖沒有任何 <image>；每位候選人
       if (tags(m.html, "data-pawn-pic").length !== 3) return `${mode} ${p.where}：有 ${tags(m.html, "data-pawn-pic").length} 張 data-pawn-pic`;
     }
   }
-  if (old) return `TODO: 地圖的候選人圖還是 SVG <image>（${old} 個地圖），iPhone Safari 重畫時會閃（#31）`;
+  if (old) return `地圖的候選人圖又變回 SVG <image>（${old} 個地圖），iPhone Safari 重畫時會閃（#31 已做好）`;
   return ok(true, `${n} 位候選人都是 <img data-pawn-pic>，地圖裡沒有 <image>`);
 }));
 
