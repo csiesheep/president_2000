@@ -308,7 +308,7 @@ export function screen(client, lang, opts = {}) {
       advisor: { on: !!client.advisor, why: d.why },
       clock: clockOf(client, opts, T),
       again: view.phase === "end" ? (acts.find((a) => a.data.t === "rematch") || null) : null, againWait: U.game.waitAgain,
-      open: opts.open, sel: opts.sel, picks: opts.picks,
+      open: opts.open, sel: opts.sel, picks: opts.picks, county: opts.county, narrow: opts.narrow,
     });
     return errorHTML(client, T) + body + chatHTML(client, lang, opts, T);
   }

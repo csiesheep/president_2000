@@ -55,6 +55,15 @@ export default {
       map: {
         title: "The regions", here: "{who} is here", endorse: "Endorsed by", media: "Media", blocks: "{n} blocks", empty: "empty {n}", boss: "{who}, local boss",
         legendEmpty: "empty swing blocks", legendGrey: "non-voter blocks", changed: "changed just now",
+        board: "Map of Taiwan", hint: "Tap a county to see its blocks and act there.", popNone: "Nothing to do in this county right now.", popGrey: "non-voter {n}", popClose: "Close", islands: "Outer islands", legendPawn: "round marker: where a candidate stands", legendCubes: "Chen, Soong, Lien cubes", popMove: "Move here · {left} CP left",
+        short: {
+          "台北市": "Taipei", "台北縣": "New Taipei", "基隆市": "Keelung", "桃園縣": "Taoyuan",
+          "新竹縣": "Hsinchu Co.", "新竹市": "Hsinchu", "苗栗縣": "Miaoli", "台中縣": "Taichung Co.",
+          "台中市": "Taichung", "彰化縣": "Changhua", "南投縣": "Nantou", "雲林縣": "Yunlin",
+          "嘉義縣": "Chiayi Co.", "嘉義市": "Chiayi", "台南縣": "Tainan Co.", "台南市": "Tainan",
+          "高雄市": "Kaohsiung", "高雄縣": "Kaohsiung Co.", "屏東縣": "Pingtung", "宜蘭縣": "Yilan",
+          "花蓮縣": "Hualien", "台東縣": "Taitung", "澎湖縣": "Penghu", "金馬": "Kinmen-Matsu",
+        },
       },
       help: {
         mom: "Momentum: your pull. It is halved at the end of each turn (Chen rounds up, Soong and Lien round down), then leading an issue adds to it. Spend it to block, or to trigger your card that an opponent used for CP.",
