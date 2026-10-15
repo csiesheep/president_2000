@@ -86,7 +86,8 @@ check("沒人用的字串拿掉了：#29–#34 之後沒人讀的 key 不在字�
   for (const [lang, d] of LANGS) for (const k of UNUSED) {
     if (get(d, k) === undefined) continue;
     const short = k.split(".").slice(-2).join(".");
-    if (!SRC.includes(`"${short}`) && !SRC.includes(`'${short}`) && !SRC.includes(`.${k.split(".").pop()}`)) left.push(`${lang} ${k}`);
+    // Used = its last two parts appear as a path (x.tr("end.kicker"), S.end.kicker); ".kicker" alone matches other kickers (checker, #35).
+    if (!SRC.includes(short)) left.push(`${lang} ${k}`);
   }
   return left.length ? `還在、也沒人用：${left.join("、")}` : ok(true, `${UNUSED.length} 個 key 都處理了`);
 }));
