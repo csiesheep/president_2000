@@ -170,7 +170,7 @@ export function mount({ T, lang, qs, store, $ }) {
     if (!t) return;
     const d = t.dataset;
     if (d.msg) { const m = JSON.parse(d.msg); ui.sel = null; ui.picks = []; send(m); if (m.t === "move") window.scrollTo({ top: 0 }); }
-    else if (d.confirm && d.move) { ui.confirm = d.move; draw(); toAct(); }
+    else if (d.confirm && d.move) { ui.confirm = d.move; ui.sel = null; draw(); toAct(); }
     else if (d.move) { ui.sel = null; ui.picks = []; ui.moves = false; ui.confirm = null; ui.county = null; send({ t: "move", move: JSON.parse(d.move) }); if (d.pop == null) window.scrollTo({ top: 0 }); }
     else if (d.cancel) { ui.confirm = null; draw(); }
     else if (d.help != null) { ui.help = d.help && ui.help !== d.help ? d.help : null; draw(); }
@@ -182,7 +182,7 @@ export function mount({ T, lang, qs, store, $ }) {
       const done = () => { t.textContent = U.lobby.copied; setTimeout(() => { t.textContent = U.lobby.copy; }, 1500); };
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(done, () => {});
     }
-    else if (d.sel != null) { ui.sel = d.sel || null; draw(); if (ui.sel) toAct(); }
+    else if (d.sel != null) { ui.sel = d.sel || null; if (ui.sel) ui.confirm = null; draw(); if (ui.sel) toAct(); }
     else if (d.pick != null) { ui.picks = ui.picks.includes(d.pick) ? ui.picks.filter((x) => x !== d.pick) : [...ui.picks, d.pick]; draw(); }
   });
   bindCounty(stage, { get: () => ui.county, set: (k) => { ui.county = k; }, redraw: () => draw() });
