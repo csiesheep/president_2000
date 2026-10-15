@@ -889,6 +889,6 @@ export function tableHTML(view, choices, lang, opts = {}) {
   }
   return `<div class="tbl" data-phase="${esc(v.phase)}">${headerHTML(v, choices, x, o)}<div class="col cl">${playersHTML(v, x, o)}${feedHTML(v, x, o)}</div>` +
     `<div class="col cc">${trackHTML(v, x, o)}${helpHTML(x, o)}${v.phase === "debate" ? debateHTML(v, x) : ""}${map}</div>` +
-    `<div class="col cr">${nowHTML(x, o)}<section class="t-act${choices.length ? " mine" : ""}${o.undo ? " u" : ""}" id="act">${undoHTML(o, x)}${resultHTML(o, x)}${choices.length ? adviceLine(x, o) : ""}${panelHTML(v, choices, x, o)}</section></div>` +
+    `<div class="col cr">${nowHTML(x, o)}<section class="t-act${choices.length ? " mine" : ""}" id="act">${resultHTML(o, x)}${choices.length ? adviceLine(x, o) : ""}${o.undo ? `<div class="uw">${undoHTML(o, x)}${panelHTML(v, choices, x, o)}</div>` : panelHTML(v, choices, x, o)}</section></div>` +
     `${handHTML(v, choices, x, o)}</div>`;
 }
