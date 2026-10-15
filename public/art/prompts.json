@@ -489,12 +489,11 @@
   "aspect": "3:2 (Photo)"
  },
  "cards/walk_everywhere.webp": {
-  "prompt": "A long winding country road through green rice paddies and betel nut palms toward small farming villages, rows of plain orange campaign flags on bamboo poles lining the road, a small jeep far away. Style: claymation plasticine miniature set, warm orange and tan modeling clay with fingerprints visible, soft studio light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people.",
-  "seed": 2000031824,
+  "prompt": "A long winding country road through green rice paddies and betel nut palms toward small farming villages, a few small plain solid orange flags on bamboo poles lining the road, the flags are completely smooth solid orange cloth with no symbols, no pattern, no marks of any kind, a small jeep far away. Style: claymation plasticine miniature set, warm orange and tan modeling clay with fingerprints visible, soft studio light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
+  "seed": 2000032721,
   "model": "qwen-image-2.1-UC-Q8_0.gguf",
   "subject": "一條蜿蜒的鄉間公路穿過稻田通向農村，路邊插滿橙色旗",
-  "aspect": "3:2 (Photo)",
-  "note": "owner-selected sample p2k_v3_card_soong_00001.png"
+  "aspect": "3:2 (Photo)"
  },
  "cards/white_paper.webp": {
   "prompt": "A thick stack of blank-cover documents tied with a band on a long conference table with a fountain pen, a plain grey wall behind, no windows. All surfaces are completely blank, plain and unmarked, with no writing and no text-like patterns.. Style: sculpture made of crumpled newspaper and grey cardboard, monochrome, harsh side light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
