@@ -12,7 +12,7 @@
 //   - a run of such moves undoes one at a time, back to where the run began;
 //   - once a bot has moved (S.stepBot), or on a fresh game, canUndo is false;
 //   - S.screen shows a button data-undo, enabled, exactly when canUndo; never in the tutorial.
-// Reports 尚未實作 until S.canUndo exists.
+// Since #43 landed, a solo.js without S.canUndo is a failure (it reported 尚未實作 before).
 import test from "node:test";
 import assert from "node:assert/strict";
 import { R, section, check, ok, nonEmpty, summary } from "./harness.js";
@@ -45,7 +45,7 @@ function samples() {
 }
 const POOL = has ? samples() : [];
 const gate = (fn) => () => {
-  if (!has) return "TODO: solo.js 還沒有 canUndo / undo（#43）";
+  if (!has) return "solo.js 又沒有 canUndo / undo 了（#43 已上線，這是退步，不是尚未實作）";
   const ne = nonEmpty(POOL.length, "人的決定"); if (ne !== true) return ne;
   return fn();
 };
