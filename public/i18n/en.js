@@ -40,9 +40,9 @@ export default {
       hint: { county: "Tap the lit-up county on the map.", move: "Press the lit-up button; the others are locked for now." },
       steps: {
         welcome: "Welcome to the 2000 presidential race. You are {who} (number {no}, green cubes). Votes are counted on turn 9, election day: whoever has the most cubes on the board wins, and each cube is about 100,000 votes. This tutorial walks you through one action by hand.",
-        board: "This is your player board: {onboard} of your cubes are on the board, you have {mom} momentum (spend it to trigger or block events), {hand} cards in hand, and {bag} of your cubes in the bag (support checks draw from it).",
+        board: "This is your player board: {onboard} of your cubes are on the board, you have {mom} momentum (spend it to trigger or block events), {hand} {hand#card|cards} in hand, and {bag} of your cubes in the bag (support checks draw from it).",
         map: "The round marker on the map is your candidate, now in {county}. Tap {county} to see its blocks.",
-        blocks: "{county} has {blocks} blocks, each holding at most one cube. The small colored cubes are votes already placed (green Chen, orange Soong, blue Lien), light green and light blue are swing blocks still undecided, and grey is people who stayed home; CP cannot put cubes on grey.",
+        blocks: "{county} has {blocks} {blocks#block|blocks}, each holding at most one cube. The small colored cubes are votes already placed (green Chen, orange Soong, blue Lien), light green and light blue are swing blocks still undecided, and grey is people who stayed home; CP cannot put cubes on grey.",
         order: "You hold the initiative this turn, so you choose your place in the first action phase. Pick \"Act in position 1\" to play first.",
         play: "Tap the card {card} in your hand, then choose \"{card}: use {cp} CP for an action\". CP are the points this action can spend, and this card has {cp}.",
         kind: "{card} gives you {cp} CP. Choose Campaign: spend CP to put cubes into counties. (The other two, advertising and issues, come later.)",
@@ -81,14 +81,13 @@ export default {
       menu: { quit: "Abandon this game", confirm: "Abandon this game and go back to setup?", skip: "Click to skip the animation", label: "Menu" },
       hdr: {
         ph: { action: "Action {n}/4", order: "Order", momentum: "Momentum", save: "Set aside", debate: "Forum", election: "Election day", end: "The count" },
-        turn: "Turn {n}", initiative: "Initiative: {who}", star: "Initiative", mom: "Momentum", bag: "Bag", feed: "Record", first: "1st", momL: "Momentum", slotsL: "Issue slots", tap: "Tap for an explanation",
+        turn: "Turn {n}", initiative: "Initiative: {who}", star: "Initiative", mom: "Momentum", bag: "Bag", feed: "Record", momL: "Momentum", slotsL: "Issue slots", tap: "Tap for an explanation",
         yourTurn: "Your move", busy: "{who} is acting…", waitHint: "The bots are acting. You can look through your hand meanwhile.",
         slot: { 1: "Slot 1", 2: "Slot 2", 3: "Slot 3" },
         phase: { action: "Action phase {n} / 4", order: "Pick your place in the order", momentum: "Momentum phase", save: "Set aside", debate: "The Policy Forum", election: "Election day · canvassing", end: "The count" },
-        opp: "{who}: {n} in hand · {k} kept",
       },
       map: {
-        title: "The regions", here: "{who} is here", endorse: "Endorsed by", media: "Media", blocks: "{n} blocks", empty: "empty {n}", boss: "{who}, local boss",
+        title: "The regions", here: "{who} is here", endorse: "Endorsed by", media: "Media", blocks: "{n} {n#block|blocks}", empty: "empty {n}", boss: "{who}, local boss",
         legendEmpty: "empty swing blocks", legendGrey: "non-voter blocks", changed: "changed just now",
         you: "You", board: "Map of Taiwan", hint: "Tap a county to see its blocks and act there.", popNone: "Nothing to do in this county right now.", popGrey: "non-voter {n}", popClose: "Close", islands: "Outer islands", legendPawn: "round marker: where a candidate stands", legendCubes: "Chen, Soong, Lien cubes", popMove: "Move here · {left} CP left",
         short: {
@@ -108,7 +107,7 @@ export default {
       },
       now: { title: "Just now" },
       r: {
-        turn: "Turn {n} begins · initiative: {who} · you are dealt up to {cards} cards", turnNoDeal: "Turn {n} begins · initiative: {who}",
+        turn: "Turn {n} begins · initiative: {who} · you are dealt up to {cards} {cards#card|cards}", turnNoDeal: "Turn {n} begins · initiative: {who}",
         turnDebate: "Turn {n}: the Policy Forum begins", turnElection: "Turn {n}: election day begins",
         decay: "End of turn · momentum halved: {text}", slot1: "Slot 1, {issue}: {who} leads: +1 momentum and an endorsement", slot3: "Slot 3, {issue}: {who} leads: +1 momentum",
         issueDecay: "The leader of each issue slot loses 1 cube", momNow: "Momentum now: {text}", group: "{head}: {what}", times: "×{n}",
@@ -148,7 +147,7 @@ export default {
         save: "Pick {n} to set aside face down for the {dest}.", saveAll: "You hold {n} or fewer, so all of them go to the {dest}.", saveRest: "The rest go to the discard pile.", saveNone: "No card picked yet", saveGo: "Confirm",
         debate: "Pick a card from your pile, face down. All three are turned over together.",
         award: "You won {issue}: place cubes with no check, {left} to go.",
-        canvass: "Pick a card from your pile to canvass: three support checks in the county on the card.", canvassPlace: "A success in {county}. Pick one thing to do ({left} checks left on this card).", canvassRate: "Each check is about {p}%.",
+        canvass: "Pick a card from your pile to canvass: three support checks in the county on the card.", canvassPlace: "A success in {county}. Pick one thing to do ({left} {left#check|checks} left on this card).", canvassRate: "Each check is about {p}%.",
       },
       o: {
         order: "Act in position {n}", orderElection: "Canvass in position {n}", candidate: "Candidate card: {cp} CP · once per game", playEvent: "{card}: play as an event", playCp: "{card}: use {cp} CP for an action", playBlock: "{card}: use CP, and spend 2 momentum to block",
@@ -165,7 +164,7 @@ export default {
       },
       debate: {
         title: "The Policy Forum", rule: "All three turn over a card together and place it on the issue it shows. When someone has 2 cards on an issue it is settled: the highest CP total wins and places 2 / 3 / 4 cubes with no check.",
-        open: "Not settled", settled: "Settled · {who} wins, {n} cubes", yours: "you picked", picked: "picked", total: "total {n}", sums: "CP totals: Soong {a} · Lien {b} · Chen {c}",
+        open: "Not settled", settled: "Settled · {who} wins, {n} {n#cube|cubes}", yours: "you picked", picked: "picked", total: "total {n}", sums: "CP totals: Soong {a} · Lien {b} · Chen {c}",
       },
       f: {
         turn: "—— Turn {n} · initiative: {who} ——", order: "{who} acts in position {n}", orderElection: "{who} picks position {n} to canvass", playEvent: "{who} plays {card} as an event", playCp: "{who} uses {card} for CP", block: ", and blocks it", cand: "{who} uses the candidate card",
@@ -177,17 +176,17 @@ export default {
         mediaPlace: "{who} places media in {region}", mediaRemove: "{who} removes {target}'s media in {region}",
         issuePlace: "{who} puts 1 cube on {issue}", issueRemove: "{who} removes 1 {target} cube from {issue}",
         swap: "{who} swaps issue slots", rewardMom: "{who} takes 1 momentum", rewardEndorse: "{who} draws an endorsement", endorseOne: "{who} takes the endorsement of {region}", pickMom: "{who} gains 1 momentum",
-        save: "{who} sets aside {n} cards", pick: "{who} has picked",
-        reveal: "Turned over: {who}, {card} → {issue}", dead: "Turned over: {who}, {card} → {issue} (already settled, no effect)", settle: "{issue} is settled: {who} wins, {n} cubes",
+        save: "{who} sets aside {n} {n#card|cards}", pick: "{who} has picked",
+        reveal: "Turned over: {who}, {card} → {issue}", dead: "Turned over: {who}, {card} → {issue} (already settled, no effect)", settle: "{issue} is settled: {who} wins, {n} {n#cube|cubes}",
         canvass: "{who} canvasses {county}", convert: "Election day: media, issues and momentum become cubes in the bag",
         strategic: "Strategic voting: swing blocks go to {text}", strategicHalf: "First strategic vote (half): {text}", strategicNone: "Strategic voting: no swing blocks move", endorse: "Endorsements: non-voter blocks {text}", result: "The count is done",
       },
       end: {
         kicker: "18 March · election day · counted", elected: "The 10th President-elect",
-        margin: "{who} beats {other} by {n} blocks, about {votes} votes.", marginTie: "{who} and {other} are level on votes; counties led, momentum and the order decide it.",
+        margin: "{who} beats {other} by {n} {n#block|blocks}, about {votes} votes.", marginTie: "{who} and {other} are level on votes; counties led, momentum and the order decide it.",
         youWon: "You won.", youLost: "Not this time.",
-        unit: "1 block = 100,000 votes · {total} blocks", emptyLeft: "{n} blocks left empty",
-        dayTitle: "Election day", canvass: "{who} canvasses {cards} cards: {fill} filled, {take} taken", strategic: "Strategic voting: {text}", strategicNone: "Strategic voting: no swing blocks move", endorse: "Endorsements: {text}",
+        unit: "1 block = 100,000 votes · {total} {total#block|blocks}", emptyLeft: "{n} {n#block|blocks} left empty",
+        dayTitle: "Election day", canvass: "{who} canvasses {cards} {cards#card|cards}: {fill} filled, {take} taken", strategic: "Strategic voting: {text}", strategicNone: "Strategic voting: no swing blocks move", endorse: "Endorsements: {text}",
         leadTitle: "Counties led", history: "History: Chen 39.3%, Soong 36.8%, Lien 23.1%; a margin of about 310,000 votes; turnout 82.7%.",
         again: "Play again", home: "Home",
       },

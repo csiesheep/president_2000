@@ -80,11 +80,10 @@ export default {
       menu: { quit: "放棄這局", confirm: "放棄這一局，回到設定？", skip: "點一下跳過動畫", label: "選單" },
       hdr: {
         ph: { action: "行動 {n}/4", order: "選順位", momentum: "動能階段", save: "留牌", debate: "政見發表會", election: "投票日", end: "開票結果" },
-        turn: "第 {n} 回合", initiative: "主動權 {who}", star: "主動權", mom: "動能", bag: "袋子", feed: "紀錄", first: "先", momL: "動能", slotsL: "議題槽", tap: "點一下看說明",
+        turn: "第 {n} 回合", initiative: "主動權 {who}", star: "主動權", mom: "動能", bag: "袋子", feed: "紀錄", momL: "動能", slotsL: "議題槽", tap: "點一下看說明",
         yourTurn: "輪到你", busy: "{who} 行動中…", waitHint: "對手行動中。你可以先翻看手牌。",
         slot: { 1: "第一槽", 2: "第二槽", 3: "第三槽" },
         phase: { action: "行動階段 {n} / 4", order: "選行動順位", momentum: "動能階段", save: "留牌", debate: "公辦政見發表會", election: "投票日 · 催票", end: "開票結果" },
-        opp: "{who} 手牌 {n} · 已留 {k}",
       },
       map: {
         title: "各區票勢", here: "{who}在此", endorse: "背書", media: "媒體", blocks: "{n} 塊", empty: "空 {n}", boss: "{who}是地方大老",
