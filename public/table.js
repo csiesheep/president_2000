@@ -351,16 +351,20 @@ function miniCard(id, x, cls, attr, star = false, fan = null) {
     `<span class="hf"><span>${esc(x.d.terms.canvass)} ${esc(x.county(COUNTIES.findIndex((k) => k[0] === c.county)))}</span><span>${esc(fill(u.restCubes, { n: rest }))}</span></span></span></button>`;
 }
 
-// The candidate card, a dark wooden card with a red wax seal "once a game". When the seat may use it now
+// The candidate card (#37): in its camp's colour like the event cards (#36), no frame lines; the seat's picture
+// full-bleed fading into the colour, the CP tab, a pill "once a game" / "used". When the seat may use it now
 // it is the same legal move the panel offers (asks again before it plays); otherwise it only sits there.
 function candCard(v, ch, x) {
   const me = v.seat, can = ch.find((c) => c.move.type === "candidate"), used = !!v.candidateUsed[me];
   if (v.phase === "debate" || v.phase === "election" || v.phase === "end" || v.phase === "save") return "";
-  const L = x.d.ui.look.card;
-  const head = `<span class="cc-k">${esc(x.tr("card.cand"))}</span><b class="cc-n">${CANDIDATE_CARDS[SEATS[me]].cp}</b>` +
-    `<span class="cc-w"><i class="b o${me}"></i>${esc(x.full(me))}</span><span class="cc-s">${esc(used ? L.used : L.seal)}</span>`;
-  if (can && !used) return `<button type="button" class="hc candc" data-move="${esc(JSON.stringify(can.move))}" data-confirm="1">${head}</button>`;
-  return `<button type="button" class="hc candc dis" disabled>${head}</button>`;
+  const L = x.d.ui.look.card, key = SEATS[me], cp = CANDIDATE_CARDS[key].cp;
+  const head = `<span class="ha"><img src="art/candidates/${key}.webp" alt="" draggable="false"></span>` +
+    `<span class="cp-tab" data-cp="${cp}"><b>${cp}</b><small>${esc(x.d.ui.cpUnit)}</small></span>` +
+    `<span class="cc-s">${esc(used ? L.used : L.seal)}</span>` +
+    `<span class="hb"><span class="cc-k">${esc(x.tr("card.cand"))}</span><span class="cc-n">${esc(x.full(me))}</span></span>`;
+  const at = `class="hc candc ${key}${used || !can ? " dis" : ""}" data-cand="${key}" data-camp="${key}"`;
+  if (can && !used) return `<button type="button" ${at} data-move="${esc(JSON.stringify(can.move))}" data-confirm="1">${head}</button>`;
+  return `<button type="button" ${at} disabled${used ? " data-used" : ""}>${head}</button>`;
 }
 
 // One option button. The candidate card is the one a new player must not hit by accident: it is drawn

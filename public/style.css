@@ -313,16 +313,10 @@ button.btn.menub { width: 40px; height: 40px; padding: 0; justify-content: cente
 .hc.adv { box-shadow: 0 6px 12px rgba(0, 0, 0, .5), 0 0 14px 3px rgba(255, 211, 77, .75); }
 .hc.adv.sel { box-shadow: 0 14px 22px rgba(0, 0, 0, .6), 0 0 14px 3px rgba(255, 211, 77, .75); }
 .hc.adv .star-adv { position: absolute; top: -9px; right: -5px; margin: 0; font-size: 20px; line-height: 1; z-index: 9; text-shadow: 0 1px 2px rgba(0, 0, 0, .5); color: #ffd34d; }
-.hc.candc { background: var(--ink); color: var(--paper); box-shadow: 0 6px 12px rgba(0, 0, 0, .55), inset 0 0 0 1px #5a4a3a; gap: 2px; display: flex; flex-direction: column; text-align: left; padding: 8px 8px; margin-left: 8px; }
-.hc.candc::after { content: ""; position: absolute; inset: 3px; border: 1px solid #c9a96a; border-radius: 7px; pointer-events: none; }
-.candc .cc-k { position: relative; z-index: 1; font-size: 11px; font-weight: 900; letter-spacing: 2px; color: #c9a96a; }
-.candc .cc-n { position: relative; z-index: 1; font: 900 46px/.95 var(--serif); color: var(--paper); }
-.candc .cc-w { position: relative; z-index: 1; display: flex; align-items: center; gap: 5px; font: 900 13px/1.2 var(--serif); }
-.candc .cc-s { position: absolute; right: 7px; bottom: 7px; z-index: 1; width: 44px; height: 44px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #c94a3e, #a8322a 55%, #7a1f19); box-shadow: 0 3px 6px rgba(0, 0, 0, .5); display: flex; align-items: center; justify-content: center; text-align: center; font: 900 11px/1.15 var(--serif); color: #fbe6d8; transform: rotate(-10deg); padding: 3px; }
-.hc.candc.dis { opacity: .55; cursor: default; }
-.hc.candc .b { box-shadow: none; }
-@media (max-width: 1099px) { .hc.candc { height: 124px; } }
-@media (min-width: 480px) and (max-width: 1099px) { .hc.candc { height: 134px; } }
+.hc.candc { margin-left: 8px; }
+.candc .cc-s { position: absolute; top: 7px; right: 7px; z-index: 2; background: rgba(20, 14, 8, .38); color: var(--ct); font: 700 9.5px/1.3 var(--sans); padding: 1px 7px; border-radius: 9px; white-space: nowrap; }
+.candc .cc-k { color: var(--ct); font-size: 10px; font-weight: 700; letter-spacing: .08em; line-height: 1.2; }
+.candc .cc-n { color: var(--ct); font: 900 15px/1.2 var(--serif); }
 
 /* The count */
 .tbl.end .res { order: 4; }
@@ -535,15 +529,12 @@ html { scroll-padding-bottom: 190px; }
   .hc .cp-tab b { font-size: 26px; } .hc .cp-tab small { font-size: 9px; }
   .hc .hb { left: 10px; right: 10px; top: 44%; bottom: 9px; gap: 3px; }
   .hc .hm { font-size: 11px; }
+  .candc .cc-k { font-size: 11px; } .candc .cc-n { font-size: 18px; }
   .hc .hn { font-size: 18px; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   .hc .ht { font-size: 12px; line-height: 1.45; -webkit-line-clamp: 3; }
   .hc .hf { display: flex; justify-content: space-between; align-items: center; margin-top: auto; gap: 6px; font-size: 10.5px; font-weight: 700; }
   .hc.sel { transform: translateY(-44px) rotate(0deg); }
   @media (hover: hover) { .hc:hover:not(:disabled), .hc:focus-visible { transform: rotate(0deg); translate: 0 -104px; scale: 1.04; } }
-  .hc.candc { width: 128px; margin-left: 16px; padding: 12px 12px; }
-  .candc .cc-n { font-size: 74px; } .candc .cc-w { font-size: 16px; } .candc .cc-k { font-size: 12px; }
-  .candc .cc-s { width: 62px; height: 62px; font-size: 13px; right: 12px; bottom: 14px; }
-  .candc { overflow: visible; }
   html { scroll-padding-bottom: 150px; }
 }
 
