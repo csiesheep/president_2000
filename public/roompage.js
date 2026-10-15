@@ -9,9 +9,8 @@
 //   p2000.room.level    the bot level the host last picked
 //   p2000.advisor       whether the advisor switch is on (shared with the solo page)
 import * as RC from "./roomclient.js";
-import { COUNTIES } from "./shared/board.js";
 import { esc } from "./table.js";
-import { drawInto } from "./drawing.js";
+import { drawInto, narrowNow, watchNarrow, bindCounty } from "./drawing.js";
 
 const ADV_KEY = "p2000.advisor", NAME_KEY = "p2000.room.name", LEVEL_KEY = "p2000.room.level", roomKey = (code) => "p2000.room." + code;
 const BACKOFF_MAX = 30; // seconds: 1, 2, 4, 8, 16, 30, 30, …
@@ -65,7 +64,7 @@ export function mount({ T, lang, qs, store, $ }) {
 
   // ---- the room
   let roomCode = null, name = "", client = RC.setAdvisor(RC.newClient(), store.get(ADV_KEY) === true), sock = null, attempts = 0, retry = null, tick = null, terminal = false, gone = false;
-  let ui = { open: null, sel: null, picks: [], help: null, moves: false, confirm: null, draft: "", level: [1, 2, 3].includes(store.get(LEVEL_KEY)) ? store.get(LEVEL_KEY) : 2 };
+  let ui = { county: null, narrow: narrowNow(), sel: null, picks: [], help: null, moves: false, confirm: null, draft: "", level: [1, 2, 3].includes(store.get(LEVEL_KEY)) ? store.get(LEVEL_KEY) : 2 };
 
   const say = (text) => { banner.textContent = text || ""; banner.hidden = !text; };
   const draw = () => {
@@ -76,7 +75,7 @@ export function mount({ T, lang, qs, store, $ }) {
     // A redraw replaces the chat box: keep what is typed, and the caret if the box had focus.
     const box = $("#chatin"), had = box && document.activeElement === box, caret = had ? [box.selectionStart, box.selectionEnd] : null;
     const log = stage.querySelector(".chatlog"), pinned = !log || log.scrollHeight - log.scrollTop - log.clientHeight < 40;
-    drawInto(stage, RC.screen(client, lang, { level: ui.level, open: ui.open || undefined, sel: ui.sel, picks: ui.picks, draft: ui.draft, help: ui.help, moves: ui.moves, confirm: ui.confirm }));
+    drawInto(stage, RC.screen(client, lang, { level: ui.level, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow, sel: ui.sel, picks: ui.picks, draft: ui.draft, help: ui.help, moves: ui.moves, confirm: ui.confirm }));
     const nb = $("#chatin");
     if (nb && had) { nb.focus({ preventScroll: true }); try { nb.setSelectionRange(caret[0], caret[1]); } catch { /* not a text field */ } }
     const nl = stage.querySelector(".chatlog");
@@ -162,12 +161,12 @@ export function mount({ T, lang, qs, store, $ }) {
 
   const toAct = () => { const a = $("#act"); if (a && a.scrollIntoView) a.scrollIntoView({ block: "start", behavior: "smooth" }); };
   stage.addEventListener("click", (ev) => {
-    const t = ev.target.closest("button, a, [data-region]");
+    const t = ev.target.closest("button, a");
     if (!t) return;
     const d = t.dataset;
     if (d.msg) { const m = JSON.parse(d.msg); ui.sel = null; ui.picks = []; send(m); if (m.t === "move") window.scrollTo({ top: 0 }); }
     else if (d.confirm && d.move) { ui.confirm = d.move; draw(); toAct(); }
-    else if (d.move) { ui.sel = null; ui.picks = []; ui.moves = false; ui.confirm = null; send({ t: "move", move: JSON.parse(d.move) }); window.scrollTo({ top: 0 }); }
+    else if (d.move) { ui.sel = null; ui.picks = []; ui.moves = false; ui.confirm = null; ui.county = null; send({ t: "move", move: JSON.parse(d.move) }); if (d.pop == null) window.scrollTo({ top: 0 }); }
     else if (d.cancel) { ui.confirm = null; draw(); }
     else if (d.help != null) { ui.help = d.help && ui.help !== d.help ? d.help : null; draw(); }
     else if (d.toggle === "moves") { ui.moves = !ui.moves; draw(); }
@@ -180,13 +179,9 @@ export function mount({ T, lang, qs, store, $ }) {
     }
     else if (d.sel != null) { ui.sel = d.sel || null; draw(); if (ui.sel) toAct(); }
     else if (d.pick != null) { ui.picks = ui.picks.includes(d.pick) ? ui.picks.filter((x) => x !== d.pick) : [...ui.picks, d.pick]; draw(); }
-    else if (d.region != null) {
-      const open = ui.open || [client.state ? COUNTIES[client.state.view.pos[client.state.view.seat]][1] : 0];
-      const r = +d.region;
-      ui.open = open.includes(r) ? open.filter((x) => x !== r) : [...open, r];
-      draw();
-    }
   });
+  bindCounty(stage, { get: () => ui.county, set: (k) => { ui.county = k; }, redraw: () => draw() });
+  watchNarrow((n) => { ui.narrow = n; draw(); });
 
   // ---- which page is this
   if (qs.has("host")) form("host");

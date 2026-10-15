@@ -7,6 +7,7 @@ import en from "./i18n/en.js";
 import zh from "./i18n/zh-Hant.js";
 import { COUNTIES, REGIONS, REGION_EDGES, SEATS, BOSS_THRESHOLD, ISSUES } from "./shared/board.js";
 import { EVENTS, localCards, CANDIDATE_CARDS } from "./shared/cards.js";
+import { taiwanMap, popPlace } from "./map.js";
 
 const CARD = Object.fromEntries(EVENTS.concat(localCards()).map((c) => [c.id, c]));
 const NO = [5, 1, 2]; // the ballot numbers on the 1999 flags: 陳 5, 宋 1, 連 2
@@ -333,42 +334,37 @@ const btn = (c, cls = "", x = null, label = null) => {
 
 // ---------------------------------------------------------------- the board
 
-function mapHTML(v, x, open, changed = []) {
-  const chg = new Set(changed), mark = (k) => (chg.has(k) ? ` <em class="new">${esc(x.tr("map.changed"))}</em>` : "");
-  const seatsHere = (k) => [0, 1, 2].filter((p) => v.pos[p] === k);
-  const flag = (p, k) => `<svg class="flag-svg" width="14" height="16" viewBox="0 0 16 18" role="img" aria-label="${esc(x.tr("map.here", { who: x.full(p) }))}"><path d="M2 1v16" stroke="#1a1a1a" stroke-width="2"/><path d="M3 2h12l-4 4 4 4H3z" class="f${p}"/></svg>`;
-  const out = [];
-  for (let r = 0; r < REGIONS.length; r++) {
-    const ks = COUNTIES.map((_, k) => k).filter((k) => REGION_OF[k] === r);
-    const total = ks.reduce((s, k) => s + v.counties[k].blocks.length, 0);
-    const per = [0, 1, 2].map((p) => ks.reduce((s, k) => s + cubesIn(v, k, p), 0));
-    const empty = total - per[0] - per[1] - per[2];
-    const isOpen = open.includes(r);
-    const med = v.media[r], medTxt = SHOW_ORDER.filter((p) => med[p] > 0).map((p) => `${x.short(p)} ${med[p]}`).join(" · ");
-    const endorse = v.endorse[r] >= 0 ? `${x.tr("map.endorse")} ${x.short(v.endorse[r])}` : "";
-    const extra = [medTxt ? `${x.tr("map.media")} ${medTxt}` : "", endorse].filter(Boolean).join(" · ");
-    const flags = ks.flatMap((k) => seatsHere(k)).map((p) => flag(p)).join("");
-    const touched = ks.some((k) => chg.has(k));
-    out.push(`<div class="reg${isOpen ? " open" : ""}${touched ? " chg" : ""}"><button type="button" class="rh" data-region="${r}" aria-expanded="${isOpen}">` +
-      `<span class="rn">${esc(x.region(r))} · ${esc(x.tr("map.blocks", { n: total }))} ${flags}${touched && !isOpen ? `<em class="new">${esc(x.tr("map.changed"))}</em>` : ""}</span>` +
-      `<span class="rs">${SHOW_ORDER.map((p) => `<span class="rc s${p}">${esc(x.short(p))} ${per[p]}</span>`).join("")}<span class="rc">${esc(x.tr("map.empty", { n: empty }))}</span></span>` +
-      (extra ? `<span class="rx">${esc(extra)}</span>` : "") + `</button>`);
-    if (isOpen) {
-      out.push(`<div class="rb">` + ks.map((k) => {
-        const blocks = v.counties[k].blocks.slice().sort((a, b) => key(a) - key(b));
-        const bosses = [0, 1, 2].filter((p) => cubesIn(v, k, p) >= BOSS_THRESHOLD);
-        const sub = bosses.length ? `<span class="boss">${esc(x.tr("map.boss", { who: bosses.map((p) => x.short(p)).join("/") }))}</span>` : "";
-        return `<div class="cty${bosses.length ? " hot" : ""}${chg.has(k) ? " chg" : ""}"><span class="cn">${esc(x.county(k))}<small>${esc(x.tr("map.blocks", { n: blocks.length }))}</small>${mark(k)}${sub}</span>` +
-          `<span class="bs">${blocks.map((b) => sq(b.o >= 0 ? "o" + b.o : "e" + b.t)).join("")}</span>` +
-          `<span class="pw">${seatsHere(k).map((p) => flag(p)).join("")}</span></div>`;
-      }).join("") + `</div>`);
+// The county's box (#25): what stands in county k, then every option that acts on it. Each button is the
+// same legal move the decision panel offers (data-move), plus data-choice (its index in `ch`) and data-pop.
+function popHTML(v, ch, x, k, narrow) {
+  const tr = x.tr, blocks = v.counties[k].blocks;
+  const cls = (b) => (b.o >= 0 ? SEATS[b.o] : b.t === "G" ? "green" : b.t === "B" ? "blue" : "grey");
+  const order = { chen: 0, soong: 1, lien: 2, green: 3, blue: 4, grey: 5 };
+  const cubes = blocks.map(cls).sort((a, b) => order[a] - order[b]).map((c) => `<i class="pb ${c}"></i>`).join("");
+  const own = SHOW_ORDER.map((p) => [p, cubesIn(v, k, p)]).filter(([, n]) => n > 0).map(([p, n]) => `<span class="s${p}">${esc(x.short(p))} ${n}</span>`);
+  const count = (f) => blocks.filter(f).length;
+  const rest = [tr("p.eg", { n: count((b) => b.o < 0 && b.t === "G") }), tr("p.eb", { n: count((b) => b.o < 0 && b.t === "B") }), tr("map.popGrey", { n: count((b) => b.o < 0 && b.t !== "G" && b.t !== "B") })];
+  const mine = ch.map((c, i) => ({ c, i })).filter(({ c }) => c.move && (c.move.county === k || (c.move.type === "move" && c.move.to === k)));
+  const free = (m) => PLACE_T.has(m.type) && checkKind(v, v.seat, m) === "none";
+  const rows = mine.map((z) => ({ ...z, f: free(z.c.move) })).sort((a, b) => Number(!a.f) - Number(!b.f) || a.i - b.i);
+  const label = (c) => {
+    const m = c.move;
+    if (m.type === "move") {
+      const left = v.pending && typeof v.pending.cp === "number" ? v.pending.cp - moveCost(v.seat, v.pos[v.seat], m.to) : null;
+      return left == null ? c.label : tr("map.popMove", { left });
     }
-    out.push(`</div>`);
-  }
-  return `<section class="t-map" aria-label="${esc(x.tr("map.title"))}"><h3 class="t-h">${esc(x.tr("map.title"))}</h3>${out.join("")}` +
-    `<p class="legend"><span>${sq("e G")}${sq("e B")} ${esc(x.tr("map.legendEmpty"))}</span><span>${sq("e N")} ${esc(x.tr("map.legendGrey"))}</span></p></section>`;
+    return shortOpt(v, m, x) || c.label;
+  };
+  // "Fill 1 block · no check": the action on top, what it costs or risks smaller under it.
+  const words = (s) => { const [head, ...tail] = s.split(" · "); return `<span>${esc(head)}</span>` + (tail.length ? `<small>${esc(tail.join(" · "))}</small>` : ""); };
+  const opt = ({ c, i, f }) => `<button type="button" class="opt pop-opt${f ? " go" : ""}${c.advised ? " adv" : ""}" data-move="${esc(JSON.stringify(c.move))}" data-choice="${i}" data-pop="${k}">${c.advised ? starHTML(x) : ""}${words(label(c))}</button>`;
+  const at = popPlace(k, narrow);
+  return `<div class="pop ${at.cls}" data-popover="${k}" role="dialog" aria-label="${esc(x.county(k))}" tabindex="-1" style="${at.style}"><i class="pop-arrow" aria-hidden="true"></i>` +
+    `<div class="pop-h"><b>${esc(x.county(k))} · ${esc(tr("map.blocks", { n: blocks.length }))}</b><span>${esc(x.region(REGION_OF[k]))}</span>` +
+    `<button type="button" class="pop-x" data-pop-close="1" aria-label="${esc(tr("map.popClose"))}">×</button></div>` +
+    `<div class="pop-b"><span class="pbs">${cubes}</span><span class="pbn">${[...own, ...rest.map((s) => `<span>${esc(s)}</span>`)].join("")}</span></div>` +
+    (rows.length ? `<div class="pop-o">${rows.map(opt).join("")}</div>` : `<p class="ct">${esc(tr("map.popNone"))}</p>`) + `</div>`;
 }
-const key = (b) => (b.o >= 0 ? b.o : 3 + (b.t === "G" ? 0 : b.t === "B" ? 1 : 2));
 
 // The room's move clock (o.clock = { left, deadline, tpl }): the page rewrites it every second.
 function clockHTML(c) {
@@ -775,11 +771,10 @@ function resultHTML(o, x) {
 export function tableHTML(view, choices, lang, opts = {}) {
   const x = bind(lang), v = view, o = opts;
   const bar = o.advisor ? advisorBar(x, o) : "";
-  const open = o.open || [v.pos ? REGION_OF[v.pos[v.seat]] : 0];
   if (v.phase === "end") {
-    return `<div class="tbl end" data-phase="end">${headerHTML(v, choices, x, o)}${endHTML(v, x, o)}${nowHTML(x, o)}${resultHTML(o, x)}${trackHTML(v, x, o)}${mapHTML(v, x, open, o.changed)}${feedHTML(v, x, o)}</div>`;
+    return `<div class="tbl end" data-phase="end">${headerHTML(v, choices, x, o)}${endHTML(v, x, o)}${nowHTML(x, o)}${resultHTML(o, x)}${trackHTML(v, x, o)}${taiwanMap(v, lang, { changed: o.changed, selected: o.county, narrow: o.narrow, overlay: o.county != null ? popHTML(v, choices, x, o.county, o.narrow) : "" })}${feedHTML(v, x, o)}</div>`;
   }
   return `<div class="tbl${bar ? " hasbar" : ""}" data-phase="${esc(v.phase)}">${bar}${headerHTML(v, choices, x, o)}${trackHTML(v, x, o)}${helpHTML(x, o)}${oppHTML(v, x)}` +
     `${nowHTML(x, o)}<section class="t-act${choices.length ? " mine" : ""}" id="act">${resultHTML(o, x)}${choices.length ? adviceLine(x, o) : ""}${panelHTML(v, choices, x, o)}</section>` +
-    `${v.phase === "debate" ? debateHTML(v, x) : ""}${mapHTML(v, x, open, o.changed)}${feedHTML(v, x, o)}${handHTML(v, choices, x, o)}</div>`;
+    `${v.phase === "debate" ? debateHTML(v, x) : ""}${taiwanMap(v, lang, { changed: o.changed, selected: o.county, narrow: o.narrow, overlay: o.county != null ? popHTML(v, choices, x, o.county, o.narrow) : "" })}${feedHTML(v, x, o)}${handHTML(v, choices, x, o)}</div>`;
 }

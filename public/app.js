@@ -5,7 +5,7 @@ import en from "./i18n/en.js";
 import zh from "./i18n/zh-Hant.js";
 import * as Solo from "./solo.js";
 import { mount as mountRoom } from "./roompage.js";
-import { drawInto } from "./drawing.js";
+import { drawInto, narrowNow, watchNarrow, bindCounty } from "./drawing.js";
 
 if (typeof document !== "undefined") {
   const qs = new URLSearchParams(location.search);
@@ -51,12 +51,12 @@ if (typeof document !== "undefined") {
     gLang.href = "?" + (other ? "play&lang=en" : "play");
     const stage = $("#stage");
     let session = store.get(KEY);
-    let ui = { open: null, sel: null, picks: [], help: null, moves: false, confirm: null };
+    let ui = { sel: null, picks: [], help: null, moves: false, confirm: null, county: null, narrow: narrowNow() };
     let timer = null;
     const save = () => store.set(KEY, session);
 
     const draw = () => {
-      drawInto(stage, Solo.screen(session, code, { open: ui.open || undefined, sel: ui.sel, picks: ui.picks, help: ui.help, moves: ui.moves, confirm: ui.confirm }));
+      drawInto(stage, Solo.screen(session, code, { sel: ui.sel, picks: ui.picks, help: ui.help, moves: ui.moves, confirm: ui.confirm, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow }));
       $("#quit").hidden = false;
     };
     const pump = () => {
@@ -87,7 +87,7 @@ if (typeof document !== "undefined") {
     };
 
     stage.addEventListener("click", (ev) => {
-      const t = ev.target.closest("button, a, [data-region]");
+      const t = ev.target.closest("button, a");
       if (timer) { skip(); if (t && t.tagName !== "A") return; }
       if (!t) return;
       const d = t.dataset;
@@ -97,7 +97,7 @@ if (typeof document !== "undefined") {
         const p = store.get(SETUP) || { seat: 0, level: 2 };
         const seed = crypto.getRandomValues(new Uint32Array(1))[0];
         session = Solo.setAdvisor(Solo.advance(Solo.newSolo({ seat: p.seat, level: p.level, seed })), store.get(ADV) === true);
-        ui = { open: null, sel: null, picks: [], help: null, moves: false, confirm: null };
+        ui = { sel: null, picks: [], help: null, moves: false, confirm: null, county: null, narrow: narrowNow() };
         save(); pump(); window.scrollTo(0, 0);
       } else if (d.advisor != null) {
         session = Solo.setAdvisor(session, d.advisor === "on"); store.set(ADV, session.advisor);
@@ -107,8 +107,8 @@ if (typeof document !== "undefined") {
         ui.confirm = d.move; draw(); toAct();
       } else if (d.move) {
         session = Solo.act(session, JSON.parse(d.move));
-        ui.sel = null; ui.picks = []; ui.moves = false; ui.confirm = null;
-        save(); pump(); window.scrollTo({ top: 0 });
+        ui.sel = null; ui.picks = []; ui.moves = false; ui.confirm = null; ui.county = null;
+        save(); pump(); if (d.pop == null) window.scrollTo({ top: 0 }); // from the county box, stay on the map
       } else if (d.cancel) { ui.confirm = null; draw();
       } else if (d.help != null) { ui.help = d.help && ui.help !== d.help ? d.help : null; draw();
       } else if (d.toggle === "moves") { ui.moves = !ui.moves; draw();
@@ -116,13 +116,11 @@ if (typeof document !== "undefined") {
       else if (d.pick != null) {
         ui.picks = ui.picks.includes(d.pick) ? ui.picks.filter((x) => x !== d.pick) : [...ui.picks, d.pick];
         draw();
-      } else if (d.region != null) {
-        const open = ui.open || [Solo.openRegion(session)];
-        const r = +d.region;
-        ui.open = open.includes(r) ? open.filter((x) => x !== r) : [...open, r];
-        draw();
       } else if (d.act === "again") { store.del(KEY); session = null; setup(); window.scrollTo(0, 0); }
     });
+    // The map: a county opens its box; the phone and the desktop board are different drawings.
+    bindCounty(stage, { get: () => ui.county, set: (k) => { ui.county = k; }, redraw: () => { if (session && session.st) draw(); } });
+    watchNarrow((n) => { ui.narrow = n; if (session && session.st) draw(); });
     $("#quit").addEventListener("click", () => {
       if (!confirm(S.menu.confirm)) return;
       if (timer) { clearTimeout(timer); timer = null; }
