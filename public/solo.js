@@ -9,6 +9,7 @@ import * as E from "./shared/engine.js";
 import { chooseMove, advise } from "./shared/bots.js";
 import { COUNTIES } from "./shared/board.js";
 import { tableHTML, labelMove, orderChoices, recentLines, resultLine, resultBlock, changedCounties, bind } from "./table.js";
+import { decorate } from "./tutorial.js"; // the tutorial (#27) is a layer on this controller; it only acts while session.tut is set
 
 const FEED_MAX = 60;
 
@@ -195,8 +196,9 @@ export function screen(session, lang, opts = {}) {
   const v = E.view(session.st, session.seat);
   const d = decide(session, lang), x = bind(lang), rec = session.rec || [];
   const changed = [...changedCounties(rec), ...changedCounties((session.mine && session.mine.lines) || [], true)];
-  return tableHTML(v, d.choices, lang, {
+  const html = tableHTML(v, d.choices, lang, {
     feed: session.feed, wait: botsToMove(session), advisor: { on: !!session.advisor, why: d.why },
     recent: recentLines(rec, v, x), result: resultBlock(session.mine, x), changed, ...opts,
   });
+  return session.tut ? decorate(html, session, lang, opts) : html;
 }

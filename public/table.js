@@ -422,7 +422,7 @@ function headerHTML(v, ch, x, o) {
   else status = `<span class="wait">${esc(o.waitLabel ? fill(o.waitLabel, { who: waitNames || "…" }) : x.tr("hdr.busy", { who: waitNames || "…" }))}${clockHTML(o.clock)}</span>`;
   const init = v.initiative >= 0 && v.phase !== "end" ? ` · ${x.tr("hdr.initiative", { who: x.short(v.initiative) })}` : "";
   void me;
-  return `<header class="t-top"><div class="t-ttl"><span class="t-turn">${esc(x.tr("hdr.turn", { n: v.turn }))}${esc(init)}</span>` +
+  return `<header class="t-top"><div class="t-ttl"><span class="t-turn" data-turn="1">${esc(x.tr("hdr.turn", { n: v.turn }))}${esc(init)}</span>` +
     `<b class="t-phase">${esc(phase)}</b>${status}</div>${o.advisor && v.phase !== "end" ? advisorBar(x, o) : ""}</header>`;
 }
 
@@ -458,7 +458,7 @@ function trackHTML(v, x, o = {}) {
   // Three slots, each a picture of its issue with the name and who holds how many cubes on it.
   const slots = v.issues.map((iss, i) => `<div class="slot" data-issue="${esc(iss.name)}"><div class="sp">${issueImg(iss.name, x)}</div><div class="sb"><span class="sl">${esc(x.tr("hdr.slot." + (i + 1)))}</span><b>${esc(x.issue(iss.name))}</b>` +
     `<span class="cb">${cubesRow(iss.cubes) || `<em>—</em>`}</span></div></div>`).join("");
-  return `<section class="t-track"><button type="button" class="slotsl helpable${o.help === "slot" ? " on" : ""}" data-help="slot" aria-expanded="${o.help === "slot"}" aria-label="${esc(x.tr("hdr.slotsL") + " · " + x.tr("hdr.tap"))}">${esc(x.tr("hdr.slotsL"))} <i aria-hidden="true">?</i></button>${slots}</section>`;
+  return `<section class="t-track" data-issues="1"><button type="button" class="slotsl helpable${o.help === "slot" ? " on" : ""}" data-help="slot" aria-expanded="${o.help === "slot"}" aria-label="${esc(x.tr("hdr.slotsL") + " · " + x.tr("hdr.tap"))}">${esc(x.tr("hdr.slotsL"))} <i aria-hidden="true">?</i></button>${slots}</section>`;
 }
 
 // ---------------------------------------------------------------- the action panel
@@ -812,13 +812,13 @@ function adviceLine(x, o) {
 function nowHTML(x, o) {
   const lines = o.recent || [];
   if (!lines.length) return "";
-  return `<section class="t-now" aria-label="${esc(x.tr("now.title"))}"><h3 class="t-h">${esc(x.tr("now.title"))}</h3><ul>` +
+  return `<section class="t-now" data-now="1" aria-label="${esc(x.tr("now.title"))}"><h3 class="t-h">${esc(x.tr("now.title"))}</h3><ul>` +
     lines.map((l) => `<li class="${l.seat != null ? "s" + l.seat : "sys"}">${esc(l.text)}</li>`).join("") + `</ul></section>`;
 }
 
 // Your own last step (o.result = resultBlock), at the top of the decision.
 function resultHTML(o, x) {
-  return o.result ? `<p class="res ${o.result.kind}" role="status"><small>${esc(x.tr("res.label"))}</small>${esc(o.result.text)}</p>` : "";
+  return o.result ? `<p class="res ${o.result.kind}" data-res="1" role="status"><small>${esc(x.tr("res.label"))}</small>${esc(o.result.text)}</p>` : "";
 }
 
 export function tableHTML(view, choices, lang, opts = {}) {

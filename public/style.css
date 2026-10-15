@@ -552,3 +552,28 @@ html { scroll-padding-bottom: 190px; }
 @media (max-width: 767px) { .pc-art { aspect-ratio: 2 / 1; } .pcard .ttl { font-size: 20px; } }
 .t-hand .hh > * { background: rgba(26, 14, 6, .72); padding: 1px 10px; border-radius: 10px; }
 .t-hand .hh { pointer-events: none; } .t-hand .hh a { pointer-events: auto; }
+
+/* The tutorial (#27): a paper bubble that points at one lit-up thing and locks the rest. drawing.js places it
+   (fixed: bottom of the screen above the hand on a phone, next to the target on a wide screen). */
+.tutbtn { border: 2px solid var(--red); }
+.tutlink { color: var(--ink); font-weight: 900; text-underline-offset: 3px; }
+[data-tut-focus] { outline: 3px solid #f2b705; outline-offset: 3px; border-radius: 6px; box-shadow: 0 0 0 6px rgba(242, 183, 5, .28); }
+.tw-c[data-tut-focus] { outline: none; box-shadow: none; }
+.tw-c[data-tut-focus] .tw-paper, .tw-c[data-tut-focus] rect, .tw-c[data-tut-focus] path { stroke: #f2b705; stroke-width: 3.2; paint-order: stroke; }
+.tw-c[data-tut-focus] { filter: drop-shadow(0 0 4px #f2b705) drop-shadow(0 0 9px rgba(242, 183, 5, .8)); }
+.pop[data-tut-focus] { outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) { [data-tut-focus]:not(.tw-c) { animation: tutglow 1.6s ease-in-out infinite; } }
+@keyframes tutglow { 50% { box-shadow: 0 0 0 10px rgba(242, 183, 5, .1); } }
+button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filter: grayscale(.6); }
+.tut { position: fixed; z-index: 40; left: 8px; right: 8px; bottom: 8px; background: var(--paper2); color: var(--ink); border: 2px solid var(--ink); border-radius: 8px; padding: 10px 12px 10px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 4px 0 var(--edge2), 0 14px 28px rgba(0, 0, 0, .55); max-height: 46vh; overflow-y: auto; }
+.tut::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: #f2b705; border-radius: 6px 0 0 6px; }
+.tut > * { margin-left: 4px; }
+.tut-x { margin: 0 0 0 4px; font: 700 14px/1.55 var(--sans); }
+.tut-h { margin: 0 0 0 4px; font-size: 12px; font-weight: 900; color: var(--red); }
+.tut-b { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.tut-b:has(.tut-go:only-child) { justify-content: flex-end; }
+.tut-skip { border: 0; background: transparent; color: var(--mute); font: 700 12px var(--sans); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; padding: 8px 4px; min-height: 36px; }
+.tut-go { border: 0; background: var(--red); color: #fbe6d8; font: 900 15px var(--serif); padding: 8px 18px; min-height: 40px; border-radius: 5px; cursor: pointer; box-shadow: 0 3px 0 #6f1f1a; }
+.tut-go:active { transform: translateY(2px); box-shadow: 0 1px 0 #6f1f1a; }
+.tut button:focus-visible { outline: 3px solid #ffd34d; outline-offset: 2px; }
+@media (min-width: 768px) { .tut { left: auto; right: auto; width: 340px; } .tut-x { font-size: 15px; } }
