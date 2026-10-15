@@ -324,7 +324,9 @@ check("票數：候選人板寫盤上方塊換成的票，中文 n 接 0萬票�
       const seg = panelOf(html, p);
       if (!seg) return `${c.where}：找不到 data-seat="${p}" 的候選人板`;
       const want = voteText(cubes(c.v, p), c.lang), got = plain(seg);
-      if (!got.includes(want)) return `${c.where}：${SEAT[p]} 盤上 ${cubes(c.v, p)} 顆，板上應有「${want}」，實際文字是「${got.slice(0, 80)}」`;
+      // The number must start there: "00票" or "1330萬票" holds "0票" / "330萬票" but is not it (FE found the hole, #29).
+      const at = new RegExp(`(^|[^0-9.])${want.replace(/\./g, "\\.")}`);
+      if (!at.test(got)) return `${c.where}：${SEAT[p]} 盤上 ${cubes(c.v, p)} 顆，板上應有「${want}」（前面不接數字），實際文字是「${got.slice(0, 80)}」`;
       if (cubes(c.v, p) === 0 && /00萬票|0\.0Mvotes/.test(got)) return `${c.where}：0 顆寫成了「${got.slice(0, 60)}」`;
       n++;
     }
