@@ -58,7 +58,8 @@ function finished() {
       if (!ch.length) break;
       s = S.advance(S.act(s, ch[Math.floor(R1() * ch.length)].move));
     }
-    if (s.st.phase === "end") for (const lang of ["zh-Hant", "en"]) out.push({ s, v: E.view(s.st, seat), lang, where: `${SEAT[seat]} seed ${seed}（${lang}）` });
+    // The same finished game read from each seat (the end page is the viewer's): every rank shows up whatever the seeds.
+    if (s.st.phase === "end") for (const p of [0, 1, 2]) { const sp = { ...s, seat: p }; for (const lang of ["zh-Hant", "en"]) out.push({ s: sp, v: E.view(s.st, p), lang, where: `${SEAT[p]}（${SEAT[seat]} 的局）seed ${seed}（${lang}）` }); }
   }
   return out;
 }
@@ -127,7 +128,7 @@ check("你的成績：data-you 寫名次（第一名/1st…）、你的得票數
     if (!txt.includes(votes(r.votes[me], g.lang)) || !txt.includes(pct(r.votes[me], cast(r)))) return `${g.where}：data-you 沒有你的得票數或得票率：「${txt.slice(0, 80)}」`;
   }
   const ranks = new Set(GAMES.map((g) => order(g.v.result).indexOf(g.v.seat)));
-  const r = nonEmpty(ranks.size >= 2 ? 1 : 0, "不只一種名次的結局（全是第一名或全是第三名等於沒驗）"); if (r !== true) return r;
+  const r = nonEmpty(ranks.size === 3 ? 1 : 0, "第一、第二、第三名都有的結局（少一種就沒驗到那一種）"); if (r !== true) return r;
   return ok(true, `${GAMES.length} 個結局，名次有 ${[...ranks].map((x) => x + 1).join("、")}`);
 }));
 
