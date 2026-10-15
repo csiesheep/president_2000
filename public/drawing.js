@@ -7,25 +7,48 @@ let lastAdvised = null;
 // A redraw swaps the whole stage, which would make every picture a brand-new <img> that blinks while it
 // decodes (#28). So the <img> elements that were on the stage keep their place: after the swap, a new <img>
 // whose markup is identical to one that was just removed is replaced by that very element.
+// The candidates standing on the map are SVG <image> elements (#29). A candidate that walks to another county is
+// the same picture in a new place, so an <image> is matched by its file and size and only its position is
+// moved; everything else is matched by its whole markup.
 const imgKey = new WeakMap();
-const keyOf = (im) => imgKey.get(im) || im.outerHTML;
+const sigOf = (im) => (im.localName === "image" ? "image|" + (im.getAttribute("href") || "") + "|" + im.getAttribute("width") + "|" + im.getAttribute("height") : im.outerHTML);
+const keyOf = (im) => imgKey.get(im) || sigOf(im);
 function keepImages(root, html) {
   const pool = new Map();
-  for (const im of root.querySelectorAll("img")) {
+  for (const im of root.querySelectorAll("img, image")) {
     const k = keyOf(im);
     if (!pool.has(k)) pool.set(k, []);
     pool.get(k).push(im);
   }
   root.innerHTML = html;
-  for (const im of root.querySelectorAll("img")) {
-    const k = im.outerHTML, list = pool.get(k);
-    if (list && list.length) { const was = list.shift(); im.replaceWith(was); imgKey.set(was, k); } else imgKey.set(im, k);
+  for (const im of root.querySelectorAll("img, image")) {
+    const k = sigOf(im), list = pool.get(k);
+    if (list && list.length) {
+      const was = list.shift();
+      if (im.localName === "image") for (const at of ["x", "y"]) was.setAttribute(at, im.getAttribute(at));
+      im.replaceWith(was); imgKey.set(was, k);
+    } else imgKey.set(im, k);
   }
 }
 
-export function drawInto(root, html) {
+// What the player has open that is not part of the view (#29): on a phone, which candidate's board shows its
+// hand, bag and momentum under the row; whether the menu is open. Applied to the DOM after each redraw, so the
+// table's HTML stays a pure function of the view and the room client does not need to know about it.
+function applyState(root, state) {
+  for (const a of root.querySelectorAll(".pl")) {
+    const on = state.seat != null && a.classList.contains("s" + state.seat);
+    a.classList.toggle("open", on);
+    const b = a.querySelector(".pl-tap");
+    if (b) b.setAttribute("aria-expanded", String(on));
+  }
+  const m = root.querySelector("[data-menu]");
+  if (m) m.setAttribute("aria-expanded", String(!!state.menu));
+}
+
+export function drawInto(root, html, state = {}) {
   const old = root.querySelector(".hs"), left = old ? old.scrollLeft : 0;
   keepImages(root, html);
+  applyState(root, state);
   const hs = root.querySelector(".hs");
   if (!hs) { lastAdvised = null; return; }
   const adv = hs.querySelector(".hc.adv");
@@ -83,6 +106,54 @@ export function bindCounty(root, api) {
     if (api.get() == null || !ev.target.isConnected) return;
     if (!ev.target.closest(".pop, [data-county]")) { api.set(null); api.redraw(); }
   });
+}
+
+// ---------------------------------------------------------------- the menu and the candidate boards (#29)
+
+// A candidate board is one button (data-detail): on a phone a tap shows that candidate's hand, bag and momentum
+// under the row, a second tap hides it. api = { get(): seat or null, set(seat), redraw() }.
+export function bindSeat(root, api) {
+  root.addEventListener("click", (ev) => {
+    const b = ev.target.closest("[data-detail]");
+    if (!b) return;
+    const p = +b.dataset.detail;
+    api.set(api.get() === p ? null : p);
+    api.redraw();
+  });
+}
+
+// The page's menu (quit or leave, language): `menu` is a static element holding those controls, hidden until a
+// menu button (the one in the table's top row, [data-menu], or the one in the static top bar, [data-menu-top])
+// is pressed. It opens under the button, on top of everything, and closes with Esc, a click elsewhere or a choice
+// in it. Returns { isOpen(), close() }; the page passes isOpen() to drawInto so a redraw keeps the button right.
+export function bindMenu(menu) {
+  let open = false, from = null;
+  const sync = () => {
+    menu.hidden = !open;
+    for (const b of document.querySelectorAll("[data-menu], [data-menu-top]")) b.setAttribute("aria-expanded", String(open && b === from));
+  };
+  const set = (on, btn) => {
+    open = on; if (btn) from = btn;
+    if (open && from) {
+      const r = from.getBoundingClientRect();
+      menu.style.top = Math.round(r.bottom + window.scrollY + 6) + "px";
+      menu.style.right = Math.max(4, Math.round(document.documentElement.clientWidth - r.right)) + "px";
+    }
+    sync();
+  };
+  document.addEventListener("click", (ev) => {
+    const b = ev.target.closest && ev.target.closest("[data-menu], [data-menu-top]");
+    if (b) { set(!open, b); return; }
+    if (open && !menu.contains(ev.target)) set(false);
+    else if (open && ev.target.closest("button, a")) setTimeout(() => set(false), 0);
+  });
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key !== "Escape" || !open) return;
+    const b = from;
+    set(false);
+    if (b && b.isConnected) b.focus({ preventScroll: true });
+  });
+  return { isOpen: () => open, close: () => set(false) };
 }
 
 // ---------------------------------------------------------------- the tutorial's bubble (#27)

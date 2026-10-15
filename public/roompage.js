@@ -10,7 +10,7 @@
 //   p2000.advisor       whether the advisor switch is on (shared with the solo page)
 import * as RC from "./roomclient.js";
 import { esc } from "./table.js";
-import { drawInto, narrowNow, watchNarrow, bindCounty } from "./drawing.js";
+import { drawInto, narrowNow, watchNarrow, bindCounty, bindSeat, bindMenu } from "./drawing.js";
 
 const ADV_KEY = "p2000.advisor", NAME_KEY = "p2000.room.name", LEVEL_KEY = "p2000.room.level", roomKey = (code) => "p2000.room." + code;
 const BACKOFF_MAX = 30; // seconds: 1, 2, 4, 8, 16, 30, 30, …
@@ -22,6 +22,8 @@ export function mount({ T, lang, qs, store, $ }) {
   const q = (extra) => { const p = new URLSearchParams(extra); if (en) p.set("lang", "en"); const s = p.toString(); return s ? "?" + s : "./"; };
   $("#land").hidden = true;
   $("#room").hidden = false;
+  $("#rmenub").setAttribute("aria-label", T.ui.solo.menu.label);
+  const menu = bindMenu($("#rmenu"));
   $("#rhome").href = "./" + (en ? "?lang=en" : "");
   $("#rhome").textContent = T.ui.solo.setup.home;
   const other = new URLSearchParams(location.search);
@@ -64,18 +66,21 @@ export function mount({ T, lang, qs, store, $ }) {
 
   // ---- the room
   let roomCode = null, name = "", client = RC.setAdvisor(RC.newClient(), store.get(ADV_KEY) === true), sock = null, attempts = 0, retry = null, tick = null, terminal = false, gone = false;
-  let ui = { county: null, narrow: narrowNow(), sel: null, picks: [], help: null, moves: false, confirm: null, draft: "", level: [1, 2, 3].includes(store.get(LEVEL_KEY)) ? store.get(LEVEL_KEY) : 2 };
+  let ui = { county: null, seat: null, narrow: narrowNow(), sel: null, picks: [], help: null, moves: false, confirm: null, draft: "", level: [1, 2, 3].includes(store.get(LEVEL_KEY)) ? store.get(LEVEL_KEY) : 2 };
 
   const say = (text) => { banner.textContent = text || ""; banner.hidden = !text; };
   const draw = () => {
     if (gone) {
+      $("#room").classList.remove("intable");
       stage.innerHTML = `<section class="lobby setup"><p class="rerr" role="alert">${esc(T.errors.no_room)}</p><a class="big go" href="${esc(q({ join: "1" }))}">${esc(F.joinGo)}</a></section>`;
       return;
     }
     // A redraw replaces the chat box: keep what is typed, and the caret if the box had focus.
     const box = $("#chatin"), had = box && document.activeElement === box, caret = had ? [box.selectionStart, box.selectionEnd] : null;
     const log = stage.querySelector(".chatlog"), pinned = !log || log.scrollHeight - log.scrollTop - log.clientHeight < 40;
-    drawInto(stage, RC.screen(client, lang, { level: ui.level, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow, sel: ui.sel, picks: ui.picks, draft: ui.draft, help: ui.help, moves: ui.moves, confirm: ui.confirm }));
+    drawInto(stage, RC.screen(client, lang, { level: ui.level, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow, sel: ui.sel, picks: ui.picks, draft: ui.draft, help: ui.help, moves: ui.moves, confirm: ui.confirm }), { seat: ui.seat, menu: menu.isOpen() });
+    // At the table the top row has its own menu button, so the page's top bar steps aside.
+    $("#room").classList.toggle("intable", !!stage.querySelector(".tbl"));
     const nb = $("#chatin");
     if (nb && had) { nb.focus({ preventScroll: true }); try { nb.setSelectionRange(caret[0], caret[1]); } catch { /* not a text field */ } }
     const nl = stage.querySelector(".chatlog");
@@ -181,6 +186,7 @@ export function mount({ T, lang, qs, store, $ }) {
     else if (d.pick != null) { ui.picks = ui.picks.includes(d.pick) ? ui.picks.filter((x) => x !== d.pick) : [...ui.picks, d.pick]; draw(); }
   });
   bindCounty(stage, { get: () => ui.county, set: (k) => { ui.county = k; }, redraw: () => draw() });
+  bindSeat(stage, { get: () => ui.seat, set: (p) => { ui.seat = p; }, redraw: () => draw() });
   watchNarrow((n) => { ui.narrow = n; draw(); });
 
   // ---- which page is this

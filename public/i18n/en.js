@@ -62,7 +62,7 @@ export default {
     // Direction C (#26): the box lid on the home page, the player boards, the candidate card
     look: {
       home: { meta: "3 players · 9 turns", sub: "Soong, Lien, Chen. Put your blocks on 24 counties and get to election day.", play: "Play solo", playSub: "Against three levels of AI", host: "Host a room", hostSub: "Send the code to friends", join: "Join", joinSub: "Enter the 4-character code", boxTitle: "What's in the box", box: "70 event cards · a local card for each of 24 counties · a bag of cubes · a board of 24 counties · three issue slots. It plays like the tabletop game: play a card, place blocks, draw from the bag for support checks.", rules: "Open the rulebook" },
-      board: { label: "Player boards", cubes: "{n} on the board", mom: "Momentum", hand: "Hand {n} · kept {k}", bag: "Bag {n}" },
+      board: { label: "Player boards", cubes: "{n} on the board", mom: "Momentum", hand: "Hand {n} · kept {k}", bag: "Bag {n}", votes: "M votes", votesNone: " votes" },
       card: { seal: "Once a game", used: "Used" },
     },
     solo: {
@@ -78,8 +78,9 @@ export default {
         levelNote: { 1: "The Volunteer only fills blocks: no taking, triggering or blocking.", 2: "The Campaign chief counts strategic voting, takes blocks, triggers and blocks.", 3: "The Strategist also saves cards for the Policy Forum and cuts issue leads to a tie." },
         start: "Start the campaign", note: "Nine turns. Progress is kept in this tab; a reload brings you back to the same screen.", home: "← Home",
       },
-      menu: { quit: "Abandon this game", confirm: "Abandon this game and go back to setup?", skip: "Click to skip the animation" },
+      menu: { quit: "Abandon this game", confirm: "Abandon this game and go back to setup?", skip: "Click to skip the animation", label: "Menu" },
       hdr: {
+        ph: { action: "Action {n}/4", order: "Order", momentum: "Momentum", save: "Set aside", debate: "Forum", election: "Election day", end: "The count" },
         turn: "Turn {n}", initiative: "Initiative: {who}", star: "Initiative", mom: "Momentum", bag: "Bag", feed: "Record", first: "1st", momL: "Momentum", slotsL: "Issue slots", tap: "Tap for an explanation",
         yourTurn: "Your move", busy: "{who} is acting…", waitHint: "The bots are acting. You can look through your hand meanwhile.",
         slot: { 1: "Slot 1", 2: "Slot 2", 3: "Slot 3" },
@@ -89,7 +90,7 @@ export default {
       map: {
         title: "The regions", here: "{who} is here", endorse: "Endorsed by", media: "Media", blocks: "{n} blocks", empty: "empty {n}", boss: "{who}, local boss",
         legendEmpty: "empty swing blocks", legendGrey: "non-voter blocks", changed: "changed just now",
-        board: "Map of Taiwan", hint: "Tap a county to see its blocks and act there.", popNone: "Nothing to do in this county right now.", popGrey: "non-voter {n}", popClose: "Close", islands: "Outer islands", legendPawn: "round marker: where a candidate stands", legendCubes: "Chen, Soong, Lien cubes", popMove: "Move here · {left} CP left",
+        you: "You", board: "Map of Taiwan", hint: "Tap a county to see its blocks and act there.", popNone: "Nothing to do in this county right now.", popGrey: "non-voter {n}", popClose: "Close", islands: "Outer islands", legendPawn: "round marker: where a candidate stands", legendCubes: "Chen, Soong, Lien cubes", popMove: "Move here · {left} CP left",
         short: {
           "台北市": "Taipei", "台北縣": "New Taipei", "基隆市": "Keelung", "桃園縣": "Taoyuan",
           "新竹縣": "Hsinchu Co.", "新竹市": "Hsinchu", "苗栗縣": "Miaoli", "台中縣": "Taichung Co.",

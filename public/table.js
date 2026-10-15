@@ -29,7 +29,6 @@ const cardArt = (id) => (CARD[id].owner === "local" ? `art/local/${COUNTY_SLUG[C
 // <img> so the page does not jump when a picture arrives.
 const cardImg = (id, x) => `<img src="${cardArt(id)}" alt="${esc(x.card(id))}" width="600" height="400" loading="lazy" decoding="async">`;
 const issueImg = (name, x) => `<img src="art/issues/${name}.webp" alt="${esc(x.issue(name))}" width="640" height="480" loading="lazy" decoding="async">`;
-const candImg = (p, x) => `<img src="art/candidates/${SEATS[p]}.webp" alt="${esc(x.full(p))}" width="480" height="640" loading="lazy" decoding="async">`;
 
 export const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 const fill = (s, vars = {}) => s.replace(/\{(\w+)\}/g, (_, k) => (k in vars ? vars[k] : "{" + k + "}"));
@@ -395,7 +394,7 @@ function popHTML(v, ch, x, k, narrow) {
   // "Fill 1 block · no check": the action on top, what it costs or risks smaller under it.
   const words = (s) => { const [head, ...tail] = s.split(" · "); return `<span>${esc(head)}</span>` + (tail.length ? `<small>${esc(tail.join(" · "))}</small>` : ""); };
   const opt = ({ c, i, f }) => `<button type="button" class="opt pop-opt${f ? " go" : ""}${c.advised ? " adv" : ""}" data-move="${esc(JSON.stringify(c.move))}" data-choice="${i}" data-pop="${k}">${c.advised ? starHTML(x) : ""}${words(label(c))}</button>`;
-  const at = popPlace(k, narrow);
+  const at = popPlace(k, narrow, x.lang);
   return `<div class="pop ${at.cls}" data-popover="${k}" role="dialog" aria-label="${esc(x.county(k))}" tabindex="-1" style="${at.style}"><i class="pop-arrow" aria-hidden="true"></i>` +
     `<div class="pop-h"><b>${esc(x.county(k))} · ${esc(tr("map.blocks", { n: blocks.length }))}</b><span>${esc(x.region(REGION_OF[k]))}</span>` +
     `<button type="button" class="pop-x" data-pop-close="1" aria-label="${esc(tr("map.popClose"))}">×</button></div>` +
@@ -409,26 +408,35 @@ function clockHTML(c) {
   return ` <span class="clock${c.left <= 10 ? " low" : ""}" data-left="${c.left}" data-deadline="${c.deadline}">${esc(fill(c.tpl, { n: c.left }))}</span>`;
 }
 
+// The top row (#29, one row of at most 56 px on a phone): back to the home page, two lines of words (the turn
+// and who has the initiative; the phase and whose move it is), the advisor's switch and the menu. The menu
+// itself (quit, language) is not drawn here: the page owns it (drawing.js bindMenu) and this is its button.
+const ICON_BACK = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>`;
+const ICON_MENU = `<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="19" cy="12" r="2" fill="currentColor"/></svg>`;
+
 function headerHTML(v, ch, x, o) {
-  const me = v.seat, S = x.S;
   const nm = (p) => x.short(p) + (o.names && o.names[p] ? ` (${o.names[p]})` : "");
   const waitNames = (o.wait || []).map(nm).join(x.lang === "en" ? ", " : "、");
-  let phase;
-  if (v.phase === "action") phase = x.tr("hdr.phase.action", { n: Math.min(v.step + 1, 4) });
-  else phase = x.tr("hdr.phase." + v.phase);
+  const phase = v.phase === "action" ? x.tr("hdr.ph.action", { n: Math.min(v.step + 1, 4) }) : x.tr("hdr.ph." + v.phase);
   let status = "";
   if (v.phase === "end") status = "";
   else if (ch.length) status = `<span class="yrow"><span class="you">${esc(x.tr("hdr.yourTurn"))}</span>${clockHTML(o.clock)}</span>`;
   else status = `<span class="wait">${esc(o.waitLabel ? fill(o.waitLabel, { who: waitNames || "…" }) : x.tr("hdr.busy", { who: waitNames || "…" }))}${clockHTML(o.clock)}</span>`;
   const init = v.initiative >= 0 && v.phase !== "end" ? ` · ${x.tr("hdr.initiative", { who: x.short(v.initiative) })}` : "";
-  void me;
-  return `<header class="t-top"><div class="t-ttl"><span class="t-turn" data-turn="1">${esc(x.tr("hdr.turn", { n: v.turn }))}${esc(init)}</span>` +
-    `<b class="t-phase">${esc(phase)}</b>${status}</div>${o.advisor && v.phase !== "end" ? advisorBar(x, o) : ""}</header>`;
+  const home = "./" + (x.lang === "en" ? "?lang=en" : "");
+  return `<header class="t-top"><a class="t-back" href="${home}" aria-label="${esc(x.tr("setup.home"))}">${ICON_BACK}</a>` +
+    `<div class="t-ttl"><span class="t-turn" data-turn="1">${esc(x.tr("hdr.turn", { n: v.turn }))}${esc(init)}</span>` +
+    `<span class="t-line"><b class="t-phase">${esc(phase)}</b>${status}</span></div>` +
+    `${o.advisor && v.phase !== "end" ? advisorBar(x, o) : ""}` +
+    `<button type="button" class="t-menu" data-menu aria-haspopup="true" aria-expanded="false" aria-label="${esc(x.tr("menu.label"))}">${ICON_MENU}</button></header>`;
 }
 
-// The three player boards, one paper board per candidate in ballot order: the candidate's picture, the
-// ballot number stamp, the name, cubes on the board, momentum (tap for what it is), hand and kept cards,
-// and cubes in the bag. A little flag marks the initiative.
+// The three player boards, one per candidate in ballot order (#29). The board is one button: the candidate's
+// picture on the left fading into the paper, the ballot number, and on the right the name (a little flag when
+// the seat has the initiative), the votes ("33" and the small "0萬票": a cube is 10萬票; in English "3.3" and
+// "M votes") and the momentum as red dots. Hand, kept cards, the bag and what momentum is sit in a strip under
+// the row, which a phone shows for one candidate at a time (the page marks that board .open after it draws, see
+// drawing.js applyState: it is where the player tapped, not part of the view); a wide screen always shows it.
 function playersHTML(v, x, o = {}) {
   const L = x.d.ui.look.board;
   const inHand = (p) => (Array.isArray(v.hands[p]) ? v.hands[p].length : v.hands[p]);
@@ -436,14 +444,18 @@ function playersHTML(v, x, o = {}) {
   const onBoard = (p) => v.counties.reduce((s, c) => s + c.blocks.filter((b) => b.o === p).length, 0);
   const first = (p) => v.initiative === p && v.phase !== "end";
   const boards = SHOW_ORDER.map((p) => {
-    const mom = v.mom[p];
-    return `<article class="pl s${p}${p === v.seat ? " me" : ""}${first(p) ? " first" : ""}" data-seat="${p}">` +
-      `<div class="pl-pic">${candImg(p, x)}<b class="no">${NO[p]}</b></div>` +
-      `<div class="pl-b"><h3 class="pl-n">${esc(x.full(p))}${first(p) ? ` <i class="flag-i" role="img" aria-label="${esc(x.tr("hdr.star"))}" title="${esc(x.tr("hdr.star"))}">⚑</i>` : ""}</h3>` +
-      `<p class="pl-c"><i class="b o${p}"></i><span>${fill(L.cubes, { n: `<b>${onBoard(p)}</b>` })}</span></p>` +
-      `<button type="button" class="pl-m helpable${o.help === "mom" ? " on" : ""}" data-help="mom" aria-expanded="${o.help === "mom"}" aria-label="${esc(x.tr("hdr.momL") + " " + mom + " · " + x.tr("hdr.tap"))}">${esc(L.mom)} <b>${mom}</b> <span class="dots" aria-hidden="true">${"<i></i>".repeat(Math.min(mom, 12))}</span></button></div>` +
-      `<p class="pl-x"><span>${esc(fill(L.hand, { n: inHand(p), k: kept(p) }))}</span>` +
-      `<button type="button" class="pl-bag helpable${o.help === "bag" ? " on" : ""}" data-help="bag" aria-expanded="${o.help === "bag"}" aria-label="${esc(x.tr("hdr.bag") + " · " + x.tr("hdr.tap"))}">${esc(fill(L.bag, { n: v.bag[p] }))}</button></p></article>`;
+    const mom = v.mom[p], n = onBoard(p);
+    const big = n ? (x.lang === "en" ? (n / 10).toFixed(1) : String(n)) : "0";
+    const votes = `<b>${big}</b><small>${esc(n ? L.votes : L.votesNone)}</small>`;
+    const dots = mom ? `<span class="dots" aria-hidden="true">${"<i></i>".repeat(Math.min(mom, 12))}</span>` : `<b class="m0">0</b>`;
+    return `<article class="pl s${p}${p === v.seat ? " me" : ""}${first(p) ? " first" : ""}">` +
+      `<div class="pl-card" data-seat="${p}"><button type="button" class="pl-tap" data-detail="${p}" aria-expanded="false" aria-label="${esc(`${x.full(p)} · ${fill(L.cubes, { n })} · ${L.mom} ${mom}`)}">` +
+      `<span class="pl-pic"><img src="art/candidates/${SEATS[p]}.webp" alt="${esc(x.full(p))}" width="480" height="640" loading="lazy" decoding="async"></span><b class="no">${NO[p]}</b>` +
+      `<span class="pl-t"><span class="pl-n">${first(p) ? `<i class="flag-i" role="img" aria-label="${esc(x.tr("hdr.star"))}" title="${esc(x.tr("hdr.star"))}">⚑</i>` : ""}${esc(x.lang === "en" ? x.short(p) : x.full(p))}</span>` +
+      `<span class="pl-v">${votes}</span><span class="pl-mm">${esc(L.mom)} ${dots}</span></span></button></div>` +
+      `<div class="pl-d"><span class="pl-h">${esc(fill(L.hand, { n: inHand(p), k: kept(p) }))}</span>` +
+      `<button type="button" class="pl-bag helpable${o.help === "bag" ? " on" : ""}" data-help="bag" aria-expanded="${o.help === "bag"}" aria-label="${esc(x.tr("hdr.bag") + " · " + x.tr("hdr.tap"))}">${esc(fill(L.bag, { n: v.bag[p] }))}</button>` +
+      `<button type="button" class="pl-m helpable${o.help === "mom" ? " on" : ""}" data-help="mom" aria-expanded="${o.help === "mom"}" aria-label="${esc(x.tr("hdr.momL") + " " + mom + " · " + x.tr("hdr.tap"))}">${esc(L.mom)} <b>${mom}</b></button></div></article>`;
   }).join("");
   return `<section class="t-players" aria-label="${esc(L.label)}">${boards}</section>`;
 }
@@ -455,10 +467,12 @@ function helpHTML(x, o) {
 }
 
 function trackHTML(v, x, o = {}) {
-  // Three slots, each a picture of its issue with the name and who holds how many cubes on it.
-  const slots = v.issues.map((iss, i) => `<div class="slot" data-issue="${esc(iss.name)}"><div class="sp">${issueImg(iss.name, x)}</div><div class="sb"><span class="sl">${esc(x.tr("hdr.slot." + (i + 1)))}</span><b>${esc(x.issue(iss.name))}</b>` +
-    `<span class="cb">${cubesRow(iss.cubes) || `<em>—</em>`}</span></div></div>`).join("");
-  return `<section class="t-track" data-issues="1"><button type="button" class="slotsl helpable${o.help === "slot" ? " on" : ""}" data-help="slot" aria-expanded="${o.help === "slot"}" aria-label="${esc(x.tr("hdr.slotsL") + " · " + x.tr("hdr.tap"))}">${esc(x.tr("hdr.slotsL"))} <i aria-hidden="true">?</i></button>${slots}</section>`;
+  // Three slots (#29), each a capsule button: a round picture of its issue on the left, then the slot, the name
+  // and who holds how many cubes on it. Tapping one explains what the slots do (the same note as the label).
+  const slots = v.issues.map((iss, i) => `<button type="button" class="slot helpable${o.help === "slot" ? " on" : ""}" data-issue="${esc(iss.name)}" data-help="slot" aria-expanded="${o.help === "slot"}" aria-label="${esc(x.tr("hdr.slotsL") + " · " + x.tr("hdr.slot." + (i + 1)) + " · " + x.issue(iss.name))}">` +
+    `<span class="sp">${issueImg(iss.name, x)}</span><span class="sb"><span class="sl">${esc(x.tr("hdr.slot." + (i + 1)))}</span><b>${esc(x.issue(iss.name))}</b>` +
+    `<span class="cb">${cubesRow(iss.cubes) || `<em>—</em>`}</span></span></button>`).join("");
+  return `<section class="t-track" data-issues="1" aria-label="${esc(x.tr("hdr.slotsL"))}"><button type="button" class="slotsl helpable${o.help === "slot" ? " on" : ""}" data-help="slot" aria-expanded="${o.help === "slot"}" aria-label="${esc(x.tr("hdr.slotsL") + " · " + x.tr("hdr.tap"))}">${esc(x.tr("hdr.slotsL"))} <i aria-hidden="true">?</i></button>${slots}</section>`;
 }
 
 // ---------------------------------------------------------------- the action panel

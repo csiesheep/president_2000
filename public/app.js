@@ -6,7 +6,7 @@ import zh from "./i18n/zh-Hant.js";
 import * as Solo from "./solo.js";
 import * as Tut from "./tutorial.js";
 import { mount as mountRoom } from "./roompage.js";
-import { drawInto, narrowNow, watchNarrow, bindCounty, placeTutorial } from "./drawing.js";
+import { drawInto, narrowNow, watchNarrow, bindCounty, bindSeat, bindMenu, placeTutorial } from "./drawing.js";
 
 if (typeof document !== "undefined") {
   const qs = new URLSearchParams(location.search);
@@ -52,6 +52,8 @@ if (typeof document !== "undefined") {
     $("#solo").hidden = false;
     document.title = S.land.solo + " · " + T.title;
     const stage = $("#stage");
+    $("#gmenub").setAttribute("aria-label", S.menu.label);
+    const menu = bindMenu($("#gmenu"));
     let session = store.get(KEY);
     // ?tutorial (#27): a tutorial in progress is picked up again (a reload comes back to the same step);
     // otherwise it starts the fixed game. The address turns into plain ?play once the tutorial is over.
@@ -65,13 +67,16 @@ if (typeof document !== "undefined") {
       gLang.href = "?" + (tutorialUrl ? "tutorial" : "play") + (other ? "&lang=en" : "");
     };
     syncUrl();
-    let ui = { sel: null, picks: [], help: null, moves: false, confirm: null, county: null, narrow: narrowNow() };
+    let ui = { sel: null, picks: [], help: null, moves: false, confirm: null, county: null, seat: null, narrow: narrowNow() };
     let timer = null;
     const save = () => store.set(KEY, session);
 
     const draw = () => {
       syncUrl();
-      drawInto(stage, Solo.screen(session, code, { sel: ui.sel, picks: ui.picks, help: ui.help, moves: ui.moves, confirm: ui.confirm, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow }));
+      // The tutorial's "player board" step is about the hand and the bag: on a phone that board shows them while it is on.
+      const boardStep = !!(session.tut && Tut.step(session, code).id === "board");
+      drawInto(stage, Solo.screen(session, code, { sel: ui.sel, picks: ui.picks, help: ui.help, moves: ui.moves, confirm: ui.confirm, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow }), { seat: boardStep ? session.seat : ui.seat, menu: menu.isOpen() });
+      $("#solo").classList.add("intable");
       $("#quit").hidden = false;
       placeTutorial(stage);
     };
@@ -90,6 +95,7 @@ if (typeof document !== "undefined") {
 
     const setup = () => {
       syncUrl();
+      $("#solo").classList.remove("intable");
       $("#quit").hidden = true;
       const pick = store.get(SETUP) || { seat: 0, level: 2 };
       const seatOrder = [1, 2, 0], keys = ["chen", "soong", "lien"], no = [5, 1, 2];
@@ -113,7 +119,7 @@ if (typeof document !== "undefined") {
       if (d.tut) {
         // The tutorial's bubble: next, or out of the tutorial (what is left is a normal game).
         session = d.tut === "skip" ? Tut.skip(session) : Tut.next(session);
-        ui = { ...ui, sel: null, picks: [], confirm: null, county: null };
+        ui = { ...ui, sel: null, picks: [], confirm: null, county: null, seat: null };
         save(); pump(); // the bubble scrolls the next target into view itself
       } else if (d.seat != null) { const p = store.get(SETUP) || { seat: 0, level: 2 }; store.set(SETUP, { ...p, seat: +d.seat }); setup(); }
       else if (d.level != null) { const p = store.get(SETUP) || { seat: 0, level: 2 }; store.set(SETUP, { ...p, level: +d.level }); setup(); }
@@ -121,7 +127,7 @@ if (typeof document !== "undefined") {
         const p = store.get(SETUP) || { seat: 0, level: 2 };
         const seed = crypto.getRandomValues(new Uint32Array(1))[0];
         session = Solo.setAdvisor(Solo.advance(Solo.newSolo({ seat: p.seat, level: p.level, seed })), store.get(ADV) === true);
-        ui = { sel: null, picks: [], help: null, moves: false, confirm: null, county: null, narrow: narrowNow() };
+        ui = { sel: null, picks: [], help: null, moves: false, confirm: null, county: null, seat: null, narrow: narrowNow() };
         save(); pump(); window.scrollTo(0, 0);
       } else if (d.advisor != null) {
         session = Solo.setAdvisor(session, d.advisor === "on"); store.set(ADV, session.advisor);
@@ -149,6 +155,7 @@ if (typeof document !== "undefined") {
       // Tapping the county the tutorial asked for is its step.
       if (k != null && session && session.tut) { const n = Tut.openCounty(session, k); if (n !== session) { session = n; save(); } }
     }, redraw: () => { if (session && session.st) draw(); } });
+    bindSeat(stage, { get: () => ui.seat, set: (p) => { ui.seat = p; }, redraw: () => { if (session && session.st) draw(); } });
     watchNarrow((n) => { ui.narrow = n; if (session && session.st) draw(); });
     $("#quit").addEventListener("click", () => {
       if (!confirm(S.menu.confirm)) return;
