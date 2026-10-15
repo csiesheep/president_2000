@@ -32,7 +32,7 @@ async function launch() {
   const root = process.env.TEMP || "/tmp", dir = `${root}/sound42_${process.pid}_${Date.now()}`;
   for (const old of readdirSync(root).filter((d) => d.startsWith("sound42_"))) { try { if (Date.now() - statSync(`${root}/${old}`).mtimeMs > 600000) rmSync(`${root}/${old}`, { recursive: true, force: true }); } catch { /* in use */ } }
   mkdirSync(dir, { recursive: true });
-  const proc = spawn(CHROME, ["--headless=new", "--disable-gpu", "--hide-scrollbars", "--remote-debugging-port=0", `--user-data-dir=${dir}`, "about:blank"], { stdio: "ignore" });
+  const proc = spawn(CHROME, ["--headless=new", "--disable-gpu", "--hide-scrollbars", "--disable-background-timer-throttling", "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows", "--remote-debugging-port=0", `--user-data-dir=${dir}`, "about:blank"], { stdio: "ignore" });
   let port = 0;
   for (let i = 0; i < 100 && !port; i++) { try { port = Number.parseInt(readFileSync(`${dir}/DevToolsActivePort`, "utf8"), 10) || 0; } catch { /* starting */ } if (!port) await sleep(100); }
   for (let i = 0; i < 60; i++) { try { if ((await fetch(`http://127.0.0.1:${port}/json/version`)).ok) break; } catch { /* starting */ } await sleep(200); }
@@ -43,7 +43,8 @@ const SPY = `(() => {
   window.__audio = { made: 0, started: 0 }; window.__sounds = [];
   const C = window.AudioContext || window.webkitAudioContext;
   if (C) { const W = function (...a) { window.__audio.made++; return new C(...a); }; W.prototype = C.prototype; window.AudioContext = W; window.webkitAudioContext = W; }
-  if (window.AudioScheduledSourceNode) { const st = AudioScheduledSourceNode.prototype.start; AudioScheduledSourceNode.prototype.start = function (...a) { window.__audio.started++; return st.apply(this, a); }; }
+  // every kind of source: AudioBufferSourceNode (noise) has its own start(), the parent's patch never saw it (#42, FE)
+  for (const K of ["AudioScheduledSourceNode", "AudioBufferSourceNode", "OscillatorNode", "ConstantSourceNode"]) { const P = window[K] && window[K].prototype; if (!P || !Object.prototype.hasOwnProperty.call(P, "start")) continue; const st = P.start; P.start = function (...a) { window.__audio.started++; return st.apply(this, a); }; }
   addEventListener("p2000:sound", (e) => window.__sounds.push({ name: e.detail && e.detail.name, muted: !!(e.detail && e.detail.muted), t: performance.now() }));
   window.__saves = []; let last = null;
   setInterval(() => { try { const v = sessionStorage.getItem("p2000.solo.session"); if (v !== last) { if (last !== null) window.__saves.push(performance.now()); last = v; } } catch { /* storage */ } }, 20);
