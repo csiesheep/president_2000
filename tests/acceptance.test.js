@@ -811,7 +811,7 @@ c2(NAT ? "動能結算 · 媒體領先者先 +1 動能，再可交換相鄰兩�
   return ok(true, `陳把 ${n0}、${n1} 對調，獎勵跟著新槽位；平手不問`);
 });
 c2("動能結算 · 媒體獎勵：媒體領先者在減半之後 +1 動能，平手沒有人加；這 1 點下一回合才減半（v0.4 §5.3，#34）", () => {
-  if (!NAT) return "TODO: 引擎還是七區媒體，全國媒體與媒體獎勵還沒做（#34）";
+  if (!NAT) return "引擎又變回七區媒體：v0.4 的全國媒體與媒體獎勵（#34 已做好）不見了";
   // The media leader is asked about the swap next (§5.3 step 3), so momentum is read at that decision; a tie asks
   // nothing and goes on to the save. The numbers tell the order apart (+1 before the halving gives other values).
   const run = (media, mom) => { const { st, seat } = atLastPlay(); st.mom = mom.slice(); st.media = media.slice(); for (const i of st.issues) i.cubes = [0, 0, 0]; return lastPlayQuiet(st, seat); };
