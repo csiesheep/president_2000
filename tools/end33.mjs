@@ -10,7 +10,7 @@
 //     the first screen; nothing sticks out of a result row; no sideways scroll;
 //   desk 1440×900, zh: the hero and the three rows are on the first screen; no sideways scroll.
 import { spawn } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import * as S from "../public/solo.js";
 import * as D from "../tests/driver.js";
 
@@ -29,10 +29,16 @@ function finishedGame() {
   }
   return s.st.phase === "end" ? s : null;
 }
-async function launch(port) {
-  const dir = `${process.env.TEMP || "/tmp"}/end33_${port}`;
+// Chrome picks a free port (--remote-debugging-port=0) and writes it to DevToolsActivePort in its own profile
+// folder, one per run: fixed ports and folders collided when several agents ran tools at once (#43's checker).
+// Folders this tool left more than 10 minutes ago are removed first.
+async function launch() {
+  const root = process.env.TEMP || "/tmp", dir = `${root}/end33_${process.pid}_${Date.now()}`;
+  for (const old of readdirSync(root).filter((d) => d.startsWith("end33_"))) { try { if (Date.now() - statSync(`${root}/${old}`).mtimeMs > 600000) rmSync(`${root}/${old}`, { recursive: true, force: true }); } catch { /* in use */ } }
   mkdirSync(dir, { recursive: true });
-  const proc = spawn(CHROME, ["--headless=new", "--disable-gpu", "--hide-scrollbars", `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, "about:blank"], { stdio: "ignore" });
+  const proc = spawn(CHROME, ["--headless=new", "--disable-gpu", "--hide-scrollbars", "--remote-debugging-port=0", `--user-data-dir=${dir}`, "about:blank"], { stdio: "ignore" });
+  let port = 0;
+  for (let i = 0; i < 100 && !port; i++) { try { port = Number.parseInt(readFileSync(`${dir}/DevToolsActivePort`, "utf8"), 10) || 0; } catch { /* starting */ } if (!port) await sleep(100); }
   for (let i = 0; i < 60; i++) { try { if ((await fetch(`http://127.0.0.1:${port}/json/version`)).ok) break; } catch { /* starting */ } await sleep(200); }
   return { port, close: () => proc.kill() };
 }
@@ -65,7 +71,7 @@ const out = [];
 const rule = (ok, what) => out.push({ ok, what });
 const s = finishedGame();
 if (!s) { console.log("FAIL: the game did not reach the end (instrument)"); process.exit(1); }
-const br = await launch(9496);
+const br = await launch();
 try {
   for (const [w, h, mob, lang] of [[390, 844, true, "zh"], [390, 844, true, "en"], [1440, 900, false, "zh"]]) {
     const t = await tab(br, w, h, mob);

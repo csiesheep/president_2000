@@ -50,6 +50,22 @@ const gate = (fn) => () => {
   return fn();
 };
 
+// The tutorial walked the way a player would: open the county a step asks for, play the step's move, let the bots
+// move, press next. (#43's checker found the first walker stuck at step 3: it pressed next on a county step.)
+function walkTutorial(visit) {
+  let t = Tut.newTutorial(), shown = 0, moves = 0;
+  for (let n = 0; n < 80; n++) {
+    const st = Tut.step(t, "zh-Hant");
+    if (!st || st.kind === "done") break;
+    const r = visit(t, st, n); if (r !== true) return r;
+    shown++; if (st.kind === "move") moves++;
+    if (S.botsToMove(t).length) { t = S.stepBot(t); continue; }
+    t = st.kind === "county" ? Tut.openCounty(t, st.county) : st.kind === "move" && st.moves.length ? Tut.act(t, st.moves[0]) : Tut.next(t);
+  }
+  const r = nonEmpty(moves >= 4 ? moves : 0, `教學裡走到的出牌步驟（只走到 ${moves} 個）`); if (r !== true) return r;
+  return { shown, moves };
+}
+
 section("43 悔一步");
 
 check("走一步之後：沒抽到亂數（st.rng 沒變）才能悔；悔回去是同一個局面、同一個電腦亂數、同樣的選項", gate(() => {
@@ -111,17 +127,10 @@ check("畫面：能悔時有一顆可以按的 data-undo，不能悔時沒有可
   return ok(true, `${on} 個畫面有按鈕，${off} 個沒有`);
 }));
 
-check("教學裡沒有悔一步", gate(() => {
-  let t = Tut.newTutorial(), shown = 0;
-  for (let n = 0; n < 30; n++) {
-    const st = Tut.step(t, "zh-Hant");
-    if (!st || st.kind === "done") break;
-    if (enabled(undoBtn(S.screen(t, "zh-Hant")))) return `教學第 ${n} 步（${st.id}）：畫面上有悔一步`;
-    shown++;
-    if (st.moves && st.moves.length) t = Tut.act(t, st.moves[0]); else t = Tut.next(t);
-  }
-  const r = nonEmpty(shown, "教學的畫面"); if (r !== true) return r;
-  return ok(true, `${shown} 個教學畫面都沒有`);
+check("教學裡沒有悔一步（照玩家的走法走完教學）", gate(() => {
+  const w = walkTutorial((t, st, n) => enabled(undoBtn(S.screen(t, "zh-Hant"))) ? `教學第 ${n} 步（${st.id}）：畫面上有悔一步` : true);
+  if (typeof w === "string") return w;
+  return ok(true, `${w.shown} 個教學畫面（${w.moves} 個出牌步驟）都沒有`);
 }));
 
 test("undo", () => {

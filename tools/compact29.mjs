@@ -22,17 +22,23 @@
 //       are at least 20 px, quitting and the language link can be reached (on screen, or one menu away);
 //   the tutorial at 390: its box ([data-tutorial]) is on screen and inside the width.
 import { spawn } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 
 const base = process.argv[2];
 if (!base) { console.log("usage: node tools/compact29.mjs <base url ending in /president_2000/>"); process.exit(2); }
 const CHROME = process.env.CHROME || "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function launch(port) {
-  const dir = `${process.env.TEMP || "/tmp"}/compact29_${port}`;
+// Chrome picks a free port (--remote-debugging-port=0) and writes it to DevToolsActivePort in its own profile
+// folder, one per run: fixed ports and folders collided when several agents ran tools at once (#43's checker).
+// Folders this tool left more than 10 minutes ago are removed first.
+async function launch() {
+  const root = process.env.TEMP || "/tmp", dir = `${root}/compact29_${process.pid}_${Date.now()}`;
+  for (const old of readdirSync(root).filter((d) => d.startsWith("compact29_"))) { try { if (Date.now() - statSync(`${root}/${old}`).mtimeMs > 600000) rmSync(`${root}/${old}`, { recursive: true, force: true }); } catch { /* in use */ } }
   mkdirSync(dir, { recursive: true });
-  const proc = spawn(CHROME, ["--headless=new", "--disable-gpu", "--hide-scrollbars", `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, "about:blank"], { stdio: "ignore" });
+  const proc = spawn(CHROME, ["--headless=new", "--disable-gpu", "--hide-scrollbars", "--remote-debugging-port=0", `--user-data-dir=${dir}`, "about:blank"], { stdio: "ignore" });
+  let port = 0;
+  for (let i = 0; i < 100 && !port; i++) { try { port = Number.parseInt(readFileSync(`${dir}/DevToolsActivePort`, "utf8"), 10) || 0; } catch { /* starting */ } if (!port) await sleep(100); }
   for (let i = 0; i < 60; i++) { try { if ((await fetch(`http://127.0.0.1:${port}/json/version`)).ok) break; } catch { /* starting */ } await sleep(200); }
   return { port, close: () => proc.kill() };
 }
@@ -88,7 +94,7 @@ const MEASURE = `(()=>{
 
 const out = [];
 const rule = (ok, what) => out.push({ ok, what });
-const br = await launch(9490);
+const br = await launch();
 try {
   for (const lang of ["zh", "en"]) {
     const t = await tab(br, `${base}?play${lang === "en" ? "&lang=en" : ""}`, 390, 844, true);

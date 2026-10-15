@@ -15,7 +15,7 @@
 //     the advisor switch, the menu button) do not overlap and stay inside the width, no text sticks out of a
 //     candidate panel or an issue slot, and the page does not scroll sideways.
 import { spawn } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import * as S from "../public/solo.js";
 import * as D from "../tests/driver.js";
 
@@ -40,10 +40,16 @@ function triggerSession() {
   return null;
 }
 
-async function launch(port) {
-  const dir = `${process.env.TEMP || "/tmp"}/polish30_${port}`;
+// Chrome picks a free port (--remote-debugging-port=0) and writes it to DevToolsActivePort in its own profile
+// folder, one per run: fixed ports and folders collided when several agents ran tools at once (#43's checker).
+// Folders this tool left more than 10 minutes ago are removed first.
+async function launch() {
+  const root = process.env.TEMP || "/tmp", dir = `${root}/polish30_${process.pid}_${Date.now()}`;
+  for (const old of readdirSync(root).filter((d) => d.startsWith("polish30_"))) { try { if (Date.now() - statSync(`${root}/${old}`).mtimeMs > 600000) rmSync(`${root}/${old}`, { recursive: true, force: true }); } catch { /* in use */ } }
   mkdirSync(dir, { recursive: true });
-  const proc = spawn(CHROME, ["--headless=new", "--disable-gpu", "--hide-scrollbars", `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, "about:blank"], { stdio: "ignore" });
+  const proc = spawn(CHROME, ["--headless=new", "--disable-gpu", "--hide-scrollbars", "--remote-debugging-port=0", `--user-data-dir=${dir}`, "about:blank"], { stdio: "ignore" });
+  let port = 0;
+  for (let i = 0; i < 100 && !port; i++) { try { port = Number.parseInt(readFileSync(`${dir}/DevToolsActivePort`, "utf8"), 10) || 0; } catch { /* starting */ } if (!port) await sleep(100); }
   for (let i = 0; i < 60; i++) { try { if ((await fetch(`http://127.0.0.1:${port}/json/version`)).ok) break; } catch { /* starting */ } await sleep(200); }
   return { port, close: () => proc.kill() };
 }
@@ -92,7 +98,7 @@ const out = [];
 const rule = (ok, what) => out.push({ ok, what });
 const trig = triggerSession();
 if (!trig) { console.log("FAIL: no solo game reached a trigger decision (instrument)"); process.exit(1); }
-const br = await launch(9495);
+const br = await launch();
 try {
   for (const [w, h, mob, scroll] of [[1440, 900, false, false], [1280, 800, false, true], [390, 844, true, true]]) {
     for (const lang of ["zh", "en"]) {

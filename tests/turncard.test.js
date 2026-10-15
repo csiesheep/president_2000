@@ -71,6 +71,22 @@ const gate = (fn) => () => {
   return fn();
 };
 
+// The tutorial walked the way a player would: open the county a step asks for, play the step's move, let the bots
+// move, press next. (#43's checker found the first walker stuck at step 3: it pressed next on a county step.)
+function walkTutorial(visit) {
+  let t = Tut.newTutorial(), shown = 0, moves = 0;
+  for (let n = 0; n < 80; n++) {
+    const st = Tut.step(t, "zh-Hant");
+    if (!st || st.kind === "done") break;
+    const r = visit(t, st, n); if (r !== true) return r;
+    shown++; if (st.kind === "move") moves++;
+    if (S.botsToMove(t).length) { t = S.stepBot(t); continue; }
+    t = st.kind === "county" ? Tut.openCounty(t, st.county) : st.kind === "move" && st.moves.length ? Tut.act(t, st.moves[0]) : Tut.next(t);
+  }
+  const r = nonEmpty(moves >= 4 ? moves : 0, `教學裡走到的出牌步驟（只走到 ${moves} 個）`); if (r !== true) return r;
+  return { shown, moves };
+}
+
 section("44 回合開場卡");
 
 check("每回合開始：一張 data-turncard，回合、日期（3/18 往前推）、離投票日幾週、主動權都對", gate(() => {
@@ -120,15 +136,9 @@ check("票數：三列 data-tc-votes，data-now 是這回合開始的票數，�
 
 check("沒有要求時不畫；教學裡不畫", gate(() => {
   for (const p of POOL.filter((x, i) => i % 3 === 0)) if (tags(S.screen(p.s, "zh-Hant"), "data-turncard").length) return `${p.where}：沒有 turnCard 也畫了`;
-  let t = Tut.newTutorial(), shown = 0;
-  for (let n = 0; n < 30; n++) {
-    const st = Tut.step(t, "zh-Hant"); if (!st || st.kind === "done") break;
-    if (tags(S.screen(t, "zh-Hant", { turnCard: true }), "data-turncard").length) return `教學第 ${n} 步（${st.id}）畫了開場卡`;
-    shown++;
-    t = st.moves && st.moves.length ? Tut.act(t, st.moves[0]) : Tut.next(t);
-  }
-  const r = nonEmpty(shown, "教學的畫面"); if (r !== true) return r;
-  return ok(true, `沒有要求時不畫；${shown} 個教學畫面都沒畫`);
+  const w = walkTutorial((t, st, n) => tags(S.screen(t, "zh-Hant", { turnCard: true }), "data-turncard").length ? `教學第 ${n} 步（${st.id}）畫了開場卡` : true);
+  if (typeof w === "string") return w;
+  return ok(true, `沒有要求時不畫；${w.shown} 個教學畫面（${w.moves} 個出牌步驟）都沒畫`);
 }));
 
 test("turncard", () => {

@@ -12,17 +12,23 @@
 //   - tap the candidate card, then a hand card: that card's face ([data-face]) shows and the question is gone (changing
 //     your mind still works), and closing that face (← 收起) leaves neither the face nor the old question.
 import { spawn } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import * as S from "../public/solo.js";
 
 const base = process.argv[2];
 if (!base) { console.log("usage: node tools/candtap38.mjs <base url ending in /president_2000/>"); process.exit(2); }
 const CHROME = process.env.CHROME || "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-async function launch(port) {
-  const dir = `${process.env.TEMP || "/tmp"}/candtap38_${port}`;
+// Chrome picks a free port (--remote-debugging-port=0) and writes it to DevToolsActivePort in its own profile
+// folder, one per run: fixed ports and folders collided when several agents ran tools at once (#43's checker).
+// Folders this tool left more than 10 minutes ago are removed first.
+async function launch() {
+  const root = process.env.TEMP || "/tmp", dir = `${root}/candtap38_${process.pid}_${Date.now()}`;
+  for (const old of readdirSync(root).filter((d) => d.startsWith("candtap38_"))) { try { if (Date.now() - statSync(`${root}/${old}`).mtimeMs > 600000) rmSync(`${root}/${old}`, { recursive: true, force: true }); } catch { /* in use */ } }
   mkdirSync(dir, { recursive: true });
-  const proc = spawn(CHROME, ["--headless=new", "--disable-gpu", "--hide-scrollbars", `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, "about:blank"], { stdio: "ignore" });
+  const proc = spawn(CHROME, ["--headless=new", "--disable-gpu", "--hide-scrollbars", "--remote-debugging-port=0", `--user-data-dir=${dir}`, "about:blank"], { stdio: "ignore" });
+  let port = 0;
+  for (let i = 0; i < 100 && !port; i++) { try { port = Number.parseInt(readFileSync(`${dir}/DevToolsActivePort`, "utf8"), 10) || 0; } catch { /* starting */ } if (!port) await sleep(100); }
   for (let i = 0; i < 60; i++) { try { if ((await fetch(`http://127.0.0.1:${port}/json/version`)).ok) break; } catch { /* starting */ } await sleep(200); }
   return { port, close: () => proc.kill() };
 }
@@ -96,7 +102,7 @@ async function flows(where, open) {
   t.close();
 }
 
-const br = await launch(9497);
+const br = await launch();
 try {
   // Solo: 宋 at the first decision of a fixed game (the candidate card can be used, five cards in hand).
   const s = S.advance(S.newSolo({ seat: 1, level: 2, seed: 3701 }));
