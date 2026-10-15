@@ -315,9 +315,8 @@ button.btn.menub { width: 40px; height: 40px; padding: 0; justify-content: cente
 .hc.adv .star-adv { position: absolute; top: -9px; right: -5px; margin: 0; font-size: 20px; line-height: 1; z-index: 9; text-shadow: 0 1px 2px rgba(0, 0, 0, .5); color: #ffd34d; }
 .hc.candc { margin-left: 8px; }
 .candc .cc-s { position: absolute; top: 7px; right: 7px; z-index: 2; background: rgba(20, 14, 8, .38); color: var(--ct); font: 700 9.5px/1.3 var(--sans); padding: 1px 7px; border-radius: 9px; white-space: nowrap; }
-.candc .hb { top: auto; justify-content: flex-end; }
-.candc .cc-k { color: var(--ct); font-size: 10px; font-weight: 700; letter-spacing: .08em; }
-.candc .cc-n { color: var(--ct); font: 900 15px/1.2 var(--serif); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.candc .cc-k { color: var(--ct); font-size: 10px; font-weight: 700; letter-spacing: .08em; line-height: 1.2; }
+.candc .cc-n { color: var(--ct); font: 900 15px/1.2 var(--serif); }
 .hc.candc.dis { opacity: 1; filter: none; cursor: default; }
 .hc.candc[data-used] { filter: saturate(.5) brightness(.8); }
 
@@ -532,6 +531,7 @@ html { scroll-padding-bottom: 190px; }
   .hc .cp-tab b { font-size: 26px; } .hc .cp-tab small { font-size: 9px; }
   .hc .hb { left: 10px; right: 10px; top: 44%; bottom: 9px; gap: 3px; }
   .hc .hm { font-size: 11px; }
+  .candc .cc-k { font-size: 11px; } .candc .cc-n { font-size: 18px; }
   .hc .hn { font-size: 18px; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   .hc .ht { font-size: 12px; line-height: 1.45; -webkit-line-clamp: 3; }
   .hc .hf { display: flex; justify-content: space-between; align-items: center; margin-top: auto; gap: 6px; font-size: 10.5px; font-weight: 700; }
