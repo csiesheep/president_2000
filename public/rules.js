@@ -33,8 +33,8 @@ function eventCard(e, lang) {
   const body = lang === "en" ? en.cards[e.id].text : e.text;
   const issue = u.issues[e.icon];
   const rest = REST_CUBES[e.cp] ?? 0;
-  const flags = [e.must ? `<span class="flag">${esc(u.must)}</span>` : "", e.cond ? `<span class="flag alt">${esc(u.conditional)}</span>` : ""].join("");
-  return `<article class="card ${BAND[e.owner]}${e.must ? " must" : ""}">` +
+  const flags = [e.must ? `<em class="flag">${esc(u.must)}</em>` : "", e.cond ? `<em class="flag alt">${esc(u.conditional)}</em>` : ""].join("");
+  return `<article class="card ${BAND[e.owner]}${e.must ? " must" : ""}" data-camp="${BAND[e.owner]}">` +
     `<div class="band"><span>${esc(u.owner[e.owner])}</span><span class="r">${flags}${esc(u.kind.event)} · ${esc(u.deck[e.deck])}</span></div>` +
     `<div class="cp" aria-label="${e.cp} ${esc(u.cpUnit)}">${e.cp}</div>` +
     `<div class="iss" title="${esc(issue.name)}" aria-label="${esc(issue.name)}">${esc(issue.short)}</div>` +
@@ -52,7 +52,7 @@ function localFace(deck, county, cards, lang) {
   for (const c of cards) byCp.set(c.cp, (byCp.get(c.cp) ?? 0) + 1);
   const cps = [...byCp].sort((a, b) => a[0] - b[0]);
   const detail = fill(u.localCount, { n: cards.length }) + " · " + cps.map(([cp, n]) => fill(u.cpCount, { cp, n })).join(lang === "en" ? ", " : "、");
-  return `<article class="card local">` +
+  return `<article class="card local" data-camp="local">` +
     `<div class="band"><span>${esc(u.owner.local)}</span><span class="r">${esc(u.deck[deck])}</span></div>` +
     `<div class="cp" aria-label="${cps.map(([cp]) => cp).join("/")} ${esc(u.cpUnit)}">${cps.map(([cp]) => cp).join("/")}</div>` +
     `<div class="iss none" title="${esc(u.noIssue)}" aria-label="${esc(u.noIssue)}">—</div>` +

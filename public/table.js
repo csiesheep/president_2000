@@ -315,38 +315,40 @@ const cubesRow = (arr) => arr.map((n, p) => sq("o" + p).repeat(n)).join("");
 function cardFace(id, x) {
   const c = CARD[id], u = x.d.ui;
   const isLocal = c.owner === "local";
-  const flags = c.must ? `<span class="flag">${esc(u.must)}</span>` : c.cond ? `<span class="flag alt">${esc(u.conditional)}</span>` : "";
+  const flags = c.must ? `<em class="flag">${esc(u.must)}</em>` : c.cond ? `<em class="flag alt">${esc(u.conditional)}</em>` : "";
   const band = isLocal ? "local" : c.owner;
   const issue = c.icon ? u.issues[c.icon] : null;
   const rest = ({ 2: 2, 3: 1, 4: 0 })[c.cp] ?? 0;
-  // Thick cream paper: a wooden cube of the camp's colour and the kind, the red CP stamp, the picture, the
-  // name in serif, the text, and at the foot where it canvasses and how many cubes it rests.
-  return `<article class="pcard ${band}${c.must ? " must" : ""}">` +
-    `<div class="pc-top"><span class="pc-k"><i class="cube"></i>${esc(u.owner[c.owner])} · ${esc(isLocal ? x.S.card.local : u.kind.event)} · ${esc(u.deck[c.deck])}</span><span class="stamp" aria-label="${c.cp} ${esc(u.cpUnit)}">${c.cp}</span></div>` +
-    `<p class="pc-i${issue ? "" : " none"}">${esc(issue ? issue.name : u.noIssue)}${flags}</p>` +
+  // The whole card is its camp's colour, with no frame lines (#36): the picture runs to the top and side edges and fades into
+  // the colour, the CP is a corner tab at the top left, the issue a small pill at the top right, and the words sit on the colour.
+  return `<article class="pcard ${band}${c.must ? " must" : ""}" data-face="${esc(id)}" data-camp="${band}">` +
     `<div class="pc-art">${cardImg(id, x)}</div>` +
+    `<span class="cp-tab" data-cp="${c.cp}" aria-label="${c.cp} ${esc(u.cpUnit)}"><b>${c.cp}</b><small>${esc(u.cpUnit)}</small></span>` +
+    `<span class="iss-pill${issue ? "" : " none"}">${esc(issue ? issue.name : u.noIssue)}</span>` +
+    `<div class="pc-body"><p class="pc-k">${esc(u.owner[c.owner])} · ${esc(isLocal ? x.S.card.local : u.kind.event)} · ${esc(u.deck[c.deck])}${flags}</p>` +
     `<h4 class="ttl">${esc(x.card(id))}</h4><p class="txt">${esc(x.cardText(id))}</p>` +
-    `<div class="foot"><span>${esc(x.d.terms.canvass)} ${esc(x.county(COUNTIES.findIndex((k) => k[0] === c.county)))}</span><span>${esc(fill(u.restCubes, { n: rest }))}</span></div></article>`;
+    `<div class="foot"><span>${esc(x.d.terms.canvass)} ${esc(x.county(COUNTIES.findIndex((k) => k[0] === c.county)))}</span><span>${esc(fill(u.restCubes, { n: rest }))}</span></div></div></article>`;
 }
 
 // 軍師 (#18): the one option the advisor picked wears a star (choices[i].advised, set by solo.js / roomclient.js).
 function starHTML(x) { return `<i class="star-adv" role="img" aria-label="${esc(x.d.ui.advisor.starLabel)}">★</i>`; }
 
-// A card in the hand fan: the wooden cube and the kind, the red CP stamp (top right, so a neighbour never
-// hides it), the picture, the name in serif, and (on a big screen) its text. `fan` = the card's tilt and drop.
+// A card in the hand fan (#36): the same card as the big face, smaller. Camp colour all over, the picture full-bleed at the top, the
+// CP tab at the top left, then the camp and kind, the name in serif and the text (on a big screen also where it canvasses).
+// `fan` = the card's tilt and drop.
 function miniCard(id, x, cls, attr, star = false, fan = null) {
   const c = CARD[id], u = x.d.ui;
   const band = c.owner === "local" ? "local" : c.owner;
   const who = c.owner === "local" ? x.S.card.local : c.owner === "ext" ? u.owner.ext : x.S.cand[c.owner].short;
-  const iss = c.icon ? u.issues[c.icon].short : "—";
   const style = fan ? ` style="--r:${fan.r}deg;--y:${fan.y}px"` : "";
-  return `<button type="button" class="hc ${band}${cls ? " " + cls : ""}${star ? " adv" : ""}" ${attr}${style}>` +
+  const rest = ({ 2: 2, 3: 1, 4: 0 })[c.cp] ?? 0;
+  return `<button type="button" class="hc ${band}${cls ? " " + cls : ""}${star ? " adv" : ""}" data-camp="${band}" ${attr}${style}>` +
     (star ? starHTML(x) : "") +
-    `<span class="hm"><i class="cube"></i><span class="hw">${esc(c.owner === "local" ? who : who + " · " + u.kind.event)}</span>${c.must ? ` <em>${esc(u.must)}</em>` : ""}</span>` +
-    `<span class="stamp" aria-label="${c.cp} ${esc(u.cpUnit)}">${c.cp}</span>` +
-    `<span class="ha">${cardImg(id, x)}</span><span class="hn">${esc(x.card(id))}</span>` +
-    `<span class="ht">${esc(x.cardText(id))}</span>` +
-    `<span class="hf"><span class="hi">${esc(iss)}</span><span class="hr">${esc(fill(u.restCubes, { n: ({ 2: 2, 3: 1, 4: 0 })[c.cp] ?? 0 }))}</span></span></button>`;
+    `<span class="ha">${cardImg(id, x)}</span>` +
+    `<span class="cp-tab" data-cp="${c.cp}" aria-label="${c.cp} ${esc(u.cpUnit)}"><b>${c.cp}</b><small>${esc(u.cpUnit)}</small></span>` +
+    `<span class="hb"><span class="hm">${esc(c.owner === "local" ? who : who + " · " + u.kind.event)}${c.must ? `<em>${esc(u.must)}</em>` : ""}</span>` +
+    `<span class="hn">${esc(x.card(id))}</span><span class="ht">${esc(x.cardText(id))}</span>` +
+    `<span class="hf"><span>${esc(x.d.terms.canvass)} ${esc(x.county(COUNTIES.findIndex((k) => k[0] === c.county)))}</span><span>${esc(fill(u.restCubes, { n: rest }))}</span></span></span></button>`;
 }
 
 // The candidate card, a dark wooden card with a red wax seal "once a game". When the seat may use it now
@@ -592,8 +594,10 @@ function panelHTML(v, ch, x, o) {
     const sel = o.sel && hand.includes(o.sel) ? o.sel : null;
     return sel ? sheetHTML(v, ch, x, sel) : `<p class="pr dim">${esc(o.waitHint || x.tr("hdr.waitHint"))}</p>`;
   }
-  if (v.phase === "save") return savePanel(v, ch, x, o);
   const cardMoves = ch.filter((c) => c.move.card && (c.move.type === "play" || c.move.type === "reveal" || c.move.type === "canvass"));
+  // A hand card tapped in a step that plays no card (order, momentum, keeping all) still opens its face (with "not now"), as it does when waiting.
+  if (o.sel && hand.includes(o.sel) && !cardMoves.length && !ch.some((c) => c.move.type === "candidate") && !(v.phase === "save" && ch.length > 1)) return sheetHTML(v, ch, x, o.sel);
+  if (v.phase === "save") return savePanel(v, ch, x, o);
   if (cardMoves.length || ch.some((c) => c.move.type === "candidate")) {
     const cards = [...new Set(cardMoves.map((c) => c.move.card))];
     let sel = o.sel && (hand.includes(o.sel) || cards.includes(o.sel)) ? o.sel : null;
