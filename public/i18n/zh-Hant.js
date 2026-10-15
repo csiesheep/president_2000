@@ -30,6 +30,12 @@ export default {
     restCubes: "休息方塊 {n}",
     // 軍師 (#18): 牌桌上方的軍師開關、★ 標記，與理由前的一句
     advisor: { label: "軍師", on: "開", off: "關", prefix: "軍師：", starLabel: "軍師推薦", note: "標出操盤手會走的那一步，只用你看得到的畫面。" },
+    // 方向 C（#26）：首頁的盒蓋、玩家板、候選人牌
+    look: {
+      home: { meta: "3 人 · 9 回合", sub: "宋楚瑜、連戰、陳水扁。把方塊放上 24 個縣市，搶到投票日。", play: "單人開打", playSub: "對三種難度的 AI", host: "開房", hostSub: "傳代碼給朋友", join: "加入", joinSub: "輸入 4 碼代碼", boxTitle: "盒子裡有什麼", box: "70 張事件牌 · 24 個縣市的地方牌 · 一袋方塊 · 24 個縣市的棋盤 · 三個議題槽。打法跟實體桌遊一樣：出牌、放方塊、抽袋子檢定。", rules: "翻開規則書" },
+      board: { label: "玩家板", cubes: "{n} 顆在盤上", mom: "動能", hand: "手牌 {n} · 已留 {k}", bag: "袋中 {n}" },
+      card: { seal: "整局一次", used: "已用" },
+    },
     solo: {
       land: { solo: "單人對戰 AI", room: "開房", join: "加入", soon: "即將推出", kicker: "第十任總統副總統選舉" },
       cand: {

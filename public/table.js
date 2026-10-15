@@ -14,6 +14,23 @@ const NO = [5, 1, 2]; // the ballot numbers on the 1999 flags: 陳 5, 宋 1, 連
 const SHOW_ORDER = [1, 2, 0]; // 宋, 連, 陳: ballot-number order, as in the mockups
 const REGION_OF = COUNTIES.map((c) => c[1]);
 
+// The pictures (#24, public/art/): one per event card, one per county for its local cards, one per issue,
+// one per candidate. The paths are relative so the page works under any prefix.
+const COUNTY_SLUG = {
+  "台北市": "taipei-city", "台北縣": "taipei-county", "基隆市": "keelung", "桃園縣": "taoyuan",
+  "新竹縣": "hsinchu-county", "新竹市": "hsinchu-city", "苗栗縣": "miaoli", "台中縣": "taichung-county",
+  "台中市": "taichung-city", "彰化縣": "changhua", "南投縣": "nantou", "雲林縣": "yunlin",
+  "嘉義縣": "chiayi-county", "嘉義市": "chiayi-city", "台南縣": "tainan-county", "台南市": "tainan-city",
+  "高雄市": "kaohsiung-city", "高雄縣": "kaohsiung-county", "屏東縣": "pingtung", "宜蘭縣": "yilan",
+  "花蓮縣": "hualien", "台東縣": "taitung", "澎湖縣": "penghu", "金馬": "kinma",
+};
+const cardArt = (id) => (CARD[id].owner === "local" ? `art/local/${COUNTY_SLUG[CARD[id].county]}.webp` : `art/cards/${id}.webp`);
+// Event and local pictures are 600x400, issues 640x480, candidates 480x640: the sizes are written on the
+// <img> so the page does not jump when a picture arrives.
+const cardImg = (id, x) => `<img src="${cardArt(id)}" alt="${esc(x.card(id))}" width="600" height="400" loading="lazy" decoding="async">`;
+const issueImg = (name, x) => `<img src="art/issues/${name}.webp" alt="${esc(x.issue(name))}" width="640" height="480" loading="lazy" decoding="async">`;
+const candImg = (p, x) => `<img src="art/candidates/${SEATS[p]}.webp" alt="${esc(x.full(p))}" width="480" height="640" loading="lazy" decoding="async">`;
+
 export const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 const fill = (s, vars = {}) => s.replace(/\{(\w+)\}/g, (_, k) => (k in vars ? vars[k] : "{" + k + "}"));
 const dict = (lang) => (lang === "en" ? en : zh);
@@ -303,10 +320,12 @@ function cardFace(id, x) {
   const band = isLocal ? "local" : c.owner;
   const issue = c.icon ? u.issues[c.icon] : null;
   const rest = ({ 2: 2, 3: 1, 4: 0 })[c.cp] ?? 0;
-  return `<article class="card ${band}${c.must ? " must" : ""}">` +
-    `<div class="band"><span>${esc(u.owner[c.owner])}</span><span class="r">${flags}${esc(isLocal ? x.S.card.local : u.kind.event)} · ${esc(u.deck[c.deck])}</span></div>` +
-    `<div class="cp">${c.cp}</div>` +
-    (issue ? `<div class="iss" title="${esc(issue.name)}">${esc(issue.short)}</div>` : `<div class="iss none" title="${esc(u.noIssue)}">—</div>`) +
+  // Thick cream paper: a wooden cube of the camp's colour and the kind, the red CP stamp, the picture, the
+  // name in serif, the text, and at the foot where it canvasses and how many cubes it rests.
+  return `<article class="pcard ${band}${c.must ? " must" : ""}">` +
+    `<div class="pc-top"><span class="pc-k"><i class="cube"></i>${esc(u.owner[c.owner])} · ${esc(isLocal ? x.S.card.local : u.kind.event)} · ${esc(u.deck[c.deck])}</span><span class="stamp" aria-label="${c.cp} ${esc(u.cpUnit)}">${c.cp}</span></div>` +
+    `<p class="pc-i${issue ? "" : " none"}">${esc(issue ? issue.name : u.noIssue)}${flags}</p>` +
+    `<div class="pc-art">${cardImg(id, x)}</div>` +
     `<h4 class="ttl">${esc(x.card(id))}</h4><p class="txt">${esc(x.cardText(id))}</p>` +
     `<div class="foot"><span>${esc(x.d.terms.canvass)} ${esc(x.county(COUNTIES.findIndex((k) => k[0] === c.county)))}</span><span>${esc(fill(u.restCubes, { n: rest }))}</span></div></article>`;
 }
@@ -314,15 +333,33 @@ function cardFace(id, x) {
 // 軍師 (#18): the one option the advisor picked wears a star (choices[i].advised, set by solo.js / roomclient.js).
 function starHTML(x) { return `<i class="star-adv" role="img" aria-label="${esc(x.d.ui.advisor.starLabel)}">★</i>`; }
 
-function miniCard(id, x, cls, attr, star = false) {
+// A card in the hand fan: the wooden cube and the kind, the red CP stamp (top right, so a neighbour never
+// hides it), the picture, the name in serif, and (on a big screen) its text. `fan` = the card's tilt and drop.
+function miniCard(id, x, cls, attr, star = false, fan = null) {
   const c = CARD[id], u = x.d.ui;
   const band = c.owner === "local" ? "local" : c.owner;
   const who = c.owner === "local" ? x.S.card.local : c.owner === "ext" ? u.owner.ext : x.S.cand[c.owner].short;
   const iss = c.icon ? u.issues[c.icon].short : "—";
-  return `<button type="button" class="hc ${band}${cls ? " " + cls : ""}${star ? " adv" : ""}" ${attr}>` +
-    (star ? starHTML(x) : "") + `<span class="hn">${esc(x.card(id))}</span>` +
-    `<span class="hm">${esc(c.owner === "local" ? who : u.kind.event + " · " + who)}${c.must ? ` <em>${esc(u.must)}</em>` : ""}</span>` +
-    `<span class="hf"><b>${c.cp} ${esc(u.cpUnit)}</b><span class="hi">${esc(iss)}</span></span></button>`;
+  const style = fan ? ` style="--r:${fan.r}deg;--y:${fan.y}px"` : "";
+  return `<button type="button" class="hc ${band}${cls ? " " + cls : ""}${star ? " adv" : ""}" ${attr}${style}>` +
+    (star ? starHTML(x) : "") +
+    `<span class="hm"><i class="cube"></i><span class="hw">${esc(c.owner === "local" ? who : who + " · " + u.kind.event)}</span>${c.must ? ` <em>${esc(u.must)}</em>` : ""}</span>` +
+    `<span class="stamp" aria-label="${c.cp} ${esc(u.cpUnit)}">${c.cp}</span>` +
+    `<span class="ha">${cardImg(id, x)}</span><span class="hn">${esc(x.card(id))}</span>` +
+    `<span class="ht">${esc(x.cardText(id))}</span>` +
+    `<span class="hf"><span class="hi">${esc(iss)}</span><span class="hr">${esc(fill(u.restCubes, { n: ({ 2: 2, 3: 1, 4: 0 })[c.cp] ?? 0 }))}</span></span></button>`;
+}
+
+// The candidate card, a dark wooden card with a red wax seal "once a game". When the seat may use it now
+// it is the same legal move the panel offers (asks again before it plays); otherwise it only sits there.
+function candCard(v, ch, x) {
+  const me = v.seat, can = ch.find((c) => c.move.type === "candidate"), used = !!v.candidateUsed[me];
+  if (v.phase === "debate" || v.phase === "election" || v.phase === "end" || v.phase === "save") return "";
+  const L = x.d.ui.look.card;
+  const head = `<span class="cc-k">${esc(x.tr("card.cand"))}</span><b class="cc-n">${CANDIDATE_CARDS[SEATS[me]].cp}</b>` +
+    `<span class="cc-w"><i class="b o${me}"></i>${esc(x.full(me))}</span><span class="cc-s">${esc(used ? L.used : L.seal)}</span>`;
+  if (can && !used) return `<button type="button" class="hc candc" data-move="${esc(JSON.stringify(can.move))}" data-confirm="1">${head}</button>`;
+  return `<button type="button" class="hc candc dis" disabled>${head}</button>`;
 }
 
 // One option button. The candidate card is the one a new player must not hit by accident: it is drawn
@@ -384,11 +421,31 @@ function headerHTML(v, ch, x, o) {
   else if (ch.length) status = `<span class="yrow"><span class="you">${esc(x.tr("hdr.yourTurn"))}</span>${clockHTML(o.clock)}</span>`;
   else status = `<span class="wait">${esc(o.waitLabel ? fill(o.waitLabel, { who: waitNames || "…" }) : x.tr("hdr.busy", { who: waitNames || "…" }))}${clockHTML(o.clock)}</span>`;
   const init = v.initiative >= 0 && v.phase !== "end" ? ` · ${x.tr("hdr.initiative", { who: x.short(v.initiative) })}` : "";
-  const chips = SHOW_ORDER.map((p) => `<span class="chip s${p}${p === me ? " me" : ""}" title="${esc(x.full(p))}">${esc(x.short(p))}<b>${v.mom[p]}</b>${v.initiative === p && v.phase !== "end" ? `<i class="first" role="img" aria-label="${esc(x.tr("hdr.star"))}">${esc(x.tr("hdr.first"))}</i>` : ""}</span>`).join("");
+  void me;
   return `<header class="t-top"><div class="t-ttl"><span class="t-turn">${esc(x.tr("hdr.turn", { n: v.turn }))}${esc(init)}</span>` +
-    `<b class="t-phase">${esc(phase)}</b>${status}</div>` +
-    `<button type="button" class="t-mom helpable${o.help === "mom" ? " on" : ""}" data-help="mom" aria-expanded="${o.help === "mom"}" aria-label="${esc(x.tr("hdr.momL") + " · " + x.tr("hdr.tap"))}">` +
-    `<span class="hl">${esc(x.tr("hdr.momL"))} <i aria-hidden="true">?</i></span><span class="chips">${chips}</span></button></header>`;
+    `<b class="t-phase">${esc(phase)}</b>${status}</div>${o.advisor && v.phase !== "end" ? advisorBar(x, o) : ""}</header>`;
+}
+
+// The three player boards, one paper board per candidate in ballot order: the candidate's picture, the
+// ballot number stamp, the name, cubes on the board, momentum (tap for what it is), hand and kept cards,
+// and cubes in the bag. A little flag marks the initiative.
+function playersHTML(v, x, o = {}) {
+  const L = x.d.ui.look.board;
+  const inHand = (p) => (Array.isArray(v.hands[p]) ? v.hands[p].length : v.hands[p]);
+  const kept = (p) => { const a = v.turn <= 5 ? v.savedDebate[p] : v.savedElection[p]; return Array.isArray(a) ? a.length : a; };
+  const onBoard = (p) => v.counties.reduce((s, c) => s + c.blocks.filter((b) => b.o === p).length, 0);
+  const first = (p) => v.initiative === p && v.phase !== "end";
+  const boards = SHOW_ORDER.map((p) => {
+    const mom = v.mom[p];
+    return `<article class="pl s${p}${p === v.seat ? " me" : ""}${first(p) ? " first" : ""}" data-seat="${p}">` +
+      `<div class="pl-pic">${candImg(p, x)}<b class="no">${NO[p]}</b></div>` +
+      `<div class="pl-b"><h3 class="pl-n">${esc(x.full(p))}${first(p) ? ` <i class="flag-i" role="img" aria-label="${esc(x.tr("hdr.star"))}" title="${esc(x.tr("hdr.star"))}">⚑</i>` : ""}</h3>` +
+      `<p class="pl-c"><i class="b o${p}"></i><span>${fill(L.cubes, { n: `<b>${onBoard(p)}</b>` })}</span></p>` +
+      `<button type="button" class="pl-m helpable${o.help === "mom" ? " on" : ""}" data-help="mom" aria-expanded="${o.help === "mom"}" aria-label="${esc(x.tr("hdr.momL") + " " + mom + " · " + x.tr("hdr.tap"))}">${esc(L.mom)} <b>${mom}</b> <span class="dots" aria-hidden="true">${"<i></i>".repeat(Math.min(mom, 12))}</span></button></div>` +
+      `<p class="pl-x"><span>${esc(fill(L.hand, { n: inHand(p), k: kept(p) }))}</span>` +
+      `<button type="button" class="pl-bag helpable${o.help === "bag" ? " on" : ""}" data-help="bag" aria-expanded="${o.help === "bag"}" aria-label="${esc(x.tr("hdr.bag") + " · " + x.tr("hdr.tap"))}">${esc(fill(L.bag, { n: v.bag[p] }))}</button></p></article>`;
+  }).join("");
+  return `<section class="t-players" aria-label="${esc(L.label)}">${boards}</section>`;
 }
 
 // The one-line explanation under the header, for whichever small label was tapped (o.help).
@@ -398,18 +455,10 @@ function helpHTML(x, o) {
 }
 
 function trackHTML(v, x, o = {}) {
-  const slots = v.issues.map((iss, i) => `<div class="slot"><span class="sl">${esc(x.tr("hdr.slot." + (i + 1)))}</span><b>${esc(x.issue(iss.name))}</b>` +
-    `<span class="cb">${cubesRow(iss.cubes) || `<em>—</em>`}</span></div>`).join("");
-  const bag = `<button type="button" class="bag helpable${o.help === "bag" ? " on" : ""}" data-help="bag" aria-expanded="${o.help === "bag"}" aria-label="${esc(x.tr("hdr.bag") + " · " + x.tr("hdr.tap"))}">` +
-    `<span class="sl">${esc(x.tr("hdr.bag"))} <i aria-hidden="true">?</i></span>${SHOW_ORDER.map((p) => `<span class="s${p}">${esc(x.short(p))} ${v.bag[p]}</span>`).join("")}</button>`;
-  return `<section class="t-track"><button type="button" class="slotsl helpable${o.help === "slot" ? " on" : ""}" data-help="slot" aria-expanded="${o.help === "slot"}" aria-label="${esc(x.tr("hdr.slotsL") + " · " + x.tr("hdr.tap"))}">${esc(x.tr("hdr.slotsL"))} <i aria-hidden="true">?</i></button>${slots}${bag}</section>`;
-}
-
-function oppHTML(v, x) {
-  const inHand = (p) => (Array.isArray(v.hands[p]) ? v.hands[p].length : v.hands[p]);
-  const kept = (p) => { const a = v.turn <= 5 ? v.savedDebate[p] : v.savedElection[p]; return Array.isArray(a) ? a.length : a; };
-  const rows = SHOW_ORDER.filter((p) => p !== v.seat).map((p) => `<span class="s${p}">${esc(x.tr("hdr.opp", { who: x.short(p), n: inHand(p), k: kept(p) }))}</span>`);
-  return `<p class="t-opp">${rows.join("")}</p>`;
+  // Three slots, each a picture of its issue with the name and who holds how many cubes on it.
+  const slots = v.issues.map((iss, i) => `<div class="slot" data-issue="${esc(iss.name)}"><div class="sp">${issueImg(iss.name, x)}</div><div class="sb"><span class="sl">${esc(x.tr("hdr.slot." + (i + 1)))}</span><b>${esc(x.issue(iss.name))}</b>` +
+    `<span class="cb">${cubesRow(iss.cubes) || `<em>—</em>`}</span></div></div>`).join("");
+  return `<section class="t-track"><button type="button" class="slotsl helpable${o.help === "slot" ? " on" : ""}" data-help="slot" aria-expanded="${o.help === "slot"}" aria-label="${esc(x.tr("hdr.slotsL") + " · " + x.tr("hdr.tap"))}">${esc(x.tr("hdr.slotsL"))} <i aria-hidden="true">?</i></button>${slots}</section>`;
 }
 
 // ---------------------------------------------------------------- the action panel
@@ -567,11 +616,15 @@ function handHTML(v, ch, x, o) {
   const kept = v.turn <= 5 ? v.savedDebate[me] : v.savedElection[me];
   const keptN = Array.isArray(kept) ? kept.length : kept;
   const title = v.phase === "debate" ? x.tr("hand.titleDebate", { n: hand.length }) : v.phase === "election" ? x.tr("hand.titleElection", { n: hand.length }) : x.tr("hand.title", { n: hand.length }) + (keptN && v.phase !== "end" ? " · " + x.tr("hand.kept", { n: keptN, dest: x.tr(v.turn <= 5 ? "p.destDebate" : "p.destElection") }) : "");
-  const cards = hand.map((id) => {
-    if (savePhase) return miniCard(id, x, picks.includes(id) ? "sel" : "", `data-pick="${esc(id)}" aria-pressed="${picks.includes(id)}"`, advCards.has(id));
+  // The fan: each card tilts a little more than the one before it and the middle ones sit highest. The
+  // numbers are computed here so the same hand always draws the same string.
+  const n = hand.length, mid = (n - 1) / 2, step = Math.min(4, 24 / Math.max(n, 1));
+  const fan = (i) => ({ r: ((i - mid) * step).toFixed(1), y: (Math.pow(i - mid, 2) * (n > 6 ? 1.2 : 2)).toFixed(1) });
+  const cards = hand.map((id, i) => {
+    if (savePhase) return miniCard(id, x, picks.includes(id) ? "sel" : "", `data-pick="${esc(id)}" aria-pressed="${picks.includes(id)}"`, advCards.has(id), fan(i));
     const cls = (o.sel === id ? "sel " : "") + (ch.length && !playable.has(id) ? "dis" : "");
-    return miniCard(id, x, cls.trim(), `data-sel="${esc(id)}"`, advCards.has(id));
-  }).join("");
+    return miniCard(id, x, cls.trim(), `data-sel="${esc(id)}"`, advCards.has(id), fan(i));
+  }).join("") + candCard(v, ch, x);
   return `<footer class="t-hand"><div class="hh"><span>${esc(title)}</span><a href="rules${x.lang === "en" ? "?lang=en" : ""}" target="_blank" rel="noopener">${esc(x.d.nav.rules)}</a></div>` +
     `<div class="hs">${cards || `<span class="none">${esc(x.tr("hand.none"))}</span>`}</div></footer>`;
 }
@@ -770,11 +823,15 @@ function resultHTML(o, x) {
 
 export function tableHTML(view, choices, lang, opts = {}) {
   const x = bind(lang), v = view, o = opts;
-  const bar = o.advisor ? advisorBar(x, o) : "";
+  const map = taiwanMap(v, lang, { changed: o.changed, selected: o.county, narrow: o.narrow, overlay: o.county != null ? popHTML(v, choices, x, o.county, o.narrow) : "" });
+  // Three columns on a wide desk (the players; the issues and the map; the notes and the decision). On a
+  // phone the columns dissolve (display: contents) and style.css puts the pieces in one order.
   if (v.phase === "end") {
-    return `<div class="tbl end" data-phase="end">${headerHTML(v, choices, x, o)}${endHTML(v, x, o)}${nowHTML(x, o)}${resultHTML(o, x)}${trackHTML(v, x, o)}${taiwanMap(v, lang, { changed: o.changed, selected: o.county, narrow: o.narrow, overlay: o.county != null ? popHTML(v, choices, x, o.county, o.narrow) : "" })}${feedHTML(v, x, o)}</div>`;
+    return `<div class="tbl end" data-phase="end">${headerHTML(v, choices, x, o)}<div class="col cl">${playersHTML(v, x, o)}${feedHTML(v, x, o)}</div>` +
+      `<div class="col cc">${map}</div><div class="col cr">${endHTML(v, x, o)}${nowHTML(x, o)}${resultHTML(o, x)}</div></div>`;
   }
-  return `<div class="tbl${bar ? " hasbar" : ""}" data-phase="${esc(v.phase)}">${bar}${headerHTML(v, choices, x, o)}${trackHTML(v, x, o)}${helpHTML(x, o)}${oppHTML(v, x)}` +
-    `${nowHTML(x, o)}<section class="t-act${choices.length ? " mine" : ""}" id="act">${resultHTML(o, x)}${choices.length ? adviceLine(x, o) : ""}${panelHTML(v, choices, x, o)}</section>` +
-    `${v.phase === "debate" ? debateHTML(v, x) : ""}${taiwanMap(v, lang, { changed: o.changed, selected: o.county, narrow: o.narrow, overlay: o.county != null ? popHTML(v, choices, x, o.county, o.narrow) : "" })}${feedHTML(v, x, o)}${handHTML(v, choices, x, o)}</div>`;
+  return `<div class="tbl" data-phase="${esc(v.phase)}">${headerHTML(v, choices, x, o)}<div class="col cl">${playersHTML(v, x, o)}${feedHTML(v, x, o)}</div>` +
+    `<div class="col cc">${trackHTML(v, x, o)}${helpHTML(x, o)}${v.phase === "debate" ? debateHTML(v, x) : ""}${map}</div>` +
+    `<div class="col cr">${nowHTML(x, o)}<section class="t-act${choices.length ? " mine" : ""}" id="act">${resultHTML(o, x)}${choices.length ? adviceLine(x, o) : ""}${panelHTML(v, choices, x, o)}</section></div>` +
+    `${handHTML(v, choices, x, o)}</div>`;
 }

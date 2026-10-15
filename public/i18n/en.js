@@ -31,6 +31,12 @@ export default {
     restCubes: "Rest cubes {n}",
     // The advisor (#18): the switch above the table, the star on its pick, the line before its reason
     advisor: { label: "Advisor", on: "On", off: "Off", prefix: "Advisor:", starLabel: "Advisor's pick", note: "Marks the move your strategist would make, using only what you can see." },
+    // Direction C (#26): the box lid on the home page, the player boards, the candidate card
+    look: {
+      home: { meta: "3 players · 9 turns", sub: "Soong, Lien, Chen. Put your blocks on 24 counties and get to election day.", play: "Play solo", playSub: "Against three levels of AI", host: "Host a room", hostSub: "Send the code to friends", join: "Join", joinSub: "Enter the 4-character code", boxTitle: "What's in the box", box: "70 event cards · a local card for each of 24 counties · a bag of cubes · a board of 24 counties · three issue slots. It plays like the tabletop game: play a card, place blocks, draw from the bag for support checks.", rules: "Open the rulebook" },
+      board: { label: "Player boards", cubes: "{n} on the board", mom: "Momentum", hand: "Hand {n} · kept {k}", bag: "Bag {n}" },
+      card: { seal: "Once a game", used: "Used" },
+    },
     solo: {
       land: { solo: "Play solo vs. bots", room: "Host a room", join: "Join a room", soon: "Coming soon", kicker: "The 10th presidential election" },
       cand: {
