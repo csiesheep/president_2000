@@ -169,7 +169,7 @@ function beginTurn(st) {
   });
   st.phase = "order"; st.step = 0; st.idx = 0; st.actor = -1; st.pending = null; st.mstep = null;
   st.saved = [false, false, false];
-  st.log.push({ t: "turn", turn: st.turn, initiative: st.initiative });
+  st.log.push({ t: "turn", turn: st.turn, initiative: st.initiative, votes: boardVotes(st) });
   return st;
 }
 
@@ -225,6 +225,9 @@ function leader(arr) {
   return tie ? -1 : best;
 }
 const cubesIn = (st, k, p) => st.counties[k].blocks.filter((b) => b.o === p).length;
+// #40: each seat's blocks on the board at this moment, [陳, 宋, 連] (one block = 10萬 votes). Every turn entry in
+// the log carries it as of the moment it is written (orchestrator 裁決 #40: (a)), for the turn card (#44).
+const boardVotes = (st) => [0, 1, 2].map((p) => st.counties.reduce((s, c) => s + c.blocks.filter((b) => b.o === p).length, 0));
 const regionOf = (k) => COUNTIES[k][1];
 const nationalMediaLeader = (st) => leader(st.media);
 // 裁決 5: every seat with ≥ 4 cubes in the county is a boss there.
@@ -1044,7 +1047,7 @@ function startDebate(st) {
   st.saved = [false, false, false];
   st.debate = { picks: [null, null, null], placed: Object.fromEntries(ISSUES.map((n) => [n, [[], [], []]])), settled: [], queue: [], award: null };
   withRng(st, (rng) => { st.initiative = initiativeCheck(st, rng); });
-  st.log.push({ t: "turn", turn: st.turn, initiative: st.initiative });
+  st.log.push({ t: "turn", turn: st.turn, initiative: st.initiative, votes: boardVotes(st) });
   if (st.savedDebate.every((pile) => !pile.length)) advanceDebate(st); // nothing to reveal at all
   return st;
 }
@@ -1221,7 +1224,7 @@ function startElection(st) {
   st.log.push({ t: "convert", bag: add, mom });
   st.election = { mom, stage: "order", card: null, county: -1, left: 0, choose: false };
   withRng(st, (rng) => { st.initiative = initiativeCheck(st, rng); });
-  st.log.push({ t: "turn", turn: st.turn, initiative: st.initiative });
+  st.log.push({ t: "turn", turn: st.turn, initiative: st.initiative, votes: boardVotes(st) });
   return st;
 }
 
