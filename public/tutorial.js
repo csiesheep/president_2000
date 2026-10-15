@@ -17,7 +17,7 @@ export const SEED = 21;
 const SEAT = 0;
 
 const key = (m) => JSON.stringify(m);
-const fill = (s, vars) => s.replace(/\{(\w+)\}/g, (_, k) => (k in vars ? vars[k] : "{" + k + "}"));
+const fill = (s, vars = {}) => s.replace(/\{(\w+)(?:#([^|}]*)\|([^}]*))?\}/g, (m, k, one, many) => (!(k in vars) ? m : one === undefined ? vars[k] : Number(vars[k]) === 1 ? one : many)); // "{n#block|blocks}": the singular at 1 (#30)
 const NO = [5, 1, 2];
 
 export function newTutorial(seed = SEED) {

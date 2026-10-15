@@ -31,7 +31,7 @@ const cardImg = (id, x) => `<img src="${cardArt(id)}" alt="${esc(x.card(id))}" w
 const issueImg = (name, x) => `<img src="art/issues/${name}.webp" alt="${esc(x.issue(name))}" width="640" height="480" loading="lazy" decoding="async">`;
 
 export const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-const fill = (s, vars = {}) => s.replace(/\{(\w+)\}/g, (_, k) => (k in vars ? vars[k] : "{" + k + "}"));
+const fill = (s, vars = {}) => s.replace(/\{(\w+)(?:#([^|}]*)\|([^}]*))?\}/g, (m, k, one, many) => (!(k in vars) ? m : one === undefined ? vars[k] : Number(vars[k]) === 1 ? one : many)); // "{n#block|blocks}": the singular at 1 (#30)
 const dict = (lang) => (lang === "en" ? en : zh);
 
 // A small translator bound to one language. `tr("p.play", {n: 1})` reads ui.solo.p.play and

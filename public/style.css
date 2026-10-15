@@ -533,7 +533,7 @@ html { scroll-padding-bottom: 190px; }
   .pl-t { padding: 7px 10px 0 0; gap: 2px; }
   .pl .pl-d { display: flex; border-radius: 0; border-left: 0; box-shadow: none; border-top: 1px dotted var(--edge); padding: 2px 10px; }
   .t-track { gap: 8px; }
-  .slot { height: 62px; border-radius: 31px 8px 8px 31px; } .slot .sp { width: 62px; height: 62px; } .slot b { font-size: 15px; } .slot .sl { font-size: 11px; } .slot .cb .b { width: 12px; height: 12px; } .slot .cb { gap: 3px; }
+  .slot { height: 62px; border-radius: 31px 8px 8px 31px; } .slot .sp { width: 62px; height: 84px; } .slot b { font-size: 15px; } .slot .sl { font-size: 11px; } .slot .cb .b { width: 12px; height: 12px; } .slot .cb { gap: 3px; }
   .wrap.game { padding-top: 8px; }
   .t-now { margin-top: 10px; transform: rotate(-1deg); padding: 12px 14px 11px; }
   .t-now li { font-size: 14px; }
@@ -591,3 +591,15 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
 .tut-go:active { transform: translateY(2px); box-shadow: 0 1px 0 #6f1f1a; }
 .tut button:focus-visible { outline: 3px solid #ffd34d; outline-offset: 2px; }
 @media (min-width: 768px) { .tut { left: auto; right: auto; width: 340px; } .tut-x { font-size: 15px; } }
+
+/* Polish (#30): on the wide desk a decision that draws a card (a rival played yours for CP, trigger or not) must end
+   above the fanned hand without scrolling: the picture is a strip, the card is tighter, so every button can be pressed. */
+@media (min-width: 1100px) {
+  .t-act .pcard { padding: 8px 12px 7px; gap: 4px; }
+  .t-act .pc-art { aspect-ratio: auto; height: 84px; }
+  .t-act .pc-art img { object-position: center 40%; }
+  .t-act .pcard .ttl { font-size: 19px; margin-top: 0; }
+  .t-act .pcard .txt { font-size: 12.5px; line-height: 1.5; }
+  .t-act .pcard .foot { padding-top: 4px; }
+  .t-act .sheet { gap: 6px; }
+}

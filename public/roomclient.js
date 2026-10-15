@@ -23,10 +23,11 @@ import en from "./i18n/en.js";
 import zh from "./i18n/zh-Hant.js";
 
 const FEED_MAX = 60, TAPE_MAX = 60, CHAT_MAX = 200;
+const ACTION_START = new Set(["play", "candidate", "trigger", "canvass", "order"]);
 const NO = [5, 1, 2];
 const SHOW_ORDER = [1, 2, 0]; // ballot-number order, as the table and the mockups
 const dict = (lang) => (lang === "en" ? en : zh);
-const fill = (s, vars = {}) => s.replace(/\{(\w+)\}/g, (_, k) => (k in vars ? vars[k] : "{" + k + "}"));
+const fill = (s, vars = {}) => s.replace(/\{(\w+)(?:#([^|}]*)\|([^}]*))?\}/g, (m, k, one, many) => (!(k in vars) ? m : one === undefined ? vars[k] : Number(vars[k]) === 1 ? one : many)); // "{n#block|blocks}": the singular at 1 (#30)
 
 export function newClient() {
   return { v: 1, token: null, seat: null, room: null, state: null, error: null, feed: [], snap: null, advisor: false,
@@ -165,10 +166,17 @@ export function receive(client, msg) {
     case "room": return { ...client, room: { code: msg.code, host: msg.host, started: msg.started, seats: msg.seats }, error: null };
     case "state": {
       const next = nextFeed(client, msg.view), now = justNow(client, next, msg.view);
-      // What the bots said about this state's moves goes on the table-talk tape (only_move is not worth saying).
-      // Every move keeps its sentence: tests/roomclient.test.js (#19) wants the last one on screen, so the
-      // "one sentence per action" of #23 is done on the solo record only (see the issue).
-      const said = (Array.isArray(msg.botMoves) ? msg.botMoves : []).filter((b) => b && b.why && b.why.key !== "only_move").map((b) => ({ k: "bot", seat: b.seat, why: b.why }));
+      // What the bots said about this state's moves goes on the table-talk tape: one sentence per action, the first
+      // one of that action (#23 P2.8, ruling carried to #30), as on the solo record. An action starts at a card, a
+      // candidate card, a trigger, a canvass, an order pick, or when the seat changes; only_move is not worth saying.
+      const said = [];
+      let lastSeat = null, spoke = true;
+      for (const b of Array.isArray(msg.botMoves) ? msg.botMoves : []) {
+        if (!b || !b.move) continue;
+        if (b.seat !== lastSeat || ACTION_START.has(b.move.type)) spoke = false;
+        lastSeat = b.seat;
+        if (!spoke && b.why && b.why.key !== "only_move") { said.push({ k: "bot", seat: b.seat, why: b.why }); spoke = true; }
+      }
       const tape = said.length ? client.tape.concat(said).slice(-TAPE_MAX) : client.tape;
       return { ...client, seat: msg.seat, state: { seat: msg.seat, view: msg.view, legal: msg.legal }, feed: next.feed, rec: now.rec, mine: now.mine, sentMove: null, snap: snapOf(msg.view), error: null, tape, deadline: typeof msg.deadline === "number" ? msg.deadline : null };
     }
