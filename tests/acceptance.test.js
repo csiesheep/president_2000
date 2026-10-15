@@ -26,6 +26,8 @@ import * as B from "../public/shared/board.js";
 import * as C from "../public/shared/cards.js";
 import * as E from "../public/shared/engine.js";
 import * as D from "./driver.js";
+// #34: does the engine have v0.4's national media (st.media = [陳, 宋, 連])? Helpers that use it are next to zeros7.
+const NAT = (() => { const m = E.createGame(1).media; return Array.isArray(m) && m.length === 3 && m.every((x) => typeof x === "number"); })();
 
 
 // ---------------------------------------------------------------- SPEC
@@ -47,7 +49,8 @@ const SPEC = {
   regionCounties: { "北北基": 3, "桃竹苗": 4, "中彰投": 4, "雲嘉南": 5, "高屏": 3, "宜花東": 3, "離島": 2 },
   startCounty: { chen: "台南縣", soong: "南投縣", lien: "台北市" },
   startMomentum: [3, 2, 1], bagSeed: 12, bossThreshold: 4, turns: 9,
-  startMedia: { lien: ["北北基", "中彰投"] },
+  startMedia: { lien: ["北北基", "中彰投"] }, // v0.3
+  startMediaNational: [0, 0, 2], // v0.4 §四.5: 連 2 in the national box (#34)
   issues: 3,
   events: { total: 70, chen: 20, soong: 20, lien: 21, ext: 9, early: 50, late: 20 },
   locals: { total: 41, early: 25, late: 16, cp2: 23, cp3: 18 },
@@ -153,7 +156,8 @@ check("起始位置、動能、袋子、門檻、回合數、議題數", () => {
   const r5 = eq(B.ISSUES.length, SPEC.issues, "議題數"); if (r5 !== true) return r5;
   return ok(true, "全部相符");
 });
-check("連的起始媒體：北北基、中彰投各 1", () => {
+check(NAT ? "連的起始媒體（v0.4）：全國媒體連 2、陳宋 0（#34）" : "連的起始媒體：北北基、中彰投各 1", () => {
+  if (NAT) return eq(E.createGame(1).media.join(), SPEC.startMediaNational.join(), "開局的全國媒體 陳,宋,連");
   const got = B.REGIONS.filter((_, r) => B.START_MEDIA[r][B.LIEN] === 1);
   const others = B.START_MEDIA.flat().reduce((s, x) => s + x, 0) - got.length;
   const r = eq(got.join(), SPEC.startMedia.lien.join(), "連起始媒體"); if (r !== true) return r;
@@ -317,6 +321,14 @@ const DEBATE_READY = READY && (() => { try { return debateReady(); } catch { ret
 const c2 = (name, fn) => check(name, () => (READY ? fn() : "TODO: engine.apply 還不能結算動作（#1）"));
 const { CHEN, SOONG, LIEN, ci, ri } = D;
 const zeros7 = () => Array.from({ length: 7 }, () => [0, 0, 0]);
+// #34 (rulebook v0.4, owner 2026-10-15 「2b + B」): media is one national box, st.media = [陳, 宋, 連], and the media
+// leader (most media, a tie is none) gains 1 momentum right after the halving. NAT says whether the engine has it.
+// A check with a v0.3 and a v0.4 form runs the form that matches the engine; a rule that only v0.4 has reports
+// 尚未實作 until NAT (c34).
+const noMedia = () => (NAT ? [0, 0, 0] : zeros7());
+const putMedia = (st, region, arr) => { if (NAT) st.media = arr.slice(); else st.media[ri(region)] = arr.slice(); };
+const MEDIA_HERE = (r) => (NAT ? { type: "media" } : { type: "media", region: r });
+const mediaOf = (st, p, r) => (NAT ? st.media[p] : st.media[r][p]);
 const MUST = new Set(C.EVENTS.filter((e) => e.must).map((e) => e.id));
 const DECK_OF = Object.fromEntries(C.EVENTS.map((e) => [e.id, e.deck]).concat(C.localCards().map((c) => [c.id, c.deck])));
 const modesOf = (st, seat, id) => [...new Set(E.legalMoves(st, seat).filter((m) => m.type === "play" && m.card === id).map((m) => m.mode))].sort().join();
@@ -497,18 +509,18 @@ c2("出牌 · 候選人牌一局一次：陳宋 5 CP、休息 0，連 3 CP、休
   const out = [];
   for (const [seat, cp, rest] of [[CHEN, 5, 0], [SOONG, 5, 0], [LIEN, 3, 2]]) {
     let st = D.firstActor(seat); st.bag = [0, 0, 0]; st.bag[seat] = 40;
-    const rest0 = st.rest[seat], media0 = st.media[3][seat];
+    const rest0 = st.rest[seat], media0 = mediaOf(st, seat, 3);
     st = D.act(st, seat, { type: "candidate" });
     st = D.act(st, seat, { type: "action", kind: "ads" });
     let n = 0;
     for (let k = 0; k < 20; k++) {
-      if (D.has(st, seat, { type: "media", region: 3 })) { st = D.act(st, seat, { type: "media", region: 3 }); continue; }
+      if (D.has(st, seat, MEDIA_HERE(3))) { st = D.act(st, seat, MEDIA_HERE(3)); continue; }
       if (D.has(st, seat, { type: "ad" })) { st = D.act(st, seat, { type: "ad" }); n++; continue; }
       break;
     }
     let r = eq(n, cp, `seat ${seat} 候選人牌能打的廣告次數`); if (r !== true) return r;
     r = eq(st.rest[seat] - rest0, rest, `seat ${seat} 候選人牌的休息方塊`); if (r !== true) return r;
-    r = eq(st.media[3][seat] - media0, cp, `seat ${seat} 雲嘉南媒體增加`); if (r !== true) return r;
+    r = eq(mediaOf(st, seat, 3) - media0, cp, `seat ${seat} 媒體增加`); if (r !== true) return r;
     r = eq(st.candidateUsed[seat], true, `seat ${seat} candidateUsed`); if (r !== true) return r;
     const later = D.playUntil(st, (s) => E.mustAct(s)[0] === seat && D.isPlayDecision(E.legalMoves(s, seat)), null, D.quiet);
     if (D.has(later, seat, { type: "candidate" })) return `seat ${seat} 出過候選人牌，下一次出牌還能出`;
@@ -651,7 +663,25 @@ c2("行動 · 無色塊不能用 CP 放（§3.1、§7.1）", () => {
   const r = eq(n, 0, "基隆市（綠 1 藍 1 都有人、只剩無色 1）的填／跨營填"); if (r !== true) return r;
   return ok(true, "基隆市沒有可以填的");
 });
-c2("行動 · 廣告每 1 CP 一次檢定；成功在任一區放自己的媒體或移除該區一顆對手媒體，失敗沒有選擇（§7.2）", () => {
+c2(NAT ? "行動 · 廣告每 1 CP 一次檢定；成功在全國媒體放自己的一顆或移除一顆對手的，失敗沒有選擇（v0.4 §7.2，#34）" : "行動 · 廣告每 1 CP 一次檢定；成功在任一區放自己的媒體或移除該區一顆對手媒體，失敗沒有選擇（§7.2）", () => {
+  if (NAT) {
+    let st = D.firstActor(CHEN); st.bag = [10, 0, 0];
+    st = D.act(st, CHEN, { type: "candidate" });
+    st = D.act(st, CHEN, { type: "action", kind: "ads" });
+    st = D.act(st, CHEN, { type: "ad" });
+    const ms = E.legalMoves(st, CHEN);
+    let r = eq(ms.map((m) => `${m.type}:${m.target ?? "-"}${m.region != null ? ":r" + m.region : ""}`).sort().join(), "media:-,media:2", "廣告成功之後的選項（連開局有全國媒體 2）"); if (r !== true) return r;
+    const a = D.act(st, CHEN, { type: "media", target: LIEN });
+    r = eq(a.media.join(), "0,0,1", "移除連一顆之後的全國媒體"); if (r !== true) return r;
+    const b = D.act(st, CHEN, { type: "media" });
+    r = eq(b.media.join(), "1,0,2", "放自己一顆之後的全國媒體"); if (r !== true) return r;
+    let f = D.firstActor(CHEN); f.bag = [0, 0, 10];
+    f = D.act(f, CHEN, { type: "candidate" });
+    f = D.act(f, CHEN, { type: "action", kind: "ads" });
+    f = D.act(f, CHEN, { type: "ad" });
+    r = eq(`${E.legalMoves(f, CHEN).map((m) => m.type).sort().join()} ${f.bag.join()} ${f.media.join()}`, "ad,done 0,0,9 0,0,2", "失敗之後的選項、袋子、全國媒體"); if (r !== true) return r;
+    return ok(true, "成功：放自己的或移除對手的，不選區；失敗少一顆、沒有選擇");
+  }
   let st = D.firstActor(CHEN); st.bag = [10, 0, 0];
   st = D.act(st, CHEN, { type: "candidate" });
   st = D.act(st, CHEN, { type: "action", kind: "ads" });
@@ -707,10 +737,10 @@ c2("檢定 · 填同營游離塊，沒有別人的地方大老、沒有對手候
   return ok(true, "台南縣填綠：放上、沒有檢定");
 });
 c2("檢定 · 跨營填與搶永遠要檢定，有媒體優勢也一樣（§7.1、§8.1）", () => {
-  const arrange = (s) => { s.bag = [0, 0, 10]; s.media[ri("雲嘉南")] = [3, 0, 0]; };
+  const arrange = (s) => { s.bag = [0, 0, 10]; putMedia(s, "雲嘉南", [3, 0, 0]); };
   let r = eq(opStr(chenOp(arrange, null, { type: "cross", county: ci("台南縣") }), "台南縣", CHEN), "1 0,0,9 1", "跨營填（陳的方塊、袋子、檢定）"); if (r !== true) return r;
   r = eq(opStr(chenOp(arrange, null, { type: "steal", county: ci("台南縣"), target: LIEN, t: "B" }), "台南縣", LIEN), "1 0,0,9 1", "搶連（連的方塊、袋子、檢定）"); if (r !== true) return r;
-  return ok(true, "雲嘉南媒體優勢下，跨營填與搶都檢定");
+  return ok(true, "陳媒體領先之下，跨營填與搶都檢定");
 });
 
 // ---- 地方大老、區域媒體優勢（§3.4、§8.1）
@@ -728,8 +758,13 @@ c2("地方大老 · 填同營游離塊，該縣市有對手候選人棋子就要
   r = eq(opStr(chenOp((s) => { s.bag = [0, 0, 10]; }, "台中縣", { type: "fill", county: ci("台中縣") }), "台中縣", CHEN), "2 0,0,10 0", "宋在南投：陳填台中縣"); if (r !== true) return r;
   return ok(true, "對手在場檢定、不在場不檢定");
 });
-c2("地方大老 · 區域媒體優勢（該區媒體最多、平手無人）免除地方大老與候選人在場的檢定（§3.4、§8.1）", () => {
+c2(NAT ? "地方大老 · v0.4 拿掉區域媒體優勢：媒體再多也不免地方大老與候選人在場的檢定（v0.4 §8.1，#34）" : "地方大老 · 區域媒體優勢（該區媒體最多、平手無人）免除地方大老與候選人在場的檢定（§3.4、§8.1）", () => {
   const fill = (to, arrange) => opStr(chenOp(arrange, to, { type: "fill", county: ci(to) }), to, CHEN);
+  if (NAT) {
+    let r = eq(fill("台北縣", (s) => { s.bag = [0, 0, 10]; s.media = [5, 0, 1]; }), "3 0,0,9 1", "全國媒體陳 5（領先）：填台北縣（宋連是地方大老）"); if (r !== true) return r;
+    r = eq(fill("台中縣", (s) => { s.bag = [0, 0, 10]; s.pos[SOONG] = ci("台中縣"); s.media = [5, 0, 1]; }), "1 0,0,9 1", "全國媒體陳 5、宋在台中縣：填台中縣"); if (r !== true) return r;
+    return ok(true, "媒體領先不免任何檢定");
+  }
   let r = eq(fill("台北縣", (s) => { s.bag = [0, 0, 10]; s.media[ri("北北基")] = [2, 0, 1]; }), "4 0,0,10 0", "北北基媒體 陳2 連1：填台北縣"); if (r !== true) return r;
   r = eq(fill("台北縣", (s) => { s.bag = [0, 0, 10]; s.media[ri("北北基")] = [1, 0, 1]; }), "3 0,0,9 1", "北北基媒體 陳1 連1（平手）：填台北縣"); if (r !== true) return r;
   r = eq(fill("台中縣", (s) => { s.bag = [0, 0, 10]; s.pos[SOONG] = ci("台中縣"); s.media[ri("中彰投")] = [2, 0, 1]; }), "2 0,0,10 0", "中彰投媒體優勢、宋在台中縣：填台中縣"); if (r !== true) return r;
@@ -739,7 +774,7 @@ c2("地方大老 · 區域媒體優勢（該區媒體最多、平手無人）免
 // ---- 動能結算（§5.3）
 c2("動能結算 · 先減半（宋連捨去、陳進位），第二槽先選，第一槽動能＋背書，第三槽動能，最後議題領先者各 −1（§5.3）", () => {
   const { st, seat } = atLastPlay();
-  st.mom = [3, 3, 1]; st.media = zeros7();
+  st.mom = [3, 3, 1]; st.media = noMedia();
   st.issues[0].cubes = [2, 1, 0]; st.issues[1].cubes = [0, 3, 1]; st.issues[2].cubes = [1, 1, 0];
   st.endorse = [-1, -1, LIEN, -1, -1, -1, -1]; st.endorseDeck = [5, 2]; st.endorseDiscard = [];
   const names = st.issues.map((i) => i.name);
@@ -754,13 +789,13 @@ c2("動能結算 · 先減半（宋連捨去、陳進位），第二槽先選，
   r = eq(got(D.act(mid, SOONG, { type: "reward", pick: "mom" })), want("3/2/0", "-1,-1,0,-1,-1,-1,-1"), "宋選動能"); if (r !== true) return r;
   return ok(true, "減半 → 第二槽選 → 第一槽 → 第三槽 → 議題衰減，兩種選法都對");
 });
-c2("動能結算 · 全國媒體優勢者可交換相鄰兩槽，獎勵照交換後的槽位；全國媒體平手不問（§5.3）", () => {
+c2(NAT ? "動能結算 · 媒體領先者先 +1 動能，再可交換相鄰兩槽，獎勵照交換後的槽位；媒體平手不問也不加（v0.4 §5.3，#34）" : "動能結算 · 全國媒體優勢者可交換相鄰兩槽，獎勵照交換後的槽位；全國媒體平手不問（§5.3）", () => {
   const { st, seat } = atLastPlay();
-  st.mom = [0, 0, 0]; st.media = zeros7(); st.media[0] = [2, 0, 0];
+  st.mom = [0, 0, 0]; st.media = noMedia(); if (NAT) st.media = [2, 0, 0]; else st.media[0] = [2, 0, 0];
   st.issues[0].cubes = [0, 0, 0]; st.issues[1].cubes = [2, 0, 0]; st.issues[2].cubes = [0, 1, 0];
   st.endorse = Array(7).fill(-1); st.endorseDeck = [4]; st.endorseDiscard = [];
   const [n0, n1, n2] = st.issues.map((i) => i.name);
-  const tie = E.clone(st); tie.media[0] = [1, 1, 0];
+  const tie = E.clone(st); if (NAT) tie.media = [1, 1, 0]; else tie.media[0] = [1, 1, 0];
   const mid = lastPlayQuiet(st, seat);
   let r = eq(JSON.stringify(E.mustAct(mid)), "[0]", "全國媒體優勢者（陳）決定"); if (r !== true) return r;
   r = eq(E.legalMoves(mid, CHEN).map((m) => m.type + (m.slot ?? "")).sort().join(), "noswap,swap0,swap1", "陳的選項"); if (r !== true) return r;
@@ -768,14 +803,27 @@ c2("動能結算 · 全國媒體優勢者可交換相鄰兩槽，獎勵照交換
   r = eq(s.phase, "save", "交換之後（第二槽無人，沒有別的決定）"); if (r !== true) return r;
   r = eq(s.issues.map((i) => i.name).join(), [n1, n0, n2].join(), "交換後的槽位"); if (r !== true) return r;
   // 第一槽 n1 陳領先：+1 動能、背書抽到 4；第三槽 n2 宋 +1；衰減後 n1 陳 1、n2 宋 0。
-  r = eq(`${s.mom.join("/")} ${s.endorse[4]} ${s.issues.map((i) => i.cubes.join("/")).join(" ")}`, "1/1/0 0 1/0/0 0/0/0 0/0/0", "動能、高屏背書、議題"); if (r !== true) return r;
+  // v0.4: 陳 is the media leader, +1 right after the halving (0 → 1), then +1 for slot 1.
+  r = eq(`${s.mom.join("/")} ${s.endorse[4]} ${s.issues.map((i) => i.cubes.join("/")).join(" ")}`, NAT ? "2/1/0 0 1/0/0 0/0/0 0/0/0" : "1/1/0 0 1/0/0 0/0/0 0/0/0", "動能、高屏背書、議題"); if (r !== true) return r;
+  if (NAT) { const tt = lastPlayQuiet(tie, seat); if (tt.mom.join() !== "0,0,0") return `媒體平手（陳 1 宋 1）還加了動能：${tt.mom.join()}`; }
   const t = lastPlayQuiet(tie, seat);
   if (E.legalMoves(t, CHEN).some((m) => m.type === "swap" || m.type === "noswap")) return "全國媒體平手還問交換";
   return ok(true, `陳把 ${n0}、${n1} 對調，獎勵跟著新槽位；平手不問`);
 });
+c2("動能結算 · 媒體獎勵：媒體領先者在減半之後 +1 動能，平手沒有人加；這 1 點下一回合才減半（v0.4 §5.3，#34）", () => {
+  if (!NAT) return "TODO: 引擎還是七區媒體，全國媒體與媒體獎勵還沒做（#34）";
+  const run = (media, mom) => { const { st, seat } = atLastPlay(); st.mom = mom.slice(); st.media = media.slice(); for (const i of st.issues) i.cubes = [0, 0, 0]; return lastPlayQuiet(st, seat); };
+  let s = run([0, 2, 1], [3, 3, 1]);
+  let r = eq(`${s.phase} ${s.mom.join()}`, "save 2,2,0", "宋媒體領先：陳 3→2、宋 3→1→+1=2、連 1→0"); if (r !== true) return r;
+  s = run([1, 1, 0], [3, 3, 1]);
+  r = eq(`${s.phase} ${s.mom.join()}`, "save 2,1,0", "陳宋媒體平手：沒有人加"); if (r !== true) return r;
+  s = run([0, 0, 4], [0, 0, 0]);
+  r = eq(s.mom.join(), "0,0,1", "連媒體領先、動能 0：減半後 +1"); if (r !== true) return r;
+  return ok(true, "減半之後才 +1；平手沒有");
+});
 c2("動能結算 · 減半時陳進位、宋連捨去；沒有任何領先者時直接進留牌（§5.3、§十三）", () => {
   const { st, seat } = atLastPlay();
-  st.mom = [1, 1, 5]; st.media = zeros7();
+  st.mom = [1, 1, 5]; st.media = noMedia();
   for (const i of st.issues) i.cubes = [0, 0, 0];
   const s = lastPlayQuiet(st, seat);
   const r = eq(`${s.phase} ${s.mom.join()}`, "save 1,0,2", "減半之後"); if (r !== true) return r;
@@ -783,7 +831,7 @@ c2("動能結算 · 減半時陳進位、宋連捨去；沒有任何領先者時
 });
 c2("動能結算 · 背書卡抽完把棄掉的洗回（§5.3）", () => {
   const { st, seat } = atLastPlay();
-  st.mom = [0, 0, 0]; st.media = zeros7();
+  st.mom = [0, 0, 0]; st.media = noMedia();
   st.issues[0].cubes = [0, 0, 0]; st.issues[1].cubes = [0, 2, 0]; st.issues[2].cubes = [0, 0, 0];
   st.endorse = Array(7).fill(-1); st.endorseDeck = []; st.endorseDiscard = [3];
   const s = D.act(lastPlayQuiet(st, seat), SOONG, { type: "reward", pick: "endorse" });
@@ -913,9 +961,9 @@ c2("事件 · 地方牌當事件：在牌上的縣市放 1 顆（照 §8.1 檢�
   r = eq(`${D.cubes(a, k, CHEN)} ${a.bag.join()}`, "3 0,8,0", "填綠：宋連是地方大老 → 檢定失敗"); if (r !== true) return r;
   if (E.mustAct(a).includes(CHEN) && E.legalMoves(a, CHEN).some((m) => m.type === "action")) return "地方牌當事件之後還有 CP 行動";
   if (!a.removed.includes(id)) return "地方牌當事件之後沒有移出遊戲";
-  const m = D.act(start((x) => { x.bag = [0, 9, 0]; x.media[ri("北北基")] = [2, 0, 1]; }), CHEN, { type: "fill", county: k });
-  r = eq(`${D.cubes(m, k, CHEN)} ${m.bag.join()}`, "4 0,9,0", "有北北基媒體優勢：填綠不檢定"); if (r !== true) return r;
-  const c = D.act(start((x) => { x.bag = [0, 9, 0]; x.media[ri("北北基")] = [2, 0, 1]; }), CHEN, { type: "cross", county: k });
+  const m = D.act(start((x) => { x.bag = [0, 9, 0]; putMedia(x, "北北基", [2, 0, 1]); }), CHEN, { type: "fill", county: k });
+  r = eq(`${D.cubes(m, k, CHEN)} ${m.bag.join()}`, NAT ? "3 0,8,0" : "4 0,9,0", NAT ? "陳媒體領先（v0.4 不免檢定）：填綠檢定失敗" : "有北北基媒體優勢：填綠不檢定"); if (r !== true) return r;
+  const c = D.act(start((x) => { x.bag = [0, 9, 0]; putMedia(x, "北北基", [2, 0, 1]); }), CHEN, { type: "cross", county: k });
   r = eq(`${D.cubes(c, k, CHEN)} ${c.bag.join()}`, "3 0,8,0", "跨營：永遠檢定"); if (r !== true) return r;
   return ok(true, "只能放牌上的縣市；檢定照 §8.1；沒有 CP 行動；移出遊戲");
 });
@@ -933,7 +981,7 @@ function boardSnap(st) {
   return {
     cubes: st.counties.map((c) => [0, 1, 2].map((p) => c.blocks.filter((b) => b.o === p).length)),
     types: st.counties.map((c) => ["G", "B", "N"].map((t) => c.blocks.filter((b) => b.t === t).length)),
-    media: st.media.map((m) => m.slice()), mom: st.mom.slice(), bag: st.bag.slice(),
+    media: st.media.map((m) => (Array.isArray(m) ? m.slice() : m)), mom: st.mom.slice(), bag: st.bag.slice(),
     issues: Object.fromEntries(st.issues.map((i) => [i.name, i.cubes.slice()])), checks: D.checks(st),
   };
 }
@@ -941,7 +989,8 @@ function diffSnap(a, b) {
   const out = [], d3 = (x, y) => x.map((v, i) => y[i] - v);
   a.cubes.forEach((r, k) => { const d = d3(r, b.cubes[k]); if (d.some(Boolean)) out.push(`${cn(k)} ${d.join("/")}`); });
   a.types.forEach((r, k) => { const d = d3(r, b.types[k]); if (d.some(Boolean)) out.push(`${cn(k)}塊色 ${d.join("/")}`); });
-  a.media.forEach((r, k) => { const d = d3(r, b.media[k]); if (d.some(Boolean)) out.push(`媒體${B.REGIONS[k]} ${d.join("/")}`); });
+  if (typeof a.media[0] === "number") { const d = d3(a.media, b.media); if (d.some(Boolean)) out.push(`媒體 ${d.join("/")}`); }
+  else a.media.forEach((r, k) => { const d = d3(r, b.media[k]); if (d.some(Boolean)) out.push(`媒體${B.REGIONS[k]} ${d.join("/")}`); });
   for (const key of ["mom", "bag"]) { const d = d3(a[key], b[key]); if (d.some(Boolean)) out.push(`${key} ${d.join("/")}`); }
   for (const n of Object.keys(a.issues)) { const d = d3(a.issues[n], b.issues[n]); if (d.some(Boolean)) out.push(`${n} ${d.join("/")}`); }
   if (b.checks !== a.checks) out.push(`檢定 ${b.checks - a.checks}`);
@@ -951,7 +1000,8 @@ function expectStr(w) {
   const out = [];
   for (const [n, d] of Object.entries(w.cubes || {})) out.push(`${n} ${d.join("/")}`);
   for (const [n, d] of Object.entries(w.types || {})) out.push(`${n}塊色 ${d.join("/")}`);
-  for (const [r, d] of Object.entries(w.media || {})) out.push(`媒體${r} ${d.join("/")}`);
+  if (Array.isArray(w.media)) out.push(`媒體 ${w.media.join("/")}`);
+  else for (const [r, d] of Object.entries(w.media || {})) out.push(`媒體${r} ${d.join("/")}`);
   for (const key of ["mom", "bag"]) if (w[key]) out.push(`${key} ${w[key].join("/")}`);
   for (const [n, d] of Object.entries(w.issues || {})) out.push(`${n} ${d.join("/")}`);
   if (w.checks) out.push(`檢定 ${w.checks}`);
@@ -1012,7 +1062,7 @@ c2("事件 · 選擇情境的比對機械先自己跑一次（用已經做好的
 
 choiceGroup("事件 · 指定縣市（照文字順序；沒有空的游離塊就跳過）：9 張（§14.3）", [
   { id: "lu_running_mate", by: CHEN, steps: [["probe", CHEN, offers(["fill", "cross"], ["桃園縣"], "呂秀蓮搭檔可選的縣市")], [CHEN, F("桃園縣")], [CHEN, X("桃園縣")]], want: { cubes: { "桃園縣": [2, 0, 0] } } },
-  { id: "hsieh_kaohsiung", by: CHEN, steps: [[CHEN, F("高雄市")], [CHEN, F("高雄市")]], want: { cubes: { "高雄市": [2, 0, 0] }, media: { "高屏": [1, 0, 0] } } },
+  { id: "hsieh_kaohsiung", by: CHEN, steps: [[CHEN, F("高雄市")], [CHEN, F("高雄市")]], want: { cubes: { "高雄市": [2, 0, 0] }, media: NAT ? [1, 0, 0] : { "高屏": [1, 0, 0] } } },
   { id: "hsu_wen_long", by: CHEN, steps: [["probe", CHEN, offers(["fill", "cross"], ["台南縣"], "第一個縣市")], [CHEN, F("台南縣")], ["probe", CHEN, offers(["fill", "cross"], ["台南市"], "第二個縣市")], [CHEN, X("台南市")]], want: { cubes: { "台南縣": [1, 0, 0], "台南市": [1, 0, 0] } } },
   // 新竹縣開局沒有空的游離塊（藍 2 塊宋連各一）：跳過，直接問苗栗。
   { id: "hakka_vote", by: SOONG, steps: [["probe", SOONG, offers(["fill", "cross"], ["苗栗縣"], "客家票可選的縣市")], [SOONG, F("苗栗縣")]], want: { cubes: { "苗栗縣": [0, 1, 0] } } },
@@ -1022,7 +1072,7 @@ choiceGroup("事件 · 指定縣市（照文字順序；沒有空的游離塊就
   // 需檢定：開局連在北北基有媒體優勢（連 1、其他 0），§8.1 免除地方大老檢定 → 兩顆都放上、不檢定。
   { id: "ma_campaigns", by: LIEN, steps: [[LIEN, F("台北市")], [LIEN, F("台北市")]], want: { cubes: { "台北市": [0, 0, 2] } } },
   // 把北北基媒體清掉：台北市宋 5 顆是地方大老，連填藍要檢定；袋中只有宋 → 兩次都失敗。
-  { id: "ma_campaigns", by: LIEN, arrange: (s) => { s.media[ri("北北基")] = [0, 0, 0]; }, steps: [[LIEN, F("台北市")], [LIEN, F("台北市")]], want: { bag: [0, -2, 0], checks: 2 } },
+  { id: "ma_campaigns", by: LIEN, arrange: (s) => { putMedia(s, "北北基", [0, 0, 0]); }, steps: [[LIEN, F("台北市")], [LIEN, F("台北市")]], want: { bag: [0, -2, 0], checks: 2 } },
   // 台北市：連 −1（不檢定）再宋 +1；新竹市沒有連的方塊：只有宋 +1。
   { id: "li_ao_endorses", by: SOONG, steps: [[SOONG, RM("台北市", LIEN, "B")], [SOONG, F("台北市")], ["probe", SOONG, (ms) => (ms.some((m) => m.type === "remove") ? "新竹市沒有連的方塊，卻還問移除" : offers(["fill", "cross"], ["新竹市"], "第二個縣市")(ms))], [SOONG, F("新竹市")]], want: { cubes: { "台北市": [0, 1, -1], "新竹市": [0, 1, 0] } } },
 ]);
@@ -1049,7 +1099,7 @@ choiceGroup("事件 · 任選縣市（各 +1 的縣市不重複；選過的縣�
   { id: "lee_campaigns", by: LIEN, steps: [[LIEN, F("桃園縣")], [LIEN, F("台中縣")]], want: { cubes: { "桃園縣": [0, 0, 1], "台中縣": [0, 0, 1] } } },
   { id: "ma_leaks_polls", by: LIEN, opts: { startTurn: 8 }, steps: [[LIEN, X("台南縣")], [LIEN, F("桃園縣")]], want: { cubes: { "桃園縣": [0, 0, 1] }, mom: [1, 1, 0], bag: [0, -1, 0], checks: 1 } },
   // 跨營填台南縣失敗；桃園填藍不檢定；北北基媒體先清掉，台北縣填藍有宋這個地方大老 → 檢定失敗。
-  { id: "lee_alarm", by: LIEN, arrange: (s) => { s.media[ri("北北基")] = [0, 0, 0]; }, steps: [[LIEN, X("台南縣")], [LIEN, F("桃園縣")], [LIEN, F("台北縣")]], want: { cubes: { "桃園縣": [0, 0, 1] }, bag: [0, -2, 0], checks: 2 } },
+  { id: "lee_alarm", by: LIEN, arrange: (s) => { putMedia(s, "北北基", [0, 0, 0]); }, steps: [[LIEN, X("台南縣")], [LIEN, F("桃園縣")], [LIEN, F("台北縣")]], want: { cubes: { "桃園縣": [0, 0, 1] }, bag: [0, -2, 0], checks: 2 } },
   // 每個縣市：宋 +1（需檢定）之後，同縣市連有方塊就 −1（不檢定）。
   { id: "veterans_village", by: SOONG, steps: [
     [SOONG, X("台北縣")],
@@ -1084,7 +1134,7 @@ choiceGroup("事件 · 移除對手方塊：許信良參選（宋選）、李登
   { id: "members_return", by: LIEN, bag: [0, 0, 10], steps: [[LIEN, RM("台北縣", SOONG, "B")], ["probe", LIEN, (ms) => (countiesOf(ms, ["remove"]).split(",").includes("台北縣") ? "第二個縣市還能選台北縣" : true)], [LIEN, RM("桃園縣", SOONG, "B")]], want: { cubes: { "台北縣": [0, -1, 0], "桃園縣": [0, -1, 0] }, checks: 2 } },
 ]);
 
-choiceGroup("事件 · 媒體（事件放媒體不檢定；「任 N 個區」不重複；「任一區 +2」放同一區）：7 張（§14.3）", [
+const MEDIA_SPECS_V3 = [
   { id: "lo_propaganda", by: CHEN, steps: [[CHEN, MD("雲嘉南")], ["probe", CHEN, (ms) => (ms.length && ms.every((m) => m.type === "media" && m.region === ri("雲嘉南") && m.target == null) ? true : "第二顆應該只能放在雲嘉南：" + JSON.stringify(ms.slice(0, 3)))], [CHEN, MD("雲嘉南")]], want: { media: { "雲嘉南": [2, 0, 0] } } },
   { id: "chang_yung_fa", by: CHEN, steps: [[CHEN, MD("離島")]], want: { media: { "離島": [1, 0, 0] }, bag: [2, 0, 0] } },
   { id: "chang_doctors", by: SOONG, steps: [[SOONG, MD("桃竹苗")]], want: { media: { "桃竹苗": [0, 1, 0] }, bag: [0, 2, 0] } },
@@ -1094,7 +1144,20 @@ choiceGroup("事件 · 媒體（事件放媒體不檢定；「任 N 個區」不
   { id: "expel_soong", by: LIEN, arrange: (s) => { for (const r of ["桃竹苗", "雲嘉南", "宜花東"]) s.media[ri(r)][SOONG] = 1; }, steps: [
     ["probe", LIEN, (ms) => eq(ms.map((m) => `${m.type}:${m.region}:${m.target}`).sort().join(), [ri("桃竹苗"), ri("雲嘉南"), ri("宜花東")].map((r) => `media:${r}:1`).sort().join(), "開除宋楚瑜黨籍的選項（只能移除宋的媒體）")],
     [LIEN, MD("桃竹苗", SOONG)], [LIEN, MD("宜花東", SOONG)]], want: { media: { "桃竹苗": [0, -1, 0], "宜花東": [0, -1, 0] }, mom: [0, 1, 0] } },
-]);
+];
+// v0.4 (#34): every media event puts or takes media in the one national box; nothing to choose, no check; 宋's media
+// cannot go under 0. Card texts: 媒體陳 +2 / 媒體陳 +1 / 媒體宋 +1 / 媒體陳 +1 / 媒體連 +2 / 媒體連 +3 / 宋媒體 −2.
+const MEDIA_SPECS_V4 = [
+  { id: "lo_propaganda", by: CHEN, steps: [], want: { media: [2, 0, 0] } },
+  { id: "chang_yung_fa", by: CHEN, steps: [], want: { media: [1, 0, 0], bag: [2, 0, 0] } },
+  { id: "chang_doctors", by: SOONG, steps: [], want: { media: [0, 1, 0], bag: [0, 2, 0] } },
+  { id: "advisory_group", by: CHEN, steps: [], want: { issues: { clean: [1, 0, 0], econ: [1, 0, 0] }, media: [1, 0, 0] } },
+  { id: "party_assets_ads", by: LIEN, steps: [], want: { media: [0, 0, 2] } },
+  { id: "massive_ads", by: LIEN, steps: [], want: { media: [0, 0, 3] } },
+  { id: "expel_soong", by: LIEN, arrange: (s) => { s.media = [0, 3, 0]; }, steps: [], want: { media: [0, -2, 0], mom: [0, 1, 0] } },
+  { id: "expel_soong", by: LIEN, arrange: (s) => { s.media = [0, 1, 0]; }, steps: [], want: { media: [0, -1, 0], mom: [0, 1, 0] } },
+];
+choiceGroup(NAT ? "事件 · 媒體（v0.4 全國媒體：放或拿掉都在同一格、沒有選擇、不檢定；宋的媒體最多扣到 0）：7 張（§14.3，#34）" : "事件 · 媒體（事件放媒體不檢定；「任 N 個區」不重複；「任一區 +2」放同一區）：7 張（§14.3）", NAT ? MEDIA_SPECS_V4 : MEDIA_SPECS_V3);
 
 // Text order made observable: with an empty bag, the first check refills it (12 each) only if the
 // placement comes before 「袋中 +1 宋方塊」. The other order leaves one 宋 cube in the bag, the check
@@ -1354,7 +1417,7 @@ c5("本回合 · 省府舊部：中彰投媒體宋 +1；本回合連的休息方
   D.giveCard(st, LIEN, l0, 0);
   const a = boardSnap(st);
   st = D.act(st, SOONG, { type: "play", card: "provincial_staff", mode: "event" });
-  let r = eq(diffSnap(a, boardSnap(st)), expectStr({ media: { "中彰投": [0, 1, 0] } }), "省府舊部之後"); if (r !== true) return r;
+  let r = eq(diffSnap(a, boardSnap(st)), expectStr({ media: NAT ? [0, 1, 0] : { "中彰投": [0, 1, 0] } }), "省府舊部之後"); if (r !== true) return r;
   st = nextDecision(st, LIEN);
   let rest0 = st.rest[LIEN];
   st = cpDone(st, LIEN, l0);
@@ -1615,7 +1678,7 @@ const G_ = (county) => ({ type: "grey", county: ci(county) });
 
 c8("投票日 · 轉換：媒體每顆換 1 顆、議題方塊全部、動能每枚換 2 顆投入袋中；媒體與議題清空、動能歸零（§十二 1）", () => {
   let st = toTurn8Save();
-  st.media = zeros7(); st.media[ri("北北基")] = [1, 0, 2]; st.media[ri("桃竹苗")] = [0, 3, 0];
+  if (NAT) st.media = [1, 3, 2]; else { st.media = zeros7(); st.media[ri("北北基")] = [1, 0, 2]; st.media[ri("桃竹苗")] = [0, 3, 0]; }
   setIssue(st, "cross", [1, 0, 0]); setIssue(st, "clean", [0, 2, 0]); setIssue(st, "econ", [2, 0, 1]);
   st.mom = [3, 1, 2]; st.bag = [5, 5, 5]; st.rest = [0, 0, 0];
   st = saveAll(st);
@@ -1674,7 +1737,7 @@ c8("投票日 · 催票、第二段棄保（全部）、背書（無色塊一半
 c8("投票日 · 計票平手：先比領先的縣市數，再比轉換前的剩餘動能，再照投票日的主動權順序（§十二 7；#8 裁決）", () => {
   const run = (mom, holder) => {
     let st = toTurn8Save();
-    st.mom = mom; st.media = zeros7(); for (const i of st.issues) i.cubes = [0, 0, 0];
+    st.mom = mom; st.media = noMedia(); for (const i of st.issues) i.cubes = [0, 0, 0];
     st = saveAll(st);
     clearBoard(st);
     setCounty(st, "台南縣", { G: [CHEN, CHEN] });   // 陳 2 票、領先 1 縣市
