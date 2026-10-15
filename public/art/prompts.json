@@ -708,5 +708,29 @@
   "model": "qwen-image-2.1-UC-Q8_0.gguf",
   "subject": "雲林縣　北港朝天宮廟頂與花生田",
   "aspect": "3:2 (Photo)"
+ },
+ "end/chen.webp": {
+  "prompt": "Election night victory celebration in a Taiwanese city street at night: a sea of plain emerald green flags on bamboo poles waving above a huge crowd, fireworks bursting in the night sky, confetti in the air, glowing street lights. No faces visible, no portraits; any people are tiny distant silhouettes seen from behind. Style: flat silkscreen pop poster, three flat colors emerald green, sunflower yellow and black, bold simple shapes, slight print misregistration, youthful energy. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature.",
+  "seed": 2000031901,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "結局頁主視覺「開票之夜」（陳當選）",
+  "aspect": "3:2 (Photo)",
+  "note": "owner-selected v1 of 3; resized 1248x832 -> 900x600"
+ },
+ "end/soong.webp": {
+  "prompt": "Election night victory celebration in a Taiwanese city street at night: a sea of plain warm orange flags on bamboo poles waving above a huge crowd, fireworks bursting in the night sky, confetti in the air, glowing street lights. No faces visible, no portraits; any people are tiny distant silhouettes seen from behind. Style: old Taiwanese hand-painted signboard art, thick oil paint on board, warm orange cream and brown palette, nostalgic 1980s hand-painted movie poster technique. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature.",
+  "seed": 2000031904,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "結局頁主視覺「開票之夜」（宋當選）",
+  "aspect": "3:2 (Photo)",
+  "note": "owner-selected v1 of 3; resized 1248x832 -> 900x600"
+ },
+ "end/lien.webp": {
+  "prompt": "Election night victory celebration in a Taiwanese city street at night: a sea of plain deep navy blue flags on bamboo poles waving above a huge crowd, fireworks bursting in the night sky, confetti in the air, glowing street lights. No faces visible, no portraits; any people are tiny distant silhouettes seen from behind. Style: formal 1990s official government poster, clean vector illustration, deep navy blue and white with gold accents, symmetrical stately composition, smooth gradient sky. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature.",
+  "seed": 2000031907,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "結局頁主視覺「開票之夜」（連當選）",
+  "aspect": "3:2 (Photo)",
+  "note": "owner-selected v1 of 3; resized 1248x832 -> 900x600"
  }
 }
