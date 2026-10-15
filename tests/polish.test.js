@@ -15,6 +15,7 @@ import assert from "node:assert/strict";
 import { R, section, check, ok, nonEmpty, summary } from "./harness.js";
 import * as D from "./driver.js";
 import * as S from "../public/solo.js";
+import * as T from "../public/tutorial.js";
 
 const SEAT = ["chen", "soong", "lien"];
 const PLURAL_ONE = /(^|[^\d.,])1 (cards|cubes|blocks|checks|votes|seconds|turns)\b/g;
@@ -44,6 +45,40 @@ check("英文的「1」接單數：整局英文畫面（字與 aria-label）沒�
   for (const [x, what] of [[screens, "英文畫面"], [ended, "打到結果的整局"]]) { const r = nonEmpty(x, what); if (r !== true) return r; }
   if (found.size) return `TODO: 英文還有 ${found.size} 種「1 + 複數」：${[...found].map(([k, w]) => `「${k}」（${w}）`).join("、")}（#30）`;
   return ok(true, `${screens} 個英文畫面、${ended} 局打到結果，沒有「1 + 複數」`);
+});
+
+// #30 gave the strings a plural form, "{n#block|blocks}"; every page that fills strings has to know it, or the
+// braces show. Nothing in braces may reach the screen: whole solo games and the tutorial, both languages.
+check("沒有漏填的佔位字：整局單人與整段教學（中英）的字與 aria-label 裡沒有 {…}（含單複數寫法 {n#…|…}）", () => {
+  let screens = 0;
+  const hole = (html) => { const m = words(html).match(/.{0,12}\{[^{}\s]{1,40}\}.{0,12}/); return m ? m[0] : null; };
+  for (const lang of ["en", "zh-Hant"]) {
+    for (const [seat, seed] of [[0, 3101], [2, 3102]]) {
+      let s = S.advance(S.newSolo({ seat, level: 2, seed }));
+      const R1 = D.rng(seed);
+      for (let n = 0; n < 600; n++) {
+        const h = hole(S.screen(s, lang)); screens++;
+        if (h) return `${lang} ${SEAT[seat]} seed ${seed} 第 ${s.st.turn} 回合 ${s.st.phase}：畫面上有「${h}」`;
+        if (s.st.phase === "end") break;
+        const ch = S.choices(s, lang);
+        if (!ch.length) break;
+        s = S.advance(S.act(s, ch[Math.floor(R1() * ch.length)].move));
+      }
+    }
+    let t = S.advance(T.newTutorial());
+    for (let n = 0; n < 120; n++) {
+      const st = T.step(t, lang);
+      const h = hole(S.screen(t, lang)) || hole(st.text || ""); screens++;
+      if (h) return `${lang} 教學第 ${n} 步「${st.id}」：畫面上有「${h}」`;
+      if (st.kind === "done") break;
+      if (st.kind === "next") t = T.next(t);
+      else if (st.kind === "county") t = T.openCounty(t, st.county);
+      else if (st.kind === "move" && st.moves && st.moves.length) t = S.advance(T.act(t, st.moves[0]));
+      else break;
+    }
+  }
+  const r = nonEmpty(screens, "畫面"); if (r !== true) return r;
+  return ok(true, `${screens} 個畫面（中英整局單人與教學）沒有漏填的佔位字`);
 });
 
 test("polish", () => {
