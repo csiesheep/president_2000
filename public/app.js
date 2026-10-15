@@ -5,6 +5,7 @@ import en from "./i18n/en.js";
 import zh from "./i18n/zh-Hant.js";
 import * as Solo from "./solo.js";
 import * as Tut from "./tutorial.js";
+import * as Sound from "./sound.js";
 import { mount as mountRoom } from "./roompage.js";
 import { drawInto, narrowNow, watchNarrow, bindCounty, bindSeat, bindMenu, placeTutorial } from "./drawing.js";
 
@@ -54,6 +55,7 @@ if (typeof document !== "undefined") {
     const stage = $("#stage");
     $("#gmenub").setAttribute("aria-label", S.menu.label);
     const menu = bindMenu($("#gmenu"));
+    Sound.mountMenu($("#gmenu"), S.menu);
     let session = store.get(KEY);
     // ?tutorial (#27): a tutorial in progress is picked up again (a reload comes back to the same step);
     // otherwise it starts the fixed game. The address turns into plain ?play once the tutorial is over.
@@ -79,19 +81,29 @@ if (typeof document !== "undefined") {
       clearTimeout(noticeTimer); noticeTimer = setTimeout(() => { n.hidden = true; }, 1800);
     };
 
+    // The sounds of whatever changed the game since the last draw (#42): read off the two engine states.
+    let heard = null;
+    const hear = () => {
+      if (!session || !session.st) { heard = null; return; }
+      if (heard && heard.seed === session.seed && heard.st !== session.st) Sound.playStep(heard.st, session.st);
+      heard = { seed: session.seed, st: session.st };
+    };
+    const stepOpt = () => (Sound.gap() == null && session.st && Solo.botsToMove(session).length ? { botnext: S.menu.next } : {});
     const draw = () => {
       syncUrl();
+      hear();
       // The tutorial's "player board" step is about the hand and the bag: on a phone that board shows them while it is on.
       const boardStep = !!(session.tut && Tut.step(session, code).id === "board");
-      drawInto(stage, Solo.screen(session, code, { sel: ui.sel, picks: ui.picks, help: ui.help, moves: ui.moves, confirm: ui.confirm, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow }), { seat: boardStep ? session.seat : ui.seat, menu: menu.isOpen() });
+      drawInto(stage, Solo.screen(session, code, { sel: ui.sel, picks: ui.picks, help: ui.help, moves: ui.moves, confirm: ui.confirm, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow, ...stepOpt() }), { seat: boardStep ? session.seat : ui.seat, menu: menu.isOpen() });
       $("#solo").classList.add("intable");
       $("#quit").hidden = false;
       placeTutorial(stage);
     };
     const pump = () => {
       draw();
-      if (timer || !Solo.botsToMove(session).length) return;
-      timer = setTimeout(() => { timer = null; session = Solo.stepBot(session); save(); pump(); }, 400);
+      const wait = Sound.gap(); // the rivals' speed (#42); null = step by step, they wait for 下一步
+      if (timer || wait == null || !Solo.botsToMove(session).length) return;
+      timer = setTimeout(() => { timer = null; session = Solo.stepBot(session); save(); pump(); }, wait);
     };
     const skip = () => {
       if (!timer) return;
@@ -119,6 +131,26 @@ if (typeof document !== "undefined") {
         `<p class="note"><a class="tutlink" href="?tutorial${code === "en" ? "&amp;lang=en" : ""}">${esc(T.ui.tutorial.setupLink)}</a></p></section>`);
     };
 
+    // A hand card or a county tapped makes its small sound (a tap that only skips the animation does not).
+    stage.addEventListener("click", (ev) => {
+      if (timer) return;
+      const c = ev.target.closest("[data-sel], [data-county]");
+      if (c && (c.dataset.county != null || c.dataset.sel)) Sound.play("tap");
+    });
+    // Step by step: one rival move per tap on 下一步.
+    stage.addEventListener("click", (ev) => {
+      if (!ev.target.closest("[data-botnext]") || !session || !session.st) return;
+      if (!Solo.botsToMove(session).length) return;
+      session = Solo.stepBot(session); save(); pump();
+    });
+    let stepping = Sound.gap() == null;
+    addEventListener("p2000:settings", () => {
+      const now = Sound.gap() == null;
+      if (now === stepping || !session || !session.st) return;
+      stepping = now;
+      if (now && timer) { clearTimeout(timer); timer = null; }
+      pump();
+    });
     stage.addEventListener("click", (ev) => {
       const t = ev.target.closest("button, a");
       if (timer) { skip(); if (t && t.tagName !== "A") return; }

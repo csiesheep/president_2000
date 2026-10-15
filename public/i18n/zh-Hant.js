@@ -77,7 +77,8 @@ export default {
         levelNote: { 1: "助選員只會填塊，不搶、不觸發、不封鎖。", 2: "總幹事會算棄保、搶塊、觸發與封鎖。", 3: "操盤手還會留牌打政見發表會、卡議題平手。" },
         start: "開始選戰 · 1999 年 11 月", note: "九個回合。進度存在這個分頁，重新整理會回到同一個畫面。", home: "← 首頁",
       },
-      menu: { quit: "放棄這局", confirm: "放棄這一局，回到設定？", skip: "點一下跳過動畫", label: "選單" },
+      menu: { quit: "放棄這局", confirm: "放棄這一局，回到設定？", skip: "點一下跳過動畫", label: "選單",
+        speed: "對手速度", slow: "慢", normal: "正常", fast: "快", step: "逐步", stepNote: "逐步：對手每走一步就停下，按「下一步」再繼續。", sound: "音效", volume: "音量", next: "下一步" },
       hdr: {
         ph: { action: "行動 {n}/4", order: "選順位", momentum: "動能階段", save: "留牌", debate: "政見發表會", election: "投票日", end: "開票結果" },
         turn: "第 {n} 回合", endDate: "3 月 18 日", initiative: "主動權 {who}", star: "主動權", mom: "動能", bag: "袋子", feed: "紀錄", momL: "動能", slotsL: "議題槽", tap: "點一下看說明",
