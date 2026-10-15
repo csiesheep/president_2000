@@ -56,7 +56,9 @@ const START = `(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.
 // Everything measured in the page in one go; returns plain numbers and short notes.
 const MEASURE = `(()=>{
   const R = (e) => { const r = e.getBoundingClientRect(); return { x: r.left, y: r.top + scrollY, w: r.width, h: r.height, r: r.right, b: r.bottom + scrollY }; };
-  const vis = (e) => { if (!e) return false; const r = e.getBoundingClientRect(); const s = getComputedStyle(e); return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none" && !e.closest("[hidden]"); };
+  // Seen = drawn: a box with size, not hidden or transparent. Not the hidden attribute: CSS can show an element
+  // that still carries it (checker, #29), and an element under a display:none parent has no box anyway.
+  const vis = (e) => { if (!e) return false; const r = e.getBoundingClientRect(); const s = getComputedStyle(e); return e.getClientRects().length > 0 && r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none" && Number(s.opacity) > 0; };
   const onTop = (e) => { if (!vis(e)) return false; const r = e.getBoundingClientRect(); const t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return !!t && (t === e || e.contains(t)); };
   const tbl = document.querySelector(".tbl") || document;
   const seats = [...tbl.querySelectorAll("[data-seat]")].filter(vis);
