@@ -6,7 +6,7 @@
 //
 // Owner, 2026-10-15, approving the P1 designs. Contract: when county k is open ([data-popover="k"]), the box holds one
 // <img data-county-pic="<slug>" src="art/local/<slug>.webp">, the local-card picture of that county; no such picture
-// when no county is open. Phone and desktop boxes alike. Reports 尚未實作 until a box has data-county-pic.
+// when no county is open. Phone and desktop boxes alike. Since #41 landed, a box without it is a failure.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { R, section, check, ok, summary } from "./harness.js";
@@ -21,7 +21,7 @@ const pics = (html) => [...html.matchAll(/<img[^<>]*\sdata-county-pic="([^"]*)"[
 const box = (html, k) => { const i = html.search(new RegExp(`<div[^<>]*\\sdata-popover="${k}"`)); return i < 0 ? null : html.slice(i); };
 const gate = (fn) => () => {
   if (!COUNTIES.every((c) => SLUG[c[0]] && existsSync(new URL(`../public/art/local/${SLUG[c[0]]}.webp`, import.meta.url)))) return "表裡的縣市或插圖檔對不上 COUNTIES（工具）";
-  if (!COUNTIES.some((c, k) => pics(S.screen(s, "zh-Hant", { county: k, narrow: true })).length)) return "TODO: 縣市框還沒有 data-county-pic（#41）";
+  if (!COUNTIES.some((c, k) => pics(S.screen(s, "zh-Hant", { county: k, narrow: true })).length)) return "縣市框又沒有 data-county-pic 了（#41 已上線，這是退步，不是尚未實作）";
   return fn();
 };
 
