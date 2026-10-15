@@ -16,7 +16,8 @@
 //   - the page does not scroll sideways.
 // Owner, 2026-10-15: 「候選人牌也改版」 (#37). The candidate card at the end of the hand ([data-cand]) is measured the same
 // way, in a saved game for each seat at 390 and for 宋 at 1440, with art/candidates/<seat>.webp as its picture; and once
-// used it is marked (data-used, disabled) and still in its colour without lines.
+// used it is marked (data-used, disabled) and still in its colour without lines. On a desktop (1440×900, 1280×800),
+// where the hand only peeks up, the candidate's name is on the screen; in English at 390 no text on it is cut off.
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import * as S from "../public/solo.js";
@@ -121,6 +122,31 @@ try {
     const art = m && m.src && new RegExp(`art/candidates/${key}\\.webp$`).test(m.src);
     rule(!!m && m.cand === key && art && !m.used && !m.bad.length, `${w}: the candidate card of ${key}${m ? ` (data-cand ${m.cand}, picture ${m.src})` + (m.bad.length ? " — " + m.bad.join("; ") : art ? " in its colour, no lines, picture full-bleed, CP top-left, text readable" : " — the picture is not art/candidates/" + key + ".webp") : " not found ([data-cand])"}`);
     t.close();
+  }
+  // On a desktop the hand only peeks up from the bottom; the event cards show their names there, so the candidate's name
+  // must show too (#37, first delivery hid it at the card's bottom, 963 px on a 900 px screen).
+  const NAME = { chen: "陳水扁", soong: "宋楚瑜", lien: "連戰" };
+  for (const [w, h] of [[1440, 900], [1280, 800]]) {
+    const t = await saved(games.find((x) => x.key === "soong").s, w, h, false);
+    const m = JSON.parse(await t.ev(`JSON.stringify((() => { const el = document.querySelector(".tbl [data-cand]"); if (!el) return null;
+      const n = [...el.querySelectorAll("*")].find((x) => [...x.childNodes].some((c) => c.nodeType === 3 && c.textContent.trim() === ${JSON.stringify(NAME.soong)}));
+      if (!n) return { none: true }; const r = n.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), ih: innerHeight }; })())`));
+    rule(!!m && !m.none && m.bottom <= m.ih, `${w}×${h}: the candidate's name 「${NAME.soong}」 shows in the hand${m ? (m.none ? " — not found as its own text" : ` (${m.top}–${m.bottom}, screen ${m.ih})`) : " — no [data-cand]"}`);
+    t.close();
+  }
+  // English at 390: nothing on the candidate card is cut off (「James Soo…」 in the first delivery).
+  {
+    const cut = [];
+    for (const g of games) {
+      const t = await tab(br, base, 390, 844, true);
+      await t.ev(`(()=>{ sessionStorage.setItem("p2000.solo.session", ${JSON.stringify(JSON.stringify(g.s))}); return 1; })()`);
+      await t.go(`${base}?play&lang=en`); await sleep(800);
+      const m = JSON.parse(await t.ev(`JSON.stringify((() => { const el = document.querySelector(".tbl [data-cand]"); if (!el) return null;
+        return [...el.querySelectorAll("*")].filter((x) => x.textContent.trim() && getComputedStyle(x).overflow !== "visible" && (x.scrollWidth > x.clientWidth + 1 || x.scrollHeight > x.clientHeight + 1)).map((x) => x.textContent.trim().slice(0, 24)); })())`));
+      if (!m) cut.push(`${g.key}: no [data-cand]`); else if (m.length) cut.push(`${g.key}: 「${m.join("」「")}」 cut`);
+      t.close();
+    }
+    rule(!cut.length, `390 English: no text cut off on the candidate cards of chen, soong, lien${cut.length ? " — " + cut.join("; ") : ""}`);
   }
   {
     const g = games.find((x) => x.key === "lien"), t = await saved(g.used, 390, 844, true);
