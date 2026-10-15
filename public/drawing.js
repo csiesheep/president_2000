@@ -7,25 +7,26 @@ let lastAdvised = null;
 // A redraw swaps the whole stage, which would make every picture a brand-new <img> that blinks while it
 // decodes (#28). So the <img> elements that were on the stage keep their place: after the swap, a new <img>
 // whose markup is identical to one that was just removed is replaced by that very element.
-// The candidates standing on the map are SVG <image> elements (#29). A candidate that walks to another county is
-// the same picture in a new place, so an <image> is matched by its file and size and only its position is
-// moved; everything else is matched by its whole markup.
+// The candidates standing on the map are HTML <img data-pawn-pic> laid over the map (#31; as SVG <image> they blinked on
+// iPhone Safari). A candidate that walks to another county is the same picture in a new place, so such an <img> is
+// matched by its seat and file and only its position (style, data-of) is moved; everything else is matched by its
+// whole markup.
 const imgKey = new WeakMap();
-const sigOf = (im) => (im.localName === "image" ? "image|" + (im.getAttribute("href") || "") + "|" + im.getAttribute("width") + "|" + im.getAttribute("height") : im.outerHTML);
+const sigOf = (im) => (im.hasAttribute("data-pawn-pic") ? "pawn|" + im.getAttribute("data-pawn-pic") + "|" + (im.getAttribute("src") || "") : im.outerHTML);
 const keyOf = (im) => imgKey.get(im) || sigOf(im);
 function keepImages(root, html) {
   const pool = new Map();
-  for (const im of root.querySelectorAll("img, image")) {
+  for (const im of root.querySelectorAll("img")) {
     const k = keyOf(im);
     if (!pool.has(k)) pool.set(k, []);
     pool.get(k).push(im);
   }
   root.innerHTML = html;
-  for (const im of root.querySelectorAll("img, image")) {
+  for (const im of root.querySelectorAll("img")) {
     const k = sigOf(im), list = pool.get(k);
     if (list && list.length) {
       const was = list.shift();
-      if (im.localName === "image") for (const at of ["x", "y"]) was.setAttribute(at, im.getAttribute(at));
+      if (im.hasAttribute("data-pawn-pic")) for (const at of ["style", "data-of"]) was.setAttribute(at, im.getAttribute(at));
       im.replaceWith(was); imgKey.set(was, k);
     } else imgKey.set(im, k);
   }

@@ -169,15 +169,29 @@ function standing(v, k) {
   if (v.pos[v.seat] === k) here.push(v.seat);
   return here;
 }
-function pawns(v, k, d, right, top) {
-  let s = "";
-  standing(v, k).forEach((p, j) => {
+// pawns() returns { svg, pics }: the ring, number and tag stay in the SVG; the round picture is an HTML <img> laid over the
+// map (#31), placed in % of the viewBox so the string alone decides where it is. A candidate that walks to another county
+// is the same <img> with another style (drawing.js matches it by data-pawn-pic), never a new one.
+// What of the SVG must stay in front of a picture (an HTML <img> is above the whole svg): the picture's own number disc,
+// and, when a candidate stands to its left, that one's ring (its own picture comes later in the html and covers it) and
+// number disc. Each hole is a circle in the picture's own 0..22 box; the mask cuts them out so the svg shows through.
+function mask(holes) {
+  const S = 2 * R;
+  const g = holes.map(([x, y, r]) => {
+    const far = Math.max(Math.hypot(x, y), Math.hypot(S - x, y), Math.hypot(x, S - y), Math.hypot(S - x, S - y)), a = (r / far) * 100;
+    return `radial-gradient(circle farthest-corner at ${f1((x / S) * 100)}% ${f1((y / S) * 100)}%,transparent ${f1(a)}%,#000 ${f1(a + 0.8)}%)`;
+  }).join(",");
+  return `-webkit-mask-image:${g};mask-image:${g}`;
+}
+function pawns(v, k, d, right, top, m) {
+  let s = "", pics = "";
+  const here = standing(v, k);
+  here.forEach((p, j) => {
     const cx = right - 1 - STEP * j, cy = top, me = p === v.seat;
     const bx = cx + R * 0.78, by = cy + R * 0.72;
     s += `<g data-pawn="${SEATS[p]}" data-of="${k}"${me ? " data-me" : ""} aria-hidden="true">` +
       `<ellipse cx="${f1(cx + 1)}" cy="${f1(cy + R + 2)}" rx="${f1(R * 0.9)}" ry="2.6" fill="rgba(43,33,24,.35)"/>` +
       `<circle cx="${f1(cx)}" cy="${f1(cy)}" r="${R + 2.6}" fill="${SEAT_COL[p]}" stroke="${PAPER}" stroke-width="1.4"/>` +
-      `<image href="art/candidates/${SEATS[p]}.webp" x="${f1(cx - R)}" y="${f1(cy - R)}" width="${2 * R}" height="${2 * R}" preserveAspectRatio="xMidYMin slice" clip-path="url(#tw-pc)"/>` +
       `<circle cx="${f1(bx)}" cy="${f1(by)}" r="5.6" fill="${SEAT_COL[p]}" stroke="${PAPER}" stroke-width="1.2"/>` +
       `<text x="${f1(bx)}" y="${f1(by + 3.1)}" text-anchor="middle" font-size="8.5" font-weight="900" fill="#fff" font-family="'Noto Serif TC', serif">${NO[p]}</text>`;
     if (me) {
@@ -186,8 +200,12 @@ function pawns(v, k, d, right, top) {
         `<text x="${f1(tx + w / 2)}" y="${f1(cy - 4.2)}" text-anchor="middle" font-size="9" font-weight="900" fill="#fbf6e9" font-family="'Noto Sans TC', sans-serif">${esc(d.ui.solo.map.you)}</text>`;
     }
     s += `</g>`;
+    const bd = [R + R * 0.78, R + R * 0.72, 6.2], holes = [bd];
+    if (j + 1 < here.length) holes.push([R - STEP, R, R + 3.3], [bd[0] - STEP, bd[1], 6.2]);
+    const pc = (n, of) => Math.round((n / of) * 100000) / 1000;
+    pics += `<img data-pawn-pic="${SEATS[p]}" data-of="${k}" src="art/candidates/${SEATS[p]}.webp" alt="" draggable="false" style="${mask(holes)};left:${pc(cx - R, m.w)}%;top:${pc(cy - R, m.h)}%;width:${pc(2 * R, m.w)}%;height:${pc(2 * R, m.h)}%">`;
   });
-  return s;
+  return { svg: s, pics };
 }
 
 function labelOf(v, k, d, lang) {
@@ -204,7 +222,7 @@ function county(v, k, d, lang, o, inner) {
   return `<g class="tw-c" data-county="${k}" tabindex="0" role="button" aria-label="${esc(labelOf(v, k, d, lang))}"${chg ? " data-changed" : ""}${sel ? " data-selected" : ""}>${inner}</g>`;
 }
 
-function paper(v, k, d, lang, o, mode, s) {
+function paper(v, k, d, lang, o, mode, s, m, pics) {
   const { sz, gap, font } = GEOM[mode];
   const sl = sortedSlots(v.counties[k].blocks), c = Math.max(1, Math.min(sl.length, s.cols));
   const label = shortOf(d, k), x0 = s.cx - s.w / 2, y0 = s.cy - s.h / 2;
@@ -213,7 +231,8 @@ function paper(v, k, d, lang, o, mode, s) {
   t += `<rect class="tw-paper" data-paper="${k}" x="${f1(x0)}" y="${f1(y0)}" width="${f1(s.w)}" height="${f1(s.h)}" rx="2.5" fill="${PAPER}" stroke="${INK}" stroke-width="${s.bold ? 1.3 : 0.9}" filter="url(#tw-sh)"/>`;
   t += `<text x="${f1(x0 + 4)}" y="${f1(y0 + font + 1)}" font-family="'Noto Serif TC', serif" font-size="${font}" font-weight="900" fill="${INK}">${esc(label)}</text>`;
   sl.forEach((kind, i) => { t += slotRect(kind, k, x0 + 4 + (i % c) * (sz + gap), y0 + font + 4 + Math.floor(i / c) * (sz + gap), sz); });
-  t += pawns(v, k, d, x0 + s.w, y0);
+  const pw = pawns(v, k, d, x0 + s.w, y0, m);
+  t += pw.svg; pics.push(pw.pics);
   t += `<rect class="tw-ring" x="${f1(x0 - 2)}" y="${f1(y0 - 2)}" width="${f1(s.w + 4)}" height="${f1(s.h + 4)}" rx="4" fill="none"/>`;
   return county(v, k, d, lang, o, t);
 }
@@ -313,7 +332,7 @@ export function taiwanMap(view, lang, opts = {}) {
   let svg = `<svg class="tw tw-${mode}" viewBox="0 0 ${m.w} ${m.h}" role="group" aria-label="${esc(M.board)}" font-family="'Noto Sans TC', sans-serif">` +
     `<defs><filter id="tw-sh" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="1" stdDeviation=".8" flood-color="#3c2410" flood-opacity=".35"/></filter>` +
     `<pattern id="tw-wv" width="40" height="18" patternUnits="userSpaceOnUse"><path d="M2 12q4-5 9 0t9 0" fill="none" stroke="#9fb3b0" stroke-width=".9" opacity=".5"/></pattern>` +
-    `<clipPath id="tw-cl"><path d="${g.coast}"/></clipPath><clipPath id="tw-pc" clipPathUnits="objectBoundingBox"><circle cx=".5" cy=".5" r=".5"/></clipPath></defs>` +
+    `<clipPath id="tw-cl"><path d="${g.coast}"/></clipPath></defs>` +
     `<rect width="${m.w}" height="${m.h}" fill="url(#tw-wv)"/>` +
     `<g clip-path="url(#tw-cl)">${g.fills}</g>` +
     `<g clip-path="url(#tw-cl)"><path d="${g.county}" stroke="${INK}" stroke-width=".7" fill="none" stroke-dasharray="2.5 1.8"/><path d="${g.region}" stroke="${INK}" stroke-width="1.5" fill="none"/></g>` +
@@ -326,7 +345,8 @@ export function taiwanMap(view, lang, opts = {}) {
   if (mode === "desk") svg += `<g><rect x="8" y="8" width="96" height="58" fill="rgba(251,246,233,.75)" stroke="${INK}" stroke-dasharray="3 2"/><text x="13" y="20" font-size="8.5" fill="#6a5a48">${esc(M.islands)}</text></g>`;
   else svg += `<g><rect x="${f1(Math.max(3, km.cx - km.w / 2 - 6))}" y="${f1(Math.max(3, km.cy - km.h / 2 - 18))}" width="${f1(km.w + 12)}" height="${f1(km.h + 24)}" fill="rgba(251,246,233,.75)" stroke="${INK}" stroke-dasharray="3 2"/></g>`;
   let boxes = "";
-  COUNTIES.forEach((_, k) => { boxes += paper(v, k, d, lang, o, mode, L.spots[k]); });
+  const pics = [];
+  COUNTIES.forEach((_, k) => { boxes += paper(v, k, d, lang, o, mode, L.spots[k], m, pics); });
   svg += boxes + `</svg>`;
 
   const keyList = REGIONS.map((_, r) => {
@@ -339,5 +359,5 @@ export function taiwanMap(view, lang, opts = {}) {
   const sq = (cls) => `<i class="lb ${cls}"></i>`;
   const legend = `<p class="legend tw-leg"><span>${sq("chen")}${sq("soong")}${sq("lien")} ${esc(M.legendCubes)}</span><span>${sq("green")}${sq("blue")} ${esc(M.legendEmpty)}</span><span>${sq("grey")} ${esc(M.legendGrey)}</span><span><i class="lb pw"></i>${esc(M.legendPawn)}</span></p>`;
   return `<section class="t-map" aria-label="${esc(M.board)}"><h3 class="t-h">${esc(M.board)}</h3><p class="ct tw-hint">${esc(M.hint)}</p>` +
-    `<div class="tw-box">${svg}${o.overlay || ""}</div><ul class="tw-reg">${keyList}</ul>${legend}</section>`;
+    `<div class="tw-box">${svg}${pics.join("")}${o.overlay || ""}</div><ul class="tw-reg">${keyList}</ul>${legend}</section>`;
 }

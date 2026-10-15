@@ -603,3 +603,6 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
   .t-act .pcard .foot { padding-top: 4px; }
   .t-act .sheet { gap: 6px; }
 }
+
+/* The candidates' round pictures (#31): HTML <img> over the map, placed in % of the svg by map.js; the ring, the number and the "you" tag stay in the svg beneath. The mask (inline, from map.js) cuts out what must stay in front: its own number disc, and the ring and number of a candidate standing to its left. */
+.tw-box > img[data-pawn-pic] { position: absolute; z-index: 1; display: block; border-radius: 50%; object-fit: cover; object-position: 50% 0; pointer-events: none; user-select: none; -webkit-user-drag: none; -webkit-mask-composite: source-in; mask-composite: intersect; }
