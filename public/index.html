@@ -7,37 +7,42 @@
 <title>2000：總統的誕生 · 2000: Taiwan Decides</title>
 <meta name="description" content="三人卡牌選戰，改編自 2000 年台灣總統大選。可以單人對戰電腦。">
 <link rel="canonical" href="https://games.csiesheep.com/president_2000/">
-<meta name="theme-color" content="#f7f4ee">
+<meta name="theme-color" content="#5b3a22">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Noto+Serif+TC:wght@700;900&family=Anton&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Noto+Serif+TC:wght@700;900&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header class="bunting" aria-hidden="true"></header>
-<main class="wrap" id="land">
+<main class="wrap home" id="land">
   <div class="topbar"><span></span><a id="lang" class="btn" href="?lang=en">EN</a></div>
-  <p class="kicker" data-i18n="ui.solo.land.kicker">第十任總統副總統選舉</p>
-  <h1><span class="year">2000</span><span class="name" data-i18n="title">總統的誕生</span></h1>
-  <p class="tag" data-i18n="tagline">九個回合，一張選票。三位候選人、一座島，和決定一切的分裂。</p>
-  <ul class="flags" aria-hidden="true">
-    <li class="soong"><b>1</b><span data-i18n="ui.solo.cand.soong.name">宋楚瑜</span></li>
-    <li class="lien"><b>2</b><span data-i18n="ui.solo.cand.lien.name">連戰</span></li>
-    <li class="chen"><b>5</b><span data-i18n="ui.solo.cand.chen.name">陳水扁</span></li>
-  </ul>
+  <section class="lid">
+    <div class="lid-top"><span data-i18n="ui.solo.land.kicker">第十任總統副總統選舉</span><span data-i18n="ui.look.home.meta">3 人 · 9 回合</span></div>
+    <h1><span class="year">2000</span><span class="name" data-i18n="title">總統的誕生</span></h1>
+    <div class="lid-foot">
+      <span class="blocks" aria-hidden="true"><i class="soong"></i><i class="lien"></i><i class="chen"></i></span>
+      <p data-i18n="ui.look.home.sub">宋楚瑜、連戰、陳水扁。把方塊放上 24 個縣市，搶到投票日。</p>
+    </div>
+  </section>
   <div class="cta">
-    <a id="play" class="big" href="?play" data-i18n="ui.solo.land.solo">單人對戰 AI</a>
-    <a id="host" class="big" href="?host" data-i18n="ui.solo.land.room">開房</a>
-    <a id="join" class="big" href="?join" data-i18n="ui.solo.land.join">加入</a>
+    <a id="play" class="big" href="?play"><span data-i18n="ui.look.home.play">單人開打</span><small data-i18n="ui.look.home.playSub">對三種難度的 AI</small></a>
+    <div class="cta2">
+      <a id="host" class="sheetbtn" href="?host"><b data-i18n="ui.look.home.host">開房</b><small data-i18n="ui.look.home.hostSub">傳代碼給朋友</small></a>
+      <a id="join" class="sheetbtn" href="?join"><b data-i18n="ui.look.home.join">加入</b><small data-i18n="ui.look.home.joinSub">輸入 4 碼代碼</small></a>
+    </div>
   </div>
-  <nav class="links"><a id="rules" href="rules" data-i18n="nav.rules">規則</a><a href="https://games.csiesheep.com/" data-i18n="nav.hub">csiesheep games</a></nav>
+  <section class="box">
+    <h2 data-i18n="ui.look.home.boxTitle">盒子裡有什麼</h2>
+    <p data-i18n="ui.look.home.box">70 張事件牌 · 24 個縣市的地方牌 · 一袋方塊 · 24 個縣市的棋盤 · 三個議題槽。打法跟實體桌遊一樣：出牌、放方塊、抽袋子檢定。</p>
+    <nav class="links"><a id="rules" href="rules" data-i18n="ui.look.home.rules">翻開規則書</a><a href="https://games.csiesheep.com/" data-i18n="nav.hub">csiesheep games</a></nav>
+  </section>
   <p class="credit" data-i18n="credit">同人作品，非官方。靈感來自 Christian Leonhard 與 Jason Matthews 設計的 <em>1960: The Making of the President</em>；規則與機制不受著作權保護，本作為獨立實作、自創名稱與美術。</p>
 </main>
 <main class="wrap game" id="solo" hidden>
-  <div class="topbar"><a id="home" href="./">←</a><span class="tb"><button type="button" id="quit" class="btn"></button><a id="glang" class="btn" href="?play&amp;lang=en">EN</a></span></div>
+  <div class="topbar"><a id="home" href="./">←</a><span class="tt"><b>2000</b><span data-i18n="title">總統的誕生</span></span><span class="tb"><button type="button" id="quit" class="btn"></button><a id="glang" class="btn" href="?play&amp;lang=en">EN</a></span></div>
   <div id="stage"></div>
 </main>
 <main class="wrap game" id="room" hidden>
-  <div class="topbar"><a id="rhome" href="./">←</a><span class="tb"><button type="button" id="rleave" class="btn" hidden></button><a id="rlang" class="btn" href="?lang=en">EN</a></span></div>
+  <div class="topbar"><a id="rhome" href="./">←</a><span class="tt"><b>2000</b><span data-i18n="title">總統的誕生</span></span><span class="tb"><button type="button" id="rleave" class="btn" hidden></button><a id="rlang" class="btn" href="?lang=en">EN</a></span></div>
   <p id="rbanner" class="rbanner" role="status" hidden></p>
   <div id="rstage"></div>
 </main>
