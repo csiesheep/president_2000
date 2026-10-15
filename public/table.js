@@ -879,6 +879,74 @@ function undoHTML(o, x) {
   return "";
 }
 
+// ---------------------------------------------------------------- the turn card (#44)
+// The card that opens each turn: the date (election day 2000-03-18 minus (9 − turn) × 14 days), the nine-step track,
+// who holds the initiative, last turn's headline (the event with the highest CP that was played or triggered; the
+// later one on a tie) and the votes now against the turn before. All of it is read off the view and its log. It is
+// drawn only when the page asks (opts.turnCard) and never at the count; opts.cardAge (ms) is how long it has been
+// showing, so a redraw does not restart its animations.
+const ELECTION_DAY = Date.UTC(2000, 2, 18), DAY_MS = 864e5;
+const turnDate = (turn) => new Date(ELECTION_DAY - (9 - turn) * 14 * DAY_MS);
+const pad2 = (n) => String(n).padStart(2, "0");
+function headlineOf(log, turn) {
+  const marks = log.map((e, i) => (e.t === "turn" ? i : -1)).filter((i) => i >= 0);
+  const at = marks.find((i) => log[i].turn === turn), prev = marks.find((i) => log[i].turn === turn - 1);
+  if (prev == null || at == null) return null;
+  let best = null;
+  for (const e of log.slice(prev + 1, at)) {
+    const how = e.t === "play" && e.mode === "event" ? "event" : e.t === "trigger" ? "trigger" : null;
+    if (!how || !CARD[e.card]) continue;
+    if (!best || CARD[e.card].cp >= CARD[best.card].cp) best = { card: e.card, how, seat: e.seat };
+  }
+  return best;
+}
+function turnCardHTML(v, x, o) {
+  if (v.phase === "end" || !v.log) return "";
+  const T = x.S.tc, n = v.turn, en = x.lang === "en";
+  const entries = v.log.filter((e) => e.t === "turn");
+  const cur = entries.filter((e) => e.turn === n).pop(), prev = entries.filter((e) => e.turn === n - 1).pop();
+  const init = cur && cur.initiative >= 0 ? cur.initiative : v.initiative;
+  const d = turnDate(n), dy = d.getUTCFullYear(), dm = T.months[d.getUTCMonth()], dd = d.getUTCDate();
+  const iso = `${dy}-${pad2(d.getUTCMonth() + 1)}-${pad2(dd)}`;
+  const special = n === 1 || n === 6 || n === 9;
+  const date = fill(n === 9 ? T.day : dd <= 10 ? T.early : dd <= 20 ? T.mid : T.late, { y: dy, m: dm, d: dd });
+  const kicker = special ? fill(T.special, { n, name: T["t" + n].name }) : fill(T.turn, { n });
+  const sub = n === 9 ? T.today : fill(T.weeks, { n: (9 - n) * 2 });
+  const pic = (p) => `<img class="tc-pic" src="art/candidates/${SEATS[p]}.webp" alt="" width="48" height="64">`;
+  // The nine steps; the debate (6) and election day (9) are marked.
+  const seg = [], lab = [];
+  for (let i = 1; i <= 9; i++) {
+    seg.push(`<i class="${i < n ? "past" : i === n ? "now" : "far"}${i === 6 || i === 9 ? " mark" : ""}"></i>`);
+    lab.push(`<span${i === 9 ? ' class="r"' : ""}>${i === 6 ? esc(T.debateMark) : i === 9 ? esc(T.voteMark) : ""}</span>`);
+  }
+  const track = `<div class="tc-track"><div class="tc-seg">${seg.join("")}</div><div class="tc-lab">${lab.join("")}</div></div>`;
+  let mid = "";
+  if (n === 9) mid = `<ol class="tc-steps">${T.t9.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>`;
+  else if (special) mid = `<p class="tc-body">${esc(T["t" + n].body)}</p>`;
+  if (n === 6) mid += `<div class="tc-iss">${(v.issues || []).map((i) => `<span><img src="art/issues/${esc(i.name)}.webp" alt="" width="64" height="48"><b>${esc(x.issue(i.name))}</b></span>`).join("")}</div>`;
+  const first = init != null && init >= 0 ? `<div class="tc-init">${pic(init)}<span>${T.initiative.split("{who}").map(esc).join(`<b>${esc(x.short(init))}</b>`)}</span></div>` : "";
+  const hl = n > 1 ? headlineOf(v.log, n) : null;
+  const head = hl ? `<div class="tc-hl" data-headline="${esc(hl.card)}" data-how="${hl.how}" data-who="${SEATS[hl.seat]}"><p class="tc-lbl">${esc(T.headline)}</p><div class="tc-hlr"><img src="${cardArt(hl.card)}" alt="" width="600" height="400"><div><b>${esc(x.card(hl.card))}</b><span>${esc(fill(hl.how === "event" ? T.played : T.triggered, { who: x.short(hl.seat) }))}</span></div></div></div>` : "";
+  // Votes: from this turn's log entry (an old save has none: the board as it is now, no change shown).
+  const blocks = (p) => v.counties.reduce((s, c) => s + c.blocks.filter((b) => b.o === p).length, 0);
+  const now = [0, 1, 2].map((p) => (cur && cur.votes ? cur.votes[p] : blocks(p)));
+  const old = cur && cur.votes && prev && prev.votes ? prev.votes : null;
+  const top = Math.max(1, ...now);
+  const amount = (b) => (en ? (b / 10).toFixed(1) : String(b * 10));
+  const rows = [0, 1, 2].sort((a, b) => now[b] - now[a] || a - b).map((p) => {
+    const dl = old ? now[p] - old[p] : null;
+    const chg = dl == null ? "" : `<em class="${dl > 0 ? "up" : dl < 0 ? "dn" : "eq"}">${dl > 0 ? "▲" + amount(dl) : dl < 0 ? "▼" + amount(-dl) : "—"}</em>`;
+    return `<div class="tc-v s${p}" data-tc-votes="${SEATS[p]}" data-now="${now[p]}"${dl == null ? "" : ` data-delta="${dl}"`}>${pic(p)}<b class="tc-n">${esc(x.short(p))}</b>` +
+      `<span class="tc-b"><i style="width:${(now[p] / top * 100).toFixed(1)}%"></i></span><span class="tc-a"><b>${amount(now[p])}</b>${esc(T.unit)} ${chg}</span></div>`;
+  }).join("");
+  const age = Math.max(0, Math.round(o.cardAge || 0));
+  return `<div class="tc${n === 9 ? " dark" : ""}${age ? "" : " fresh"}" data-turncard="${n}" data-date="${iso}" data-weeks="${(9 - n) * 2}" data-initiative="${init >= 0 ? SEATS[init] : ""}" role="dialog" aria-modal="true" aria-label="${esc(T.label)}">` +
+    `<div class="tc-card"><div class="tc-hd"><p class="tc-k">${esc(kicker)}</p><h2 class="tc-date">${esc(date)}</h2><p class="tc-wk">${esc(sub)}</p></div>` +
+    track + mid + `<div class="tc-cols"><div class="tc-l">${first}${head}</div>` +
+    `<div class="tc-vt"><p class="tc-lbl">${esc(T.votes)}</p>${rows}</div></div>` +
+    `<div class="tc-ft"><div class="tc-prog"><i${age ? ` style="animation-delay:-${age}ms"` : ""}></i></div><div class="tc-row"><span class="tc-hint">${esc(T.hint)}</span><button type="button" class="tc-go" data-tc-close="1">${esc(fill(T.start, { n }))}</button></div></div></div></div>`;
+}
+
 export function tableHTML(view, choices, lang, opts = {}) {
   const x = bind(lang), v = view, o = opts;
   const map = taiwanMap(v, lang, { changed: o.changed, selected: o.county, narrow: o.narrow, overlay: o.county != null ? popHTML(v, choices, x, o.county, o.narrow) : "" });
@@ -893,5 +961,5 @@ export function tableHTML(view, choices, lang, opts = {}) {
   return `<div class="tbl" data-phase="${esc(v.phase)}">${headerHTML(v, choices, x, o)}<div class="col cl">${playersHTML(v, x, o)}${feedHTML(v, x, o)}</div>` +
     `<div class="col cc">${trackHTML(v, x, o)}${helpHTML(x, o)}${v.phase === "debate" ? debateHTML(v, x) : ""}${map}</div>` +
     `<div class="col cr">${nowHTML(x, o)}<section class="t-act${choices.length ? " mine" : ""}" id="act">${resultHTML(o, x)}${choices.length ? adviceLine(x, o) : ""}${o.undo ? `<div class="uw">${undoHTML(o, x)}${panelHTML(v, choices, x, o)}</div>` : panelHTML(v, choices, x, o)}</section></div>` +
-    `${handHTML(v, choices, x, o)}</div>`;
+    `${handHTML(v, choices, x, o)}${o.turnCard ? turnCardHTML(v, x, o) : ""}</div>`;
 }

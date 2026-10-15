@@ -72,6 +72,21 @@ export default {
         soong: { name: "James Soong", short: "Soong", blurb: "Most cubes on the opening board (35), a 5 CP candidate card, and he crosses regions for a flat 1 CP." },
         lien: { name: "Lien Chan", short: "Lien", blurb: "The party machine: 1 extra rest cube on every card and 2 media cubes to start. His candidate card is only 3 CP and rests 2 cubes." },
       },
+      // The turn card (#44)
+      tc: {
+        turn: "Turn {n} of 9", special: "Turn {n} · {name}",
+        months: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+        early: "Early {m} {y}", mid: "Mid {m} {y}", late: "Late {m} {y}", day: "{d} {m} {y}",
+        weeks: "{n} weeks to election day", today: "Election day",
+        initiative: "{who} holds the initiative this turn",
+        headline: "Last turn's headline", played: "Played by {who}", triggered: "Triggered by {who}",
+        votes: "Votes now", unit: "M",
+        hint: "Tap anywhere to go on", start: "Start turn {n}", label: "Start of turn",
+        debateMark: "Debate", voteMark: "Vote",
+        t1: { name: "The race begins", body: "Nine turns, about two weeks each. The count is on 18 March 2000: most votes wins." },
+        t6: { name: "The televised debate", body: "No cards are dealt or played this turn. All three reveal the cards they kept and compare CP on the three issues." },
+        t9: { name: "Election day", steps: ["Media, issues and momentum become cubes in the bag", "The initiative holder picks the canvassing order", "Each reveals their 4 kept cards and canvasses", "Tactical voting, endorsements, then the count"] },
+      },
       setup: {
         kicker: "SOLO VS. BOTS", title: "Whose campaign will you run?", sub: "The other two seats are played by the computer.",
         pick: "Pick", picked: "Picked", level: "Bot level",
