@@ -270,32 +270,67 @@ c19("倒數：最後一則 state 有 deadline 時，畫面有 data-left = 剩下
   const r = nonEmpty(checked, "帶 deadline 的畫面"); if (r !== true) return r;
   return ok(true, `${checked} 個畫面的倒數對`);
 });
-c19("bot 的步：最後一則 state 的 botMoves 裡，bot 的桌邊話出現在畫面上（only_move 除外，佔位字填好）", () => {
+// #23 P2.8, room half (ruling on #23, carried to #30): a bot says one sentence per action (one card, one
+// candidate card, one trigger, one canvass, one order pick), the first one of that action, as on the solo record.
+// An action starts at a move of those types or when the seat changes. The table talk shows bot lines as the
+// elements with class "bt" in the talk list; while the tape is short (under 50 lines) their number is the number
+// of bot actions that said something, over every state message the conn got.
+const ACTION_START = ["play", "candidate", "trigger", "canvass", "order"];
+function botActions(botMoves) {
+  const out = [];
+  let seat = null;
+  for (const b of botMoves || []) {
+    if (!b || !b.move) continue;
+    if (b.seat !== seat || ACTION_START.includes(b.move.type) || !out.length) out.push([]);
+    seat = b.seat;
+    out[out.length - 1].push(b);
+  }
+  return out.map((g) => ({ first: g.find((b) => b.why && b.why.key !== "only_move") || null, said: g.filter((b) => b.why && b.why.key !== "only_move").length }));
+}
+c19("bot 的步：一次行動只留那次行動的第一句桌邊話；最後一則 state 裡每個 bot 行動的第一句都在畫面上（only_move 除外，佔位字填好）", () => {
   const w = table19(31);
+  const msgs = { A: [], B: [] };
+  const inner = w.do;
+  w.do = (ev) => { const out = inner(ev); for (const o of out) if (o.msg.t === "state" && msgs[o.to]) msgs[o.to].push(o.msg); return out; };
   w.join("A", "Ann"); w.join("B", "Bo");
   w.click("A", { t: "sit", seat: 0 }); w.click("B", { t: "sit", seat: 1 });
   w.click("A", { t: "start", level: 2 });
   const R1 = D.rng(10);
-  let checked = 0;
+  let checked = 0, counted = 0, chatty = 0, everyMove = 0;
   for (let n = 0; n < 400 && w.room.st.phase !== "end"; n++) {
     for (const [conn, lang, t] of [["A", "zh-Hant", zh], ["B", "en", en]]) {
       const st = w.got[conn] && w.got[conn].state;
-      const said = st && (st.botMoves || []).filter((b) => b.why.key !== "only_move");
-      if (!said || !said.length) continue;
-      const seen = text(C.screen(w.clients[conn], lang)), last = said[said.length - 1];
-      const lit = literal(t.talk[last.why.key]);
-      if (lit && !seen.includes(lit)) return `${lang} 第 ${w.room.st.turn} 回合：畫面沒有 bot 的桌邊話（${last.why.key}：「${lit}」）`;
-      const hole = seen.match(/.{0,10}\{\w+\}.{0,10}/);
-      if (hole) return `${lang} 畫面有沒填的佔位字：${hole[0]}`;
-      checked++;
+      const acts = st ? botActions(st.botMoves).filter((a) => a.first) : [];
+      const html = C.screen(w.clients[conn], lang), seen = text(html);
+      for (const a of acts) {
+        const lit = literal(t.talk[a.first.why.key]);
+        if (lit && !seen.includes(lit)) return `${lang} 第 ${w.room.st.turn} 回合：畫面沒有這次 bot 行動的第一句（${a.first.why.key}：「${lit}」）`;
+      }
+      if (acts.length) {
+        const hole = seen.match(/.{0,10}\{\w+\}.{0,10}/);
+        if (hole) return `${lang} 畫面有沒填的佔位字：${hole[0]}`;
+        checked++;
+      }
+      const all = msgs[conn].map((m) => botActions(m.botMoves));
+      const want = all.reduce((s, g) => s + g.filter((a) => a.first).length, 0), sayings = all.reduce((s, g) => s + g.reduce((k, a) => k + a.said, 0), 0);
+      if (want >= 50) continue;
+      const lines = (html.match(/class="bt[\s"]/g) || []).length;
+      if (sayings > want) chatty++;
+      if (lines !== want) {
+        // More lines than actions, but no more than every move's sentence (the tape may have dropped the oldest).
+        if (lines > want && lines <= sayings) { everyMove++; continue; }
+        return `${lang} 第 ${w.room.st.turn} 回合：桌邊有 ${lines} 句 bot 的話，bot 說了話的行動有 ${want} 次（每一步的話共 ${sayings} 句）`;
+      }
+      counted++;
     }
     const conn = ["A", "B"].find((c) => C.actions(w.clients[c], "zh-Hant").some((a) => a.data && a.data.t === "move"));
     if (!conn) return "兩個人都沒有選項";
     const acts = C.actions(w.clients[conn], "zh-Hant").filter((a) => a.data && a.data.t === "move");
     w.click(conn, acts[Math.floor(R1() * acts.length)].data);
   }
-  const r = nonEmpty(checked, "有 bot 桌邊話的畫面"); if (r !== true) return r;
-  return ok(true, `${checked} 個畫面有 bot 的桌邊話`);
+  if (everyMove) return `TODO: 房間的桌邊還是每一步一句（${everyMove} 個畫面），一次行動一句還沒做（#30）`;
+  for (const [x, what] of [[checked, "有 bot 桌邊話的畫面"], [counted, "數過桌邊句數的畫面"], [chatty, "一次行動說了不只一句的情形（只驗一句一句的等於沒驗）"]]) { const r = nonEmpty(x, what); if (r !== true) return r; }
+  return ok(true, `${checked} 個畫面有每次行動的第一句；${counted} 個畫面句數等於行動數，其中 ${chatty} 個有一次行動說了不只一句`);
 });
 c19("新的錯誤碼有中英說明：empty_chat、not_ended", () => {
   for (const [lang, t] of [["zh", zh], ["en", en]]) {
