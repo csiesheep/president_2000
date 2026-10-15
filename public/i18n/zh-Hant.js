@@ -121,6 +121,7 @@ export default {
         ok: "檢定成功：{what}", okPlain: "檢定成功", did: "你剛剛：{what}", label: "你的上一步",
         fail: "檢定失敗：{where}，抽到{drew}，這顆回到{drew}手上", failNoWhere: "檢定失敗：抽到{drew}，這顆回到{drew}手上",
       },
+      undo: { btn: "↶ 悔一步", done: "已退回上一步", locked: "抽過檢定，不能悔" },
       hand: { title: "手牌 {n}", titleDebate: "政見發表會留牌 {n}", titleElection: "投票日留牌 {n}", kept: "已留 {n} 張（給{dest}）", none: "沒有牌" },
       card: { local: "地方牌", cand: "候選人牌" },
       p: {

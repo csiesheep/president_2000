@@ -869,6 +869,13 @@ function resultHTML(o, x) {
   return o.result ? `<p class="res ${o.result.kind}" data-res="1" role="status"><small>${esc(x.tr("res.label"))}</small>${esc(o.result.text)}</p>` : "";
 }
 
+// 悔一步 (#43), solo only: o.undo is "on" (back one step), "off" (a draw was made: say so, greyed) or absent.
+function undoHTML(o, x) {
+  if (o.undo === "on") return `<button type="button" class="undo" data-undo="1">${esc(x.tr("undo.btn"))}</button>`;
+  if (o.undo === "off") return `<button type="button" class="undo" data-undo="1" disabled>${esc(x.tr("undo.locked"))}</button>`;
+  return "";
+}
+
 export function tableHTML(view, choices, lang, opts = {}) {
   const x = bind(lang), v = view, o = opts;
   const map = taiwanMap(v, lang, { changed: o.changed, selected: o.county, narrow: o.narrow, overlay: o.county != null ? popHTML(v, choices, x, o.county, o.narrow) : "" });
@@ -882,6 +889,6 @@ export function tableHTML(view, choices, lang, opts = {}) {
   }
   return `<div class="tbl" data-phase="${esc(v.phase)}">${headerHTML(v, choices, x, o)}<div class="col cl">${playersHTML(v, x, o)}${feedHTML(v, x, o)}</div>` +
     `<div class="col cc">${trackHTML(v, x, o)}${helpHTML(x, o)}${v.phase === "debate" ? debateHTML(v, x) : ""}${map}</div>` +
-    `<div class="col cr">${nowHTML(x, o)}<section class="t-act${choices.length ? " mine" : ""}" id="act">${resultHTML(o, x)}${choices.length ? adviceLine(x, o) : ""}${panelHTML(v, choices, x, o)}</section></div>` +
+    `<div class="col cr">${nowHTML(x, o)}<section class="t-act${choices.length ? " mine" : ""}${o.undo ? " u" : ""}" id="act">${undoHTML(o, x)}${resultHTML(o, x)}${choices.length ? adviceLine(x, o) : ""}${panelHTML(v, choices, x, o)}</section></div>` +
     `${handHTML(v, choices, x, o)}</div>`;
 }
