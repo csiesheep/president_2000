@@ -184,8 +184,11 @@ c27("每次都一樣、首頁進得去：走兩次步驟與畫面逐位元組相
     if (!again.rec[i] || again.rec[i].id !== W.rec[i].id) return `第 ${i} 步不一樣：${W.rec[i].id} 對 ${again.rec[i] && again.rec[i].id}`;
     if (again.rec[i].html !== W.rec[i].html) return `第 ${i} 步「${W.rec[i].id}」兩次的畫面不一樣`;
   }
-  const home = ["../public/index.html", "../public/app.js"].map((p) => new URL(p, import.meta.url)).filter(existsSync).map((u) => readFileSync(u, "utf8")).join("\n");
-  if (!/[?&]tutorial\b/.test(home)) return "首頁（index.html、app.js）沒有 ?tutorial 的入口";
+  // The home page itself (index.html), not the solo setup page that app.js draws: a link there does not
+  // count as the way in from the home page (the hole the #27 peer found: app.js's setup link kept it green).
+  const homeFile = new URL("../public/index.html", import.meta.url);
+  const home = existsSync(homeFile) ? readFileSync(homeFile, "utf8") : "";
+  if (!/<a\b[^>]*\shref="\?tutorial(?:&amp;[^"]*)?"[^>]*>/.test(home)) return "首頁 index.html 沒有連到 ?tutorial 的 <a>";
   return ok(true, `${W.rec.length} 步兩次相同；首頁有入口`);
 });
 
