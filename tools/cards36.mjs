@@ -55,8 +55,10 @@ const CHECK = `window.__card = (el, opts) => {
   for (const node of [el, ...el.querySelectorAll("*")]) for (const ps of [null, "::before", "::after"]) if (lined(node, ps)) { out.push("a line on " + (node === el ? "the card" : node.tagName.toLowerCase() + "." + node.className) + (ps || "")); break; }
   const lum = (c) => { const v = c.map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
   const contrast = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
-  const tf = el.style.transform; el.style.transform = "none";
+  // The fan's rotation is taken off to measure, with transitions off too (a transition would still be turning; FE, #36).
+  const tf = el.style.transform, tr = el.style.transition; el.style.transition = "none"; el.style.transform = "none";
   const parentTf = el.parentElement && el.parentElement.style.transform; if (el.parentElement) el.parentElement.style.transform = "none";
+  void el.offsetWidth;
   const cr = el.getBoundingClientRect();
   if (opts.picture) {
     const img = el.querySelector("img");
@@ -67,7 +69,7 @@ const CHECK = `window.__card = (el, opts) => {
       for (const node of el.querySelectorAll("*")) { if (![...node.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) continue; const r = node.getBoundingClientRect(); if (r.width === 0 || r.top < ir.bottom - 2) continue;
         const c = contrast(rgb(getComputedStyle(node).color), bg); if (c < 4.5) { out.push("text 「" + node.textContent.trim().slice(0, 10) + "」 contrast " + c.toFixed(2)); break; } } }
   }
-  el.style.transform = tf; if (el.parentElement) el.parentElement.style.transform = parentTf || "";
+  el.style.transform = tf; el.style.transition = tr; if (el.parentElement) el.parentElement.style.transform = parentTf || "";
   return out;
 }; 1`;
 
