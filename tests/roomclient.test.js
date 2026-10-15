@@ -328,7 +328,7 @@ c19("bot 的步：一次行動只留那次行動的第一句桌邊話；最後�
     const acts = C.actions(w.clients[conn], "zh-Hant").filter((a) => a.data && a.data.t === "move");
     w.click(conn, acts[Math.floor(R1() * acts.length)].data);
   }
-  if (everyMove) return `TODO: 房間的桌邊還是每一步一句（${everyMove} 個畫面），一次行動一句還沒做（#30）`;
+  if (everyMove) return `房間的桌邊又變回每一步一句（${everyMove} 個畫面）：一次行動只留第一句（#30 已做好）`;
   for (const [x, what] of [[checked, "有 bot 桌邊話的畫面"], [counted, "數過桌邊句數的畫面"], [chatty, "一次行動說了不只一句的情形（只驗一句一句的等於沒驗）"]]) { const r = nonEmpty(x, what); if (r !== true) return r; }
   return ok(true, `${checked} 個畫面有每次行動的第一句；${counted} 個畫面句數等於行動數，其中 ${chatty} 個有一次行動說了不只一句`);
 });

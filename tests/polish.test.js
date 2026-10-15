@@ -8,8 +8,7 @@
 // and the aria-labels of every screen of whole games, from the first decision to the result — reads
 // "1 cards", "1 cubes", "1 blocks", "1 checks", "1 votes", "1 seconds" or "1 turns" (owner's polish list:
 // "sets aside 1 cards"; the map's own label for Penghu and Kinmen-Matsu says "1 blocks" on every screen).
-// Reports 尚未實作 while today's wording is still there (the count says how many places), and turns into a
-// failure once #30 lands.
+// It reported 尚未實作 until #30 landed; since then a "1 + plural" on screen is a failure.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { R, section, check, ok, nonEmpty, summary } from "./harness.js";
@@ -43,7 +42,7 @@ check("英文的「1」接單數：整局英文畫面（字與 aria-label）沒�
     }
   }
   for (const [x, what] of [[screens, "英文畫面"], [ended, "打到結果的整局"]]) { const r = nonEmpty(x, what); if (r !== true) return r; }
-  if (found.size) return `TODO: 英文還有 ${found.size} 種「1 + 複數」：${[...found].map(([k, w]) => `「${k}」（${w}）`).join("、")}（#30）`;
+  if (found.size) return `英文又出現 ${found.size} 種「1 + 複數」：${[...found].map(([k, w]) => `「${k}」（${w}）`).join("、")}（#30）`;
   return ok(true, `${screens} 個英文畫面、${ended} 局打到結果，沒有「1 + 複數」`);
 });
 
