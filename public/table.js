@@ -821,7 +821,7 @@ function endHTML(v, x, o) {
   return `<div class="endp s${w}">` +
     `<section class="e-hero"><img data-end-hero src="art/end/${SEATS[w]}.webp" alt="${esc(x.tr("end.heroAlt", { who: x.full(w) }))}" decoding="async"><i class="e-shade" aria-hidden="true"></i>` +
     `<div class="e-ht"><span class="e-k">${esc(x.tr("end.heroKicker"))}</span><h2 class="e-w" data-winner="${SEATS[w]}">${wname}</h2><span class="e-l">${esc(x.tr("end.heroLine", { votes: votesOf(r.votes[w]), share: pctOf(tenths(w)) }))}</span></div>` +
-    `<span class="e-stamp" aria-hidden="true">${esc(x.tr("end.stamp"))}</span></section>` +
+    `<span class="e-stamp" aria-hidden="true"${x.tr("end.stamp").length > 2 ? ' style="font-size:17px"' : ""}>${esc(x.tr("end.stamp"))}</span></section>` +
     `<section class="e-res" aria-label="${esc(x.tr("end.resTitle"))}"><div class="e-rh"><h3>${esc(x.tr("end.resTitle"))}</h3><span>${esc(x.tr("end.turnout", { pct: pctOf(Math.round((cast / total) * 1000)), n: cast, all: total }))}</span></div>${rows}` +
     `<p class="e-note">${esc(lead)}${esc(nonvote)}</p></section>` +
     `${you}<section class="e-cmp" aria-label="${esc(x.tr("end.cmpTitle"))}"><h3>${esc(x.tr("end.cmpTitle"))}</h3><div class="hgrid">${hist}</div><p>${esc(x.tr("end.turnCmp", { now: pctOf(Math.round((cast / total) * 1000)), then: "82.7%" }))}</p></section>` +
