@@ -16,7 +16,8 @@
 //   - the page does not scroll sideways.
 // Owner, 2026-10-15: 「候選人牌也改版」 (#37). The candidate card at the end of the hand ([data-cand]) is measured the same
 // way, in a saved game for each seat at 390 and for 宋 at 1440, with art/candidates/<seat>.webp as its picture; and once
-// used it is marked (data-used, disabled) and still in its colour without lines. On a desktop (1440×900, 1280×800),
+// used it is marked (data-used, disabled) and still in its colour without lines; when it cannot be used now (used, or
+// another card's decision pending) it looks like the hand cards that cannot be played. On a desktop (1440×900, 1280×800),
 // where the hand only peeks up, the candidate's name is on the screen; in English at 390 no text on it is cut off.
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
@@ -105,8 +106,8 @@ try {
   const SEATS = ["chen", "soong", "lien"];
   const games = SEATS.map((key, seat) => {
     const s = S.advance(S.newSolo({ seat, level: 2, seed: 3700 + seat }));
-    const c = S.choices(s, "zh-Hant").find((x) => x.move.type === "candidate");
-    return { key, s, used: c ? S.act(s, c.move) : null };
+    const ch = S.choices(s, "zh-Hant"), c = ch.find((x) => x.move.type === "candidate"), card = ch.find((x) => x.move.card);
+    return { key, s, used: c ? S.act(s, c.move) : null, busy: card ? S.act(s, card.move) : null }; // busy: another card's decision pending
   });
   const saved = async (s, w, h, mob) => {
     const t = await tab(br, base, w, h, mob); // sessionStorage belongs to the tab: write it, then go to the table in the same tab
@@ -153,6 +154,21 @@ try {
     const m = JSON.parse(await t.ev(candRow({ picture: false })));
     rule(!!m && m.used && m.disabled && !m.bad.length, `390: the used candidate card of lien${m ? ` (data-used ${m.used}, disabled ${m.disabled})` + (m.bad.length ? " — " + m.bad.join("; ") : m.used && m.disabled ? " marked used, in its colour, no lines" : " — not marked used") : " not found ([data-cand])"}`);
     t.close();
+  }
+  // A candidate card that cannot be used now looks like the hand cards that cannot be played (#37: the first two
+  // deliveries left a used one at full strength next to faded hand cards).
+  {
+    const g = games.find((x) => x.key === "lien"), looks = [];
+    for (const [what, s] of [["used", g.used], ["waiting", g.busy]]) {
+      const t = await saved(s, 390, 844, true);
+      looks.push({ what, m: JSON.parse(await t.ev(`JSON.stringify((() => { const el = document.querySelector(".tbl [data-cand]"); if (!el) return null;
+        const off = [...document.querySelectorAll(".tbl [data-sel]")].find((x) => x.classList.contains("dis") && !x.classList.contains("sel"));
+        const k = (x) => { const c = getComputedStyle(x); return "opacity " + c.opacity + ", filter " + c.filter; };
+        return { disabled: !!el.disabled, used: el.hasAttribute("data-used"), cand: k(el), off: off ? k(off) : null }; })())`)) });
+      t.close();
+    }
+    const okLook = ({ what, m }) => m && m.disabled && m.used === (what === "used") && m.off && m.cand === m.off;
+    rule(looks.every(okLook), `390: a candidate card that cannot be used now (used; or another card's decision pending) looks like the hand cards that cannot be played${looks.map(({ what, m }) => ` — ${what}: ${m ? `candidate ${m.cand}${m.disabled ? "" : " (not disabled)"}, unplayable card ${m.off || "none"}` : "no [data-cand]"}`).join("")}`);
   }
   const r = await tab(br, `${base}rules#allcards`, 1280, 900, false);
   await r.ev(CHECK);
