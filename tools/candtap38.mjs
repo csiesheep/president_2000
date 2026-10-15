@@ -10,7 +10,7 @@
 //   - tap a hand card, then the candidate card: the question 「候選人牌整局只能用一次。現在就用嗎？」 shows with its
 //     確定使用 / 先不要 buttons; tap 確定使用 and the candidate card is used ([data-cand][data-used]);
 //   - tap the candidate card, then a hand card: that card's face ([data-face]) shows and the question is gone (changing
-//     your mind still works).
+//     your mind still works), and closing that face (← 收起) leaves neither the face nor the old question.
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import * as S from "../public/solo.js";
@@ -88,6 +88,11 @@ async function flows(where, open) {
   const id2 = await tapCard(t); await sleep(500);
   const n2 = await look(t);
   rule(!!id2 && n2.face === id2 && !n2.question, `${where}: tap the candidate card, then ${id2} → its face, the question gone (face ${n2.face}, question ${n2.question})`);
+  // … and closing that face (← 收起) does not bring the old question back (FE, #38: a face drawn over a question
+  // still standing underneath passes the line above).
+  const closed = await t.ev(`(() => { const b = document.querySelector(".sheet [data-sel='']"); if (!b) return false; b.click(); return true; })()`); await sleep(500);
+  const n3 = await look(t);
+  rule(closed && !n3.face && !n3.question, `${where}: … then ← 收起 → no face and no question left over (${closed ? `face ${n3.face}, question ${n3.question}` : "no ← 收起 button on the face"})`);
   t.close();
 }
 
