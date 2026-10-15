@@ -7,7 +7,7 @@
 // Owner, 2026-10-15, approving the P1 designs (「Go ahead」): the turn card shows each candidate's votes and the change
 // since the last turn. Contract: every { t: "turn" } log entry has votes: [陳, 宋, 連], the number of blocks each seat
 // owns on the board when the turn starts (one block = 10萬 votes, the number on the candidate panels). Turns 1–9,
-// the debate (turn 6) and election day (turn 9) included. Reports 尚未實作 until a turn entry has votes.
+// the debate (turn 6) and election day (turn 9) included. Since #40 landed, a log without votes is a failure.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { R, section, check, ok, nonEmpty, summary } from "./harness.js";
@@ -39,7 +39,7 @@ function games() {
 const TURNS = games();
 const gate = (fn) => () => {
   const ne = nonEmpty(TURNS.length, "回合開始的紀錄"); if (ne !== true) return ne;
-  if (!TURNS.some((x) => Array.isArray(x.entry.votes))) return "TODO: 回合紀錄還沒有 votes（#40）";
+  if (!TURNS.some((x) => Array.isArray(x.entry.votes))) return "回合紀錄又沒有 votes 了（#40 已上線，這是退步，不是尚未實作）";
   return fn();
 };
 
