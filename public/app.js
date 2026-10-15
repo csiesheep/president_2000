@@ -134,7 +134,7 @@ if (typeof document !== "undefined") {
         save(); draw();
       } else if (d.confirm && d.move) {
         // The candidate card is once a game: ask first (the table draws the question).
-        ui.confirm = d.move; draw(); toAct();
+        ui.confirm = d.move; ui.sel = null; draw(); toAct();
       } else if (d.move) {
         const m = JSON.parse(d.move);
         session = session.tut ? Tut.act(session, m) : Solo.act(session, m);
@@ -143,7 +143,7 @@ if (typeof document !== "undefined") {
       } else if (d.cancel) { ui.confirm = null; draw();
       } else if (d.help != null) { ui.help = d.help && ui.help !== d.help ? d.help : null; draw();
       } else if (d.toggle === "moves") { ui.moves = !ui.moves; draw();
-      } else if (d.sel != null) { ui.sel = d.sel || null; draw(); if (ui.sel) toAct(); }
+      } else if (d.sel != null) { ui.sel = d.sel || null; if (ui.sel) ui.confirm = null; draw(); if (ui.sel) toAct(); }
       else if (d.pick != null) {
         ui.picks = ui.picks.includes(d.pick) ? ui.picks.filter((x) => x !== d.pick) : [...ui.picks, d.pick];
         draw();
