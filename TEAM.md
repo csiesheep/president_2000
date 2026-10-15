@@ -104,6 +104,8 @@ orch restore                            還原並驗證真的乾淨
 orch clean                              land 之前跑:樹上不可以有 FALSIFY
 ```
 
+瀏覽器量測（要 Chrome 與跑著的 dev server）：`node tools/imgchurn.mjs <base url>`，量教學與對手行動時有沒有新建 `<img>`（#28）。peer 可以跑、不編輯。
+
 慣例:驗證用的工作樹在 `../_wt/`;peer(子 agent)的工作樹由 Claude Code 開在 `.claude/worktrees/<name>/`,
 cwd 就是它。每個 `_wt/` 工作樹有 `__MARKER_ORCH.txt`(name + SHA);harness 是 `npm test`(`node --test`,
 `tests/acceptance.test.js` 三態),平衡用 `node tests/sim.js`(M2 起)。
