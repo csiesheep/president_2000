@@ -317,8 +317,6 @@ button.btn.menub { width: 40px; height: 40px; padding: 0; justify-content: cente
 .candc .cc-s { position: absolute; top: 7px; right: 7px; z-index: 2; background: rgba(20, 14, 8, .38); color: var(--ct); font: 700 9.5px/1.3 var(--sans); padding: 1px 7px; border-radius: 9px; white-space: nowrap; }
 .candc .cc-k { color: var(--ct); font-size: 10px; font-weight: 700; letter-spacing: .08em; line-height: 1.2; }
 .candc .cc-n { color: var(--ct); font: 900 15px/1.2 var(--serif); }
-.hc.candc.dis { opacity: 1; filter: none; cursor: default; }
-.hc.candc[data-used] { filter: saturate(.5) brightness(.8); }
 
 /* The count */
 .tbl.end .res { order: 4; }
