@@ -65,11 +65,11 @@ c57("切換前存的 v0.5 單人照常能玩：每個畫面都畫得出來、每
   }
   return ok(true, `${screens} 個畫面，中英都走完`);
 });
-c57("整局 v0.6 的畫面沒有 v0.6 拿掉的規則（中英）；沒有選順序、交換、第二槽的選擇；每個選項都有字", () => {
+c57("整局 v0.6 的畫面（連回合卡）沒有 v0.6 拿掉的規則（中英）；沒有選順序、交換、第二槽的選擇；每個選項都有字", () => {
   let screens = 0;
   for (const lang of LANGS) for (const seed of [61, 62]) {
     walk(S.newSolo({ seat: 0, level: 2, seed }), lang, seed + 100, (s, ch) => {
-      const html = S.screen(s, lang); screens++;
+      const html = S.screen(s, lang, { turnCard: true }); screens++; // with the turn card (#44), drawn only when the page asks
       const t = text(html), m = t.match(FORBID[lang]);
       if (m) throw new Error(`${lang} seed ${seed} 第 ${s.st.turn} 回合：「${t.slice(Math.max(0, m.index - 30), m.index + 30)}」`);
       const g = ch.find((c) => GONE(c.move)); if (g) throw new Error(`${lang} seed ${seed}：還有 ${JSON.stringify(g.move)} 的選擇`);
