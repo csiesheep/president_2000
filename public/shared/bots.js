@@ -123,6 +123,15 @@ const MEDIA_CUBE = 0.15;   // likewise a media cube
 // to 9600 games a run): valuing it like v0.4's media lead, even only for this turn's end, made every seat win less
 // (陳 −3.8, 宋 −3.0, 連 −1.1 points), because issue cubes decay every turn and one cheap cube takes the lead back.
 // orchestrator 裁決 #49: each seat plays its best measured setting. The issue slots (SV) still count as in v0.4.
+// v0.6 (#54): the value of one momentum for each seat [陳, 宋, 連], in place of MOMV. It is also what a trigger
+// costs against the event's value (trigger, wouldTrigger). With no block and 陳 rounding down too, momentum only
+// triggers and converts on election day; each seat plays its best measured setting (#49's ruling). Measured with
+// 操盤手 ×3, one seat changed against the other two, same seeds paired, 4800 games a run (the #54 handover has the
+// runs): from 0.6 each seat won more lower down, 陳 most (0 against 0.6: +8.3 ± 0.9 points); around [0, 0, 0.2]
+// no seat did better at another value (0 … 0.3; the trigger cost apart from the value: −0.3 … 0.6). Also tried and
+// left out, no seat better: the issue slots ×0.5 / ×1.5, and valuing the 議題總領先者's +1 (v0.6 has no swap).
+// v0.4 and v0.5 never read this.
+const V06_MOMV = [0, 0, 0.2];
 // Soft strategic-vote flow by |宋 − 連| in the county (design sim's SOFT), a
 // sharper one for 操盤手 in turns 7–8, and the rule itself on election day.
 const SOFT = [0, 0.35, 0.8, 1, 1];
@@ -153,7 +162,7 @@ function see(st) {
   const seat = st.seat;
   return {
     seat,
-    turn: st.turn, phase: st.phase, step: st.step, initiative: st.initiative,
+    turn: st.turn, phase: st.phase, step: st.step, initiative: st.initiative, order: st.order.slice(),
     counties: st.counties.map((c) => {
       const v = [0, 0, 0], ty = [{ G: 0, B: 0, N: 0 }, { G: 0, B: 0, N: 0 }, { G: 0, B: 0, N: 0 }], e = { G: 0, B: 0, N: 0 };
       for (const b of c.blocks) { if (b.o >= 0) { v[b.o]++; ty[b.o][b.t]++; } else e[b.t]++; }
@@ -161,7 +170,9 @@ function see(st) {
     }),
     pos: st.pos.slice(), mom: st.mom.slice(), bag: st.bag.slice(), rest: st.rest.slice(),
     // #49: a v0.5 game (ads and media folded into the issues) has no media at all.
-    v05: st.rules === "v0.5", media: Array.isArray(st.media) ? st.media.slice() : [0, 0, 0],
+    // #54: a v0.6 game is a v0.5 game plus the simplifications (no 地方大老: fill "candidate" or "free"; ties by st.order).
+    v05: st.rules === "v0.5" || st.rules === "v0.6", v06: st.rules === "v0.6", fill: st.fill,
+    media: Array.isArray(st.media) ? st.media.slice() : [0, 0, 0],
     issues: st.issues.map((i) => ({ name: i.name, cubes: i.cubes.slice() })),
     endorse: st.endorse.slice(),
     active: st.active.slice(), played: { ...st.flags.played }, crossFree: st.flags.crossFree.slice(),
@@ -186,6 +197,7 @@ class Bot {
   constructor(view, level, rng) {
     this.v = see(view);
     this.p = view.seat; this.lv = level; this.rng = rng;
+    this.MOMV = this.v.v06 ? V06_MOMV[this.p] : MOMV; // #54
     const t = this.v.turn;
     this.flow = level === 1 ? null : level >= 3 && t >= 9 ? EXACT : level >= 3 && t >= 7 ? SHARP : SOFT;
     this.pc = this.v.counties.map((_, k) => this.projCounty(k));
@@ -256,7 +268,8 @@ class Bot {
   fillNeedsCheck(q, k) {
     if (this.ownFree(q)) return false;
     const c = this.v.counties[k];
-    for (let x = 0; x < 3; x++) if (x !== q && c.v[x] >= BOSS_THRESHOLD) return true;
+    if (this.v.v06 && this.v.fill === "free") return false; // v0.6 4b (#54)
+    if (!this.v.v06) for (let x = 0; x < 3; x++) if (x !== q && c.v[x] >= BOSS_THRESHOLD) return true; // v0.6: no 地方大老
     for (let x = 0; x < 3; x++) if (x !== q && this.v.pos[x] === k) return true;
     return false;
   }
@@ -520,7 +533,7 @@ class Bot {
     if (best) return best.V;
     return this.vPlace(q, 1, { check: true });
   }
-  vMom(q, n) { const V = [0, 0, 0]; V[q] = n >= 0 ? n * MOMV : -Math.min(this.v.mom[q], -n) * MOMV; return V; }
+  vMom(q, n) { const V = [0, 0, 0]; V[q] = n >= 0 ? n * this.MOMV : -Math.min(this.v.mom[q], -n) * this.MOMV; return V; }
   vBag(q, n) { const V = [0, 0, 0]; V[q] = n * BAGV; return V; }
   vIssue(...changes) { return this.issueChange(changes); }
   // v0.5 (#49) 「任一議題」: chooser q puts n of p's cubes on the best issue for q, or with target takes up to n of
@@ -559,7 +572,7 @@ class Bot {
   wouldTrigger(q, id) {
     const c = CARD[id];
     if (c.must || this.v.mom[q] < 1 || !this.ownEventAllowed(q, c)) return false;
-    return this.rel(this.eventVec(id, q), q) - MOMV >= 0.3;
+    return this.rel(this.eventVec(id, q), q) - this.MOMV >= 0.3;
   }
 
   // ---------------------------------------------------------------- decisions
@@ -702,7 +715,7 @@ class Bot {
   trigger(legal) {
     const card = this.v.pending.card;
     const ev = this.rel(this.eventVec(card, this.p));
-    const go = this.lv >= 2 && ev - MOMV >= 0.3;
+    const go = this.lv >= 2 && ev - this.MOMV >= 0.3;
     const m = legal.find((x) => x.type === (go ? "trigger" : "pass"));
     return { move: m, why: { key: go ? "trigger_event" : "pass_trigger", card, value: r2(ev) } };
   }
@@ -909,7 +922,7 @@ class Bot {
     }
     // 操盤手: settle what it can win, build where it cannot settle yet, dump on dead issues
     const award = 2 + d.settled.length;
-    const prio = [0, 1, 2].map((i) => (Math.max(0, this.v.initiative) + i) % 3);
+    const prio = this.v.v06 ? this.v.order.slice() : [0, 1, 2].map((i) => (Math.max(0, this.v.initiative) + i) % 3); // v0.6 (#54): ties by st.order
     const beats = (a, sa, b, sb) => sa > sb || (sa === sb && prio.indexOf(a) < prio.indexOf(b));
     const myLeft = this.v.savedDebate.length;
     let best = null;
@@ -922,7 +935,7 @@ class Bot {
         const mine = S[p] + c.cp;
         let rival = -1;
         for (let q = 0; q < 3; q++) if (q !== p && (rival < 0 || beats(q, S[q], rival, S[rival]))) rival = q;
-        const prize = (award + (myLeft > 2 ? 0.5 : 0)) * 0.95 + MOMV;
+        const prize = (award + (myLeft > 2 ? 0.5 : 0)) * 0.95 + this.MOMV;
         const others = [0, 1, 2].filter((q) => q !== p && this.v.pileCounts[q] > 0).length;
         const open = Math.max(1, this.v.issues.length - d.settled.length);
         // chance another seat adds about 2.7 CP here this round

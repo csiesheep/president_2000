@@ -1,6 +1,6 @@
 // tests/sim.js — bot-vs-bot balance (M2, #10). BE's file; not part of `npm test`.
 //
-//   node tests/sim.js <games> [levels=3,3,3] [seed=1] [rotate=1] [workers=N] [quiet=1] [rules=v0.4|v0.5]
+//   node tests/sim.js <games> [levels=3,3,3] [seed=1] [rotate=1] [workers=N] [quiet=1] [rules=v0.4|v0.5|v0.6] [fill=candidate|free]
 //
 // Game i (0-based) uses seed + i. levels[s] plays seat s (1 樁腳, 2 總幹事, 3 操盤手).
 // rotate=1: the first level in `levels` is the hero and the other two its
@@ -8,7 +8,8 @@
 // second and 連 for the last (#10 §三.3: "主角輪流坐三個位子各 100 局").
 // Prints each seat's win rate, average blocks, average margin and turnout
 // (blocks on the board ÷ 154), the spread and the outliers; the last line is
-// JSON. rules= picks the rule set (#49: v0.5 is the draft that folds ads and media into the issues; default v0.4);
+// JSON. rules= picks the rule set (#49: v0.5 is the draft that folds ads and media into the issues; default v0.4;
+// #54: v0.6 is the simplified draft, fill= its 地方大老 variant, candidate when not given);
 // the report also shows where each seat's CP went (競選/廣告/議題). Games run in child processes (workers, default: CPUs − 1, at most 8);
 // a chunk whose process dies is run again once, then the whole run fails.
 import { fork } from "node:child_process";
@@ -35,8 +36,8 @@ function rng(seed) {
 }
 
 // One game. Returns a plain record (it crosses a process boundary).
-export function playGame(seed, levels, rules) {
-  let st = E.createGame(seed, rules ? { rules } : {});
+export function playGame(seed, levels, rules, fill) {
+  let st = E.createGame(seed, rules ? (fill ? { rules, fill } : { rules }) : {});
   const R = rng(seed * 977 + 13);
   let ms = 0, decisions = 0, debateCP = null;
   const why = {};
@@ -75,7 +76,7 @@ function levelsFor(i, n, base, rotate) {
 }
 
 function parseArgs(argv) {
-  const o = { games: parseInt(argv[0] || "100", 10), levels: [3, 3, 3], seed: 1, rotate: false, workers: Math.min(8, Math.max(1, os.cpus().length - 1)), quiet: false, rules: null };
+  const o = { games: parseInt(argv[0] || "100", 10), levels: [3, 3, 3], seed: 1, rotate: false, workers: Math.min(8, Math.max(1, os.cpus().length - 1)), quiet: false, rules: null, fill: null };
   for (const a of argv.slice(1)) {
     const [k, v] = a.split("=");
     if (k === "levels") o.levels = v.split(",").map(Number);
@@ -84,6 +85,7 @@ function parseArgs(argv) {
     else if (k === "workers") o.workers = Math.max(1, parseInt(v, 10));
     else if (k === "quiet") o.quiet = v === "1" || v === "true";
     else if (k === "rules") o.rules = v;
+    else if (k === "fill") o.fill = v;
     else throw new Error("sim: unknown option " + a);
   }
   if (!(o.games > 0)) throw new Error("sim: games must be a positive number");
@@ -91,7 +93,7 @@ function parseArgs(argv) {
   return o;
 }
 
-function runChunk(list) { return list.map(([seed, levels, rules]) => playGame(seed, levels, rules)); }
+function runChunk(list) { return list.map(([seed, levels, rules, fill]) => playGame(seed, levels, rules, fill)); }
 
 function runInChild(list) {
   return new Promise((resolve, reject) => {
@@ -106,7 +108,7 @@ function runInChild(list) {
 
 async function runAll(o) {
   const jobs = [];
-  for (let i = 0; i < o.games; i++) jobs.push([o.seed + i, levelsFor(i, o.games, o.levels, o.rotate), o.rules]);
+  for (let i = 0; i < o.games; i++) jobs.push([o.seed + i, levelsFor(i, o.games, o.levels, o.rotate), o.rules, o.fill]);
   if (o.workers <= 1 || o.games < 8) return runChunk(jobs);
   const size = Math.max(1, Math.ceil(jobs.length / (o.workers * 4)));
   const chunks = [];
@@ -140,7 +142,7 @@ function summarize(o, games) {
   const ms = games.map((g) => g.ms);
   const dcp = [0, 1, 2].map((p) => games.flatMap((g) => g.debateCP[p]));
   const out = {
-    games: n, levels: o.levels.join(","), seed: o.seed, rotate: o.rotate, rules: o.rules || "v0.4",
+    games: n, levels: o.levels.join(","), seed: o.seed, rotate: o.rotate, rules: (o.rules || "v0.4") + (o.fill ? " " + o.fill : ""),
     win: wins.map((w) => pct(w, n)),
     votes: votes.map((v) => r1(avg(v))),
     votesSd: votes.map((v) => r1(sd(v))),
