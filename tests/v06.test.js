@@ -39,9 +39,11 @@ const cubesBy = (st) => Object.fromEntries(st.issues.map((i) => [i.name, i.cubes
 const wantOrder = (v, mom) => [0, 1, 2].sort((a, b) => v[a] - v[b] || mom[a] - mom[b] || a - b);
 
 // Whole games with random legal moves, every step watched by `each(before, move, after, legal)`.
-function fuzz(seeds, opts, each) {
+// `start(st)`, if given, sees the state createGame returns (turn 1 begins inside createGame, before any move; BE on #54).
+function fuzz(seeds, opts, each, start) {
   for (const seed of seeds) {
     const Rn = D.rng(seed); let st = E.createGame(seed, opts);
+    if (start) start(st);
     for (let n = 0; n < 6000 && st.phase !== "end"; n++) {
       const seat = E.mustAct(st)[0]; if (seat == null) throw new Error(`seed ${seed}：卡在 ${st.phase}`);
       const legal = E.legalMoves(st, seat), m = legal[Math.floor(Rn() * legal.length)];
@@ -96,6 +98,10 @@ c6("整局隨機走（兩案各 3 局）：沒有封鎖、沒有選順序、沒�
       if (e.t === "initiative") throw new Error(`第 ${b.turn} 回合還有主動權檢定`);
       if (e.t === "turn") { const want = wantOrder(e.votes || votes(b), b.mom); if (b.order.join() !== want.join()) throw new Error(`${fill} 第 ${e.turn} 回合：order ${b.order.join()}，票 ${(e.votes || votes(b)).join("/")}、動能 ${b.mom.join("/")} 應為 ${want.join()}`); turns++; }
     }
+  }, (st) => {
+    if (st.log.some((e) => e.t === "initiative")) throw new Error("開局還有主動權檢定");
+    const t1 = st.log.find((e) => e.t === "turn"), want = wantOrder(t1 ? t1.votes || votes(st) : votes(st), st.mom);
+    if (st.order.join() !== want.join()) throw new Error(`${fill} 第 1 回合：order ${st.order.join()}，應為 ${want.join()}`); turns++;
   });
   let r = nonEmpty(turns, "回合開始"); if (r !== true) return r;
   r = nonEmpty(plays, "出牌的時刻"); if (r !== true) return r;
