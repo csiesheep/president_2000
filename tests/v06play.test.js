@@ -27,9 +27,12 @@ import * as D from "./driver.js";
 import * as RC from "../src/roomcore.js";
 import * as T from "../public/tutorial.js";
 
-const READY = (() => { try { const st = S.newSolo({ seat: 0, level: 1, seed: 1 }).st; return st.rules === "v0.6" && st.fill === "candidate"; } catch { return false; } })();
+// v0.6 and the rule set built on it: v0.7 keeps everything checked here (#60, 「丙 + v0.7」), and its st.fill is "candidate".
+const ON = ["v0.6", "v0.7"];
+const SOLO = (() => { try { return S.newSolo({ seat: 0, level: 1, seed: 1 }).st.rules; } catch { return null; } })();
+const READY = (() => { try { const st = S.newSolo({ seat: 0, level: 1, seed: 1 }).st; return ON.includes(st.rules) && st.fill === "candidate"; } catch { return false; } })();
 // Since #57 landed (cede573), a new game that is not v0.6 candidate is a failure, not 尚未實作.
-const c57 = (name, fn) => check(name, () => (READY ? fn() : "S.newSolo 開的不是 v0.6 candidate（st.rules / st.fill）：#57 已上線，這是退步，不是尚未實作"));
+const c57 = (name, fn) => check(name, () => (READY ? fn() : "S.newSolo 開的不是 v0.6（或 v0.7）candidate（st.rules / st.fill）：#57 已上線，這是退步，不是尚未實作"));
 const LANGS = ["zh-Hant", "en"];
 const ISSUE_ZH = { cross: "兩岸", clean: "清廉", econ: "經濟民生" };
 const FORBID = { "zh-Hant": /封鎖|地方大老|主動權|進位|議題交換|交換相鄰|第一段棄保|第一次棄保/, en: /initiative|local boss|\bboss(es)?\b|rounds? up|\bswap/i };
@@ -52,17 +55,17 @@ function walk(session, lang, seed, each) {
 
 section("57 v0.6 上場");
 c57("新開的單人、新開的房間、房間的再來一局都是 v0.6 candidate", () => {
-  for (const seed of [1, 2, 3]) { const st = S.newSolo({ seat: 0, level: 2, seed }).st; if (st.rules !== "v0.6" || st.fill !== "candidate") return `單人 seed ${seed}：${st.rules} ${st.fill}`; }
+  for (const seed of [1, 2, 3]) { const st = S.newSolo({ seat: 0, level: 2, seed }).st; if (st.rules !== SOLO || st.fill !== "candidate") return `單人 seed ${seed}：${st.rules} ${st.fill}`; }
   let room = RC.newRoom({ code: "ABCD", seed: 11, now: 0 });
   const h = (ev) => { room = RC.handle(room, ev, 0).room; };
   h({ type: "open", conn: "A", name: "Ann", token: null }); h({ type: "msg", conn: "A", data: { t: "sit", seat: 0 } }); h({ type: "msg", conn: "A", data: { t: "start", level: 1 } });
-  let r = eq(`${room.st && room.st.rules} ${room.st && room.st.fill}`, "v0.6 candidate", "房間"); if (r !== true) return r;
+  let r = eq(`${room.st && room.st.rules} ${room.st && room.st.fill}`, `${SOLO} candidate`, "房間（跟單人同一套）"); if (r !== true) return r;
   // The room's second createGame is the host's rematch once a game has ended (src/roomcore.js); the first game is marked
   // ended by hand here, playing it out is tests/room.test.js's business.
   const g0 = room.games; room.st = { ...room.st, phase: "end" };
   h({ type: "msg", conn: "A", data: { t: "rematch" } });
-  r = eq(`${room.games - g0} ${room.st.rules} ${room.st.fill} ${room.st.turn} ${room.st.phase !== "end"}`, "1 v0.6 candidate 1 true", "房主按再來一局（局數、規則、第 1 回合）"); if (r !== true) return r;
-  return ok(true, "單人 3 個種子、房間、再來一局都是 v0.6 candidate");
+  r = eq(`${room.games - g0} ${room.st.rules} ${room.st.fill} ${room.st.turn} ${room.st.phase !== "end"}`, `1 ${SOLO} candidate 1 true`, "房主按再來一局（局數、規則、第 1 回合）"); if (r !== true) return r;
+  return ok(true, `單人 3 個種子、房間、再來一局都是 ${SOLO} candidate`);
 });
 c57("切換前存的 v0.5 單人照常能玩：每個畫面都畫得出來、每個選項都有字（中英）", () => {
   let screens = 0;
@@ -136,7 +139,7 @@ function tutorial(lang) {
 }
 const ORDER_RULE = { "zh-Hant": /由少到多|票(數)?(最)?少的(人)?先/, en: /fewest/i };
 c57("教學是 v0.6：走得完（中英）；教學的字與畫面沒有 v0.6 拿掉的規則；有一步講這一回合誰先（票少的先）", () => {
-  const st = T.newTutorial().st; if (st.rules !== "v0.6" || st.fill !== "candidate") return `教學開的是 ${st.rules} ${st.fill}`;
+  const st = T.newTutorial().st; if (st.rules !== SOLO || st.fill !== "candidate") return `教學開的是 ${st.rules} ${st.fill}（單人是 ${SOLO}）`;
   let steps = 0;
   for (const lang of LANGS) {
     const w = tutorial(lang); if (w.end !== "done") return `${lang}：${w.end}`;
