@@ -71,16 +71,38 @@ export function mount({ T, lang, qs, store, $ }) {
   let ui = { county: null, seat: null, narrow: narrowNow(), sel: null, picks: [], help: null, moves: false, confirm: null, draft: "", level: [1, 2, 3].includes(store.get(LEVEL_KEY)) ? store.get(LEVEL_KEY) : 2 };
 
   const say = (text) => { banner.textContent = text || ""; banner.hidden = !text; };
+  // The turn card (#44): every player's own screen opens each turn with it, once (the turn it was shown for is kept in this
+  // tab, per room). It only covers the table: the move clock keeps running underneath.
+  const CARD_HOLD = 1500, CARD_FADE = 260, cardKey = () => "p2000.room.card." + roomCode;
+  let card = null; // { turn, t0, hold, gone, out }
+  const seenCard = () => store.get(cardKey());
+  const cardView = () => (client.state && client.state.view && client.state.view.phase !== "end" ? client.state.view : null);
+  const closeCard = (tapped) => {
+    if (!card || card.out) return;
+    card.out = true; clearTimeout(card.hold);
+    if (tapped) Sound.play("tap");
+    const el = stage.querySelector("[data-turncard]");
+    if (el) el.classList.add("out");
+    card.gone = setTimeout(() => { card = null; draw(); }, CARD_FADE);
+  };
   const draw = () => {
     if (gone) {
       $("#room").classList.remove("intable");
       stage.innerHTML = `<section class="lobby setup"><p class="rerr" role="alert">${esc(T.errors.no_room)}</p><a class="big go" href="${esc(q({ join: "1" }))}">${esc(F.joinGo)}</a></section>`;
       return;
     }
+    const cv = cardView();
+    if (card && cv && cv.turn !== card.turn) { card.turn = cv.turn; store.set(cardKey(), cv.turn); }
+    if (!card && cv && roomCode && seenCard() !== cv.turn) {
+      store.set(cardKey(), cv.turn);
+      card = { turn: cv.turn, t0: performance.now(), out: false };
+      card.hold = setTimeout(() => closeCard(false), CARD_HOLD);
+      Sound.play("turn");
+    }
     // A redraw replaces the chat box: keep what is typed, and the caret if the box had focus.
     const box = $("#chatin"), had = box && document.activeElement === box, caret = had ? [box.selectionStart, box.selectionEnd] : null;
     const log = stage.querySelector(".chatlog"), pinned = !log || log.scrollHeight - log.scrollTop - log.clientHeight < 40;
-    drawInto(stage, RC.screen(client, lang, { level: ui.level, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow, sel: ui.sel, picks: ui.picks, draft: ui.draft, help: ui.help, moves: ui.moves, confirm: ui.confirm }), { seat: ui.seat, menu: menu.isOpen() });
+    drawInto(stage, RC.screen(client, lang, { level: ui.level, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow, sel: ui.sel, picks: ui.picks, draft: ui.draft, help: ui.help, moves: ui.moves, confirm: ui.confirm, turnCard: !!card && !card.out && !!cv, cardAge: card ? performance.now() - card.t0 : 0 }), { seat: ui.seat, menu: menu.isOpen() });
     // At the table the top row has its own menu button, so the page's top bar steps aside.
     $("#room").classList.toggle("intable", !!stage.querySelector(".tbl"));
     const nb = $("#chatin");
@@ -166,6 +188,12 @@ export function mount({ T, lang, qs, store, $ }) {
     location.href = "./" + (en ? "?lang=en" : "");
   });
 
+  stage.addEventListener("click", (ev) => { // the turn card: a tap anywhere on it closes it and does nothing else
+    if (!ev.target.closest("[data-turncard]")) return;
+    ev.stopImmediatePropagation(); ev.stopPropagation();
+    closeCard(true);
+  });
+  addEventListener("keydown", (ev) => { if (ev.key === "Escape" && card && !card.out) closeCard(true); });
   const toAct = () => { const a = $("#act"); if (a && a.scrollIntoView) a.scrollIntoView({ block: "start", behavior: "smooth" }); };
   stage.addEventListener("click", (ev) => {
     const t = ev.target.closest("button, a");

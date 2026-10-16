@@ -89,18 +89,44 @@ if (typeof document !== "undefined") {
       heard = { seed: session.seed, st: session.st };
     };
     const stepOpt = () => (Sound.gap() == null && session.st && Solo.botsToMove(session).length ? { botnext: S.menu.next } : {});
+    // The turn card (#44): each turn opens with it, once. It holds the rivals back, stays about 1.5 s and fades out; a tap
+    // anywhere closes it (that is not the skip: the rivals only start after it has gone, one step at a time as before).
+    // The turn it was shown for is kept in the session (cardSeen), so a reload does not bring it back.
+    const CARD_HOLD = 1500, CARD_FADE = 260;
+    let card = null; // { turn, t0, hold, gone, out } while it shows
+    const cardWanted = () => !!(session && session.st && !session.tut && session.st.phase !== "end" && session.cardSeen !== session.st.turn);
+    const dropCard = () => { if (card) { clearTimeout(card.hold); clearTimeout(card.gone); card = null; } };
+    const closeCard = (tapped) => {
+      if (!card || card.out) return;
+      card.out = true; clearTimeout(card.hold);
+      if (tapped) Sound.play("tap");
+      const el = stage.querySelector("[data-turncard]");
+      if (el) el.classList.add("out");
+      card.gone = setTimeout(() => { card = null; pump(); }, CARD_FADE);
+    };
+    const openCard = () => {
+      const turn = session.st.turn;
+      // A step that began a new turn has already made the turn sound (hear): the card does not make it twice.
+      const stepped = heard && heard.seed === session.seed && heard.st !== session.st && Sound.soundsOf(heard.st, session.st).includes("turn");
+      session = { ...session, cardSeen: turn }; save();
+      card = { turn, t0: performance.now(), out: false };
+      card.hold = setTimeout(() => closeCard(false), CARD_HOLD);
+      if (!stepped) Sound.play("turn");
+    };
     const draw = () => {
       syncUrl();
       hear();
       // The tutorial's "player board" step is about the hand and the bag: on a phone that board shows them while it is on.
       const boardStep = !!(session.tut && Tut.step(session, code).id === "board");
-      drawInto(stage, Solo.screen(session, code, { sel: ui.sel, picks: ui.picks, help: ui.help, moves: ui.moves, confirm: ui.confirm, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow, ...stepOpt() }), { seat: boardStep ? session.seat : ui.seat, menu: menu.isOpen() });
+      drawInto(stage, Solo.screen(session, code, { sel: ui.sel, picks: ui.picks, help: ui.help, moves: ui.moves, confirm: ui.confirm, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow, turnCard: !!card && !card.out, cardAge: card ? performance.now() - card.t0 : 0, ...stepOpt() }), { seat: boardStep ? session.seat : ui.seat, menu: menu.isOpen() });
       $("#solo").classList.add("intable");
       $("#quit").hidden = false;
       placeTutorial(stage);
     };
     const pump = () => {
+      if (!card && cardWanted()) openCard();
       draw();
+      if (card) return; // the rivals wait for the card
       const wait = Sound.gap(); // the rivals' speed (#42); null = step by step, they wait for 下一步
       if (timer || wait == null || !Solo.botsToMove(session).length) return;
       timer = setTimeout(() => { timer = null; session = Solo.stepBot(session); save(); pump(); }, wait);
@@ -131,6 +157,13 @@ if (typeof document !== "undefined") {
         `<p class="note"><a class="tutlink" href="?tutorial${code === "en" ? "&amp;lang=en" : ""}">${esc(T.ui.tutorial.setupLink)}</a></p></section>`);
     };
 
+    // The turn card: a tap anywhere on it closes it, and does nothing else.
+    stage.addEventListener("click", (ev) => {
+      if (!ev.target.closest("[data-turncard]")) return;
+      ev.stopImmediatePropagation(); ev.stopPropagation();
+      closeCard(true);
+    });
+    addEventListener("keydown", (ev) => { if (ev.key === "Escape" && card && !card.out) closeCard(true); });
     // A hand card or a county tapped makes its small sound (a tap that only skips the animation does not).
     stage.addEventListener("click", (ev) => {
       if (timer) return;
@@ -206,7 +239,7 @@ if (typeof document !== "undefined") {
     $("#quit").addEventListener("click", () => {
       if (!confirm(S.menu.confirm)) return;
       if (timer) { clearTimeout(timer); timer = null; }
-      store.del(KEY); session = null; setup();
+      dropCard(); store.del(KEY); session = null; setup();
     });
 
     if (session && session.st) pump(); else setup();
