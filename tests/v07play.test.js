@@ -20,7 +20,7 @@
 //     drawing a cube (抽到);
 //   - on election day, the first screen the human sees after the conversion has, in "just now" (S.recent), a line with
 //     each seat's canvassing luck: min(95, min(80, luck + 10 × momentum) + 10 × issues led) — 陳 … N%, 宋 … N%, 連 … N%.
-// Every check reports 尚未實作 until S.newSolo starts a v0.7 丙 game.
+// Every check reported 尚未實作 until S.newSolo started a v0.7 丙 game; since #60 landed, that is a failure.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { R, section, check, eq, ok, nonEmpty, summary } from "./harness.js";
@@ -32,7 +32,8 @@ import * as T from "../public/tutorial.js";
 import * as RU from "../public/rules.js";
 
 const READY = (() => { try { const st = S.newSolo({ seat: 0, level: 1, seed: 1 }).st; return st.rules === "v0.7" && st.issueLuck === "lead"; } catch { return false; } })();
-const c60 = (name, fn) => check(name, () => (READY ? fn() : "TODO: S.newSolo 開的還不是 v0.7 丙（st.rules / st.issueLuck），#60"));
+// Since #60 landed (7ec3d47), a new game that is not v0.7 丙 is a failure, not 尚未實作.
+const c60 = (name, fn) => check(name, () => (READY ? fn() : "S.newSolo 開的不是 v0.7 丙（st.rules / st.issueLuck）：#60 已上線，這是退步，不是尚未實作"));
 const LANGS = ["zh-Hant", "en"];
 const SHORT = { "zh-Hant": ["陳", "宋", "連"], en: ["Chen", "Soong", "Lien"] };
 const FORBID = { "zh-Hant": /袋|休息方塊|休息區|補袋/, en: /\bbags?\b|rest[- ]cubes?|rest area/i };

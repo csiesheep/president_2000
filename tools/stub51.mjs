@@ -21,7 +21,7 @@
 //     A hand card is a preview (the big face shows it all): there the name and the text may be shortened as they were
 //     before the stub (3 lines, an ellipsis), but must still end above it (orchestrator's ruling on FE's question, #51);
 //   - [data-rest="<n>"] in the stub with n = the card's rest cubes (CP 2 → 2, 3 → 1, 4 → 0); none, or "0", when 0 (not
-//     read on a rules-page local face, which stands for cards of 2 and 3 CP).
+//     read on a rules-page local face, which stands for cards of 2 and 3 CP). Since #60 (v0.7): no rest cubes anywhere.
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { EVENTS, localCards } from "../public/shared/cards.js";
@@ -60,7 +60,9 @@ async function tab(br, url, w, h, mobile) {
 
 // What each card should say, from the card tables (the issue's Chinese names copied from the rulebook, §十四).
 const ISSUE_ZH = { cross: "兩岸", clean: "清廉", econ: "經濟民生" };
-const REST = { 2: 2, 3: 1, 4: 0 };
+// Rest cubes: CP 2 → 2, 3 → 1, 4 → 0 until rulebook v0.6. Since #60 new games and the rules page are v0.7, which has
+// none: every stub this tool opens must show no rest cubes (no [data-rest], or "0").
+const REST = { 2: 0, 3: 0, 4: 0 };
 const CARDS = Object.fromEntries([...EVENTS, ...localCards()].map((c) => [c.id, c]));
 const WANT = Object.fromEntries(Object.values(CARDS).map((c) => [c.id, { issue: c.icon ? ISSUE_ZH[c.icon] : "無議題", county: c.county, rest: REST[c.cp] ?? 0 }]));
 const wantOf = (key) => (key.startsWith("local:") ? { issue: "無議題", county: key.slice(6), rest: null } : WANT[key]);
