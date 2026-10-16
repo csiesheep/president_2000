@@ -103,6 +103,8 @@ export default {
       },
       map: {
         title: "各區票勢", here: "{who}在此", endorse: "背書", media: "媒體", national: "全國媒體", blocks: "{n}0萬票", empty: "空 {n}", boss: "{who}是地方大老",
+        stamp: "背", endorseKey: "章的顏色 = 該區背書持有者", endorsedBy: "{region}由{who}背書",
+        endorseNote: "{county} · {region}由{who}背書：這裡空著的無色塊 {free} 塊，投票日一半（捨去）→ {here}。全區合計{who} +{all} 塊。",
         legendEmpty: "空的游離塊", legendGrey: "沒投票的無色塊", changed: "剛剛有變動",
         you: "你", board: "台灣地圖", hint: "點縣市看票塊，在框裡下指令。", popNone: "這個縣市現在沒有可以做的事。", popGrey: "無色 {n}", popClose: "關閉", islands: "外島", legendPawn: "圓標是候選人所在的縣市", legendCubes: "陳宋連的方塊", popMove: "移到這裡 · 移動後剩 {left} CP",
         short: {

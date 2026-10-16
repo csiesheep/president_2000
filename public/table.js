@@ -412,12 +412,20 @@ function popHTML(v, ch, x, k, narrow) {
   const words = (s) => { const [head, ...tail] = s.split(" · "); return `<span>${esc(head)}</span>` + (tail.length ? `<small>${esc(tail.join(" · "))}</small>` : ""); };
   const opt = ({ c, i, f }) => `<button type="button" class="opt pop-opt${f ? " go" : ""}${c.advised ? " adv" : ""}" data-move="${esc(JSON.stringify(c.move))}" data-choice="${i}" data-pop="${k}">${c.advised ? starHTML(x) : ""}${words(label(c))}</button>`;
   const at = popPlace(k, narrow, x.lang);
+  // #50: who holds this county's region, and what election day gives them here and in the whole region
+  const h = v.endorse[REGION_OF[k]];
+  let note = "";
+  if (h >= 0) {
+    const half = (j) => Math.floor(v.counties[j].blocks.filter((b) => b.o < 0 && b.t !== "G" && b.t !== "B").length / 2);
+    const here = half(k), all = COUNTIES.reduce((s, _, j) => s + (REGION_OF[j] === REGION_OF[k] ? half(j) : 0), 0);
+    note = `<p class="pop-end s${h}" data-endorse-note data-here="${here}" data-region="${all}"><i aria-hidden="true">${esc(tr("map.stamp"))}</i><span>${esc(tr("map.endorseNote", { county: x.county(k), region: x.region(REGION_OF[k]), who: x.short(h), free: count((b) => b.o < 0 && b.t !== "G" && b.t !== "B"), here, all }))}</span></p>`;
+  }
   return `<div class="pop ${at.cls}" data-popover="${k}" role="dialog" aria-label="${esc(x.county(k))}" tabindex="-1" style="${at.style}"><i class="pop-arrow" aria-hidden="true"></i>` +
     `<div class="pop-art"><img data-county-pic="${COUNTY_SLUG[COUNTIES[k][0]]}" src="art/local/${COUNTY_SLUG[COUNTIES[k][0]]}.webp" alt="" draggable="false"><i class="pop-fade" aria-hidden="true"></i>` +
     `<span class="pop-reg">${esc(x.region(REGION_OF[k]))}</span>` +
     `<button type="button" class="pop-x" data-pop-close="1" aria-label="${esc(tr("map.popClose"))}">×</button></div>` +
     `<div class="pop-h"><b>${esc(x.county(k))} · ${esc(tr("map.blocks", { n: blocks.length, m: (blocks.length / 10).toFixed(1) }))}</b></div>` +
-    `<div class="pop-b"><span class="pbs">${cubes}</span><span class="pbn">${[...own, ...rest.map((s) => `<span>${esc(s)}</span>`)].join("")}</span></div>` +
+    `<div class="pop-b"><span class="pbs">${cubes}</span><span class="pbn">${[...own, ...rest.map((s) => `<span>${esc(s)}</span>`)].join("")}</span></div>` + note +
     (rows.length ? `<div class="pop-o">${rows.map(opt).join("")}</div>` : `<p class="ct">${esc(tr("map.popNone"))}</p>`) + `</div>`;
 }
 

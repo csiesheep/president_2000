@@ -773,4 +773,9 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
 .t-now li.rp-flash { animation: rpflash .9s ease-out; }
 @keyframes rpflash { from { background: rgba(255, 211, 77, .7); } to { background: rgba(255, 211, 77, 0); } }
 @media (min-width: 768px) { .rp-box { width: 232px; left: 46%; } }
+/* #50: the endorsement key under the map and the note in a county's box */
+.tw-endkey { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #4a3a2a; }
+.tw-stampkey { flex: none; width: 15px; height: 15px; border-radius: 50%; background: #6a5a48; border: 1.5px solid #fbf6e9; box-shadow: 0 0 0 .5px #6a5a48; color: #fff; font: 900 9px/12px "Noto Serif TC", serif; text-align: center; font-style: normal; }
+.pop-end { margin: 0; display: flex; align-items: flex-start; gap: 7px; font-size: 12.5px; line-height: 1.45; font-weight: 700; color: var(--m-ink); }
+.pop-end i { flex: none; width: 18px; height: 18px; border-radius: 50%; background: var(--c); color: #fff; font: 900 11px/18px "Noto Serif TC", serif; text-align: center; font-style: normal; }
 @media (prefers-reduced-motion: reduce) { .rp-card, .rp-stamp { transition-property: opacity !important; } .t-now li.rp-flash { animation: none; } }
