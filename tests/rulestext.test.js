@@ -14,6 +14,11 @@
 //   - the momentum help line (ui.solo.help.mom) speaks of the issue leader;
 //   - the nine media cards read as in the rulebook v0.5 (§十四), word for word in Chinese, and say "issue" in English;
 //   - strings nobody uses since #29–#34 are gone (or used again): see UNUSED.
+// Then the owner moved on to v0.6, 「v0.6 4a」 (2026-10-16, #56): the rules page and every string a v0.6 game shows no
+// longer speak of 封鎖, 地方大老, 主動權, 進位, 議題交換 or the first strategic vote — except the strings only a game saved on
+// v0.5 shows (V05_ONLY); the rules page says each turn's order goes by votes, fewest first, that the issue cards are
+// reordered at random, and that slot 2 gives an endorsement. Those checks report 尚未實作 until the Chinese rules page
+// says 由少到多. The v0.5 check about the issue leader no longer asks for the swap (v0.6 has none).
 // The v0.5 checks report 尚未實作 until the Chinese rules page says 議題總領先者.
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -72,14 +77,13 @@ check("沒有廣告也沒有媒體：中英所有字串（只有 v0.4 舊局才�
   return left.length ? `還有 ${left.length} 處：${left.slice(0, 6).join("；")}${left.length > 6 ? "…" : ""}` : ok(true, "中英字串與牌文都沒有廣告、媒體");
 }));
 
-check("規則頁講 v0.5：議題總領先者（三個議題的總數）、動能結算裡它 +1 動能並可交換議題槽（中英）", gate(() => {
+check("規則頁講 v0.5：議題總領先者（三個議題的總數）、動能結算裡它 +1 動能（中英）", gate(() => {
   const z = all(zh), e = all(en);
   if (!/總數/.test(z)) return "zh 規則頁沒寫出議題總領先者看的是「總數」";
   if (!/議題總領先者[^。]{0,30}\+?1 動能/.test(z)) return "zh 規則頁找不到「議題總領先者 +1 動能」";
-  if (!/議題總領先者[^。]{0,40}交換/.test(z)) return "zh 規則頁找不到議題總領先者交換議題槽";
   if (!/(most|total|overall)[^.]{0,60}issues|issues?[^.]{0,60}(most|total|overall)/i.test(e)) return "en 規則頁沒寫出 issue leader 看三個議題的總數";
   if (!/\+?1 momentum/i.test(e)) return "en 規則頁找不到 +1 momentum";
-  return ok(true, "中英都有議題總領先者、總數、+1 動能、交換");
+  return ok(true, "中英都有議題總領先者、總數、+1 動能");
 }));
 
 check("候選人表與開局：連起始在經濟民生議題 2 顆（起始議題那一列）（中英）", gate(() => {
@@ -124,6 +128,40 @@ check("沒人用的字串拿掉了：#29–#34 之後沒人讀的 key 不在字�
   }
   return left.length ? `還在、也沒人用：${left.join("、")}` : ok(true, `${UNUSED.length} 個 key 都處理了`);
 });
+
+// ---------------------------------------------------------------- v0.6 (#56)
+// Strings only a game saved on v0.5 shows (its order, block and swap choices and lines, the initiative in its header,
+// turn card and lines, the first strategic vote's line, its table talk).
+const V05_ONLY = new Set([
+  "ui.solo.o.playBlock", "ui.solo.f.block", "talk.block_trigger", "ui.solo.map.boss", "terms.boss", "terms.initiative",
+  "ui.solo.p.order", "ui.solo.p.orderElection", "ui.solo.p.swap", "ui.solo.o.swap", "ui.solo.o.noswap", "ui.solo.f.swap",
+  "talk.swap_issue", "ui.solo.f.strategicHalf", "ui.solo.hdr.initiative", "ui.solo.hdr.star", "ui.solo.tc.initiative",
+  "ui.solo.r.turn", "ui.solo.r.turnNoDeal", "ui.solo.f.turn",
+]);
+const FORBID6 = { zh: /封鎖|地方大老|主動權|進位|議題交換|交換相鄰|第一段棄保|第一次棄保/, en: /initiative|local boss|boss(es)?|rounds? up|swap/i };
+const gate6 = (fn) => () => (/由少到多/.test(all(zh)) ? fn() : "TODO: 規則頁還是 v0.5（沒有「由少到多」，#56）");
+section("56 規則與文字 v0.6");
+
+check("沒有封鎖、地方大老、主動權、進位、議題交換、第一次棄保：中英所有字串（只有 v0.5、v0.4 舊局才會用到的那些除外）", gate6(() => {
+  const left = [];
+  for (const [lang, d] of LANGS) for (const [k, v] of flat(d)) {
+    if (V05_ONLY.has(k) || V04_ONLY.has(k)) continue;
+    const m = v.match(FORBID6[lang]);
+    if (m) left.push(`${lang} ${k}：「${v.slice(Math.max(0, m.index - 12), m.index + 16)}」`);
+  }
+  return left.length ? `還有 ${left.length} 處：${left.slice(0, 6).join("；")}${left.length > 6 ? "…" : ""}` : ok(true, "中英字串都沒有 v0.6 拿掉的規則");
+}));
+
+check("規則頁講 v0.6：順序照票數由少到多、議題槽隨機重排、第二槽給背書（不二選一）（中英）", gate6(() => {
+  const z = all(zh), e = all(en);
+  if (!/票數[^。]{0,30}由少到多|由少到多[^。]{0,30}票數/.test(z)) return "zh 規則頁沒寫出行動順序照票數由少到多";
+  if (!/議題[^。]{0,30}隨機|隨機[^。]{0,30}議題/.test(z)) return "zh 規則頁沒寫出議題槽隨機重排";
+  if (!/第二槽[^。]{0,20}背書/.test(z)) return "zh 規則頁沒寫出第二槽給背書";
+  if (/第二槽[^。]{0,30}(或|自選)/.test(z)) return "zh 規則頁的第二槽還是二選一";
+  if (!/fewest/i.test(e)) return "en 規則頁沒寫出 fewest votes first";
+  if (!/random/i.test(e)) return "en 規則頁沒寫出議題槽隨機（random）";
+  return ok(true, "中英都有票數由少到多、隨機重排、第二槽背書");
+}));
 
 test("rulestext", () => {
   const s = summary();

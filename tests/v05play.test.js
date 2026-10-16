@@ -15,7 +15,8 @@
 //   - the issue leader (most cubes over the three issues, a tie is nobody) is on the table: [data-issue-lead="<seat or
 //     -1>"], its text with each candidate's total (陳 n, 宋 n, 連 n);
 //   - when the issue leader gains its +1 momentum, the "just now" lines (S.recent) say so with 「議題總領先者」.
-// Every check reports 尚未實作 until S.newSolo starts a v0.5 game.
+// Every check reports 尚未實作 until S.newSolo starts a v0.5 game (or a later rule set built on it: v0.6, #57, keeps all of
+// this — no media, the issue leader — so these checks keep holding after the game moves on).
 import test from "node:test";
 import assert from "node:assert/strict";
 import { R, section, check, eq, ok, nonEmpty, summary } from "./harness.js";
@@ -24,7 +25,8 @@ import * as S from "../public/solo.js";
 import * as D from "./driver.js";
 import * as RC from "../src/roomcore.js";
 
-const READY = (() => { try { return S.newSolo({ seat: 0, level: 1, seed: 1 }).st.rules === "v0.5"; } catch { return false; } })();
+const LATER = ["v0.5", "v0.6", "v0.7"]; // v0.5 and the rule sets built on it
+const READY = (() => { try { return LATER.includes(S.newSolo({ seat: 0, level: 1, seed: 1 }).st.rules); } catch { return false; } })();
 const c53 = (name, fn) => check(name, () => (READY ? fn() : "TODO: S.newSolo 開的還不是 v0.5（st.rules），#53"));
 const LANGS = ["zh-Hant", "en"];
 const SHORT = ["陳", "宋", "連"];
@@ -60,14 +62,14 @@ function holding(seat, id, seed = 3) {
 }
 
 section("53 v0.5 上場");
-c53("新開的單人是 v0.5；新開的房間也是 v0.5", () => {
-  for (const seed of [1, 2, 3]) { const st = S.newSolo({ seat: 0, level: 2, seed }).st; if (st.rules !== "v0.5" || st.media !== undefined) return `單人 seed ${seed}：rules ${st.rules}、media ${JSON.stringify(st.media)}`; }
+c53("新開的單人是 v0.5（或之後的版本）；新開的房間也一樣", () => {
+  for (const seed of [1, 2, 3]) { const st = S.newSolo({ seat: 0, level: 2, seed }).st; if (!LATER.includes(st.rules) || st.media !== undefined) return `單人 seed ${seed}：rules ${st.rules}、media ${JSON.stringify(st.media)}`; }
   let room = RC.newRoom({ code: "ABCD", seed: 11, now: 0 });
   const h = (ev) => { room = RC.handle(room, ev, 0).room; };
   h({ type: "open", conn: "A", name: "Ann", token: null }); h({ type: "msg", conn: "A", data: { t: "sit", seat: 0 } }); h({ type: "msg", conn: "A", data: { t: "start", level: 1 } });
   if (!room.st) return "房間開局之後沒有 st";
-  const r = eq(room.st.rules, "v0.5", "房間的 st.rules"); if (r !== true) return r;
-  return ok(true, "單人 3 個種子、房間都是 v0.5，沒有媒體");
+  if (room.st.rules !== S.newSolo({ seat: 0, level: 1, seed: 1 }).st.rules) return `房間的 st.rules 是 ${room.st.rules}，單人是 ${S.newSolo({ seat: 0, level: 1, seed: 1 }).st.rules}`;
+  return ok(true, `單人 3 個種子、房間都是 ${room.st.rules}，沒有媒體`);
 });
 c53("切換前存的 v0.4 單人照常能玩：每個畫面都畫得出來、每個選項都有字（中英）", () => {
   let screens = 0;

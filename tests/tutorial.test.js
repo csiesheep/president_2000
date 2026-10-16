@@ -82,10 +82,11 @@ c27("走得完：照教學做，60 步內走到 done；每一步的 kind 合法�
   return ok(true, `${W.rec.length} 步走到 done`);
 });
 
-c27("真的帶玩家動手：至少 6 個 move 步，裡面有出牌拿 CP、選競選、先點縣市再在那裡放塊、一次要檢定的動作、結束行動", () => {
+// v0.6 (#57) takes the order choice out of the game, and with it the tutorial's "pick your place" move: 5 there, 6 on v0.5.
+c27("真的帶玩家動手：至少 6 個 move 步（v0.6 沒有選順序，5 個），裡面有出牌拿 CP、選競選、先點縣市再在那裡放塊、一次要檢定的動作、結束行動", () => {
   if (W.end !== "done") return `沒走完：${W.end}`;
-  const mv = W.rec.filter((r) => r.kind === "move");
-  if (mv.length < 6) return `只有 ${mv.length} 個 move 步`;
+  const mv = W.rec.filter((r) => r.kind === "move"), min = W.s.st.rules === "v0.6" ? 5 : 6;
+  if (mv.length < min) return `只有 ${mv.length} 個 move 步（${W.s.st.rules} 要 ${min} 個）`;
   const did = (pred) => mv.find((r) => r.did && pred(r.did, r));
   const need = [
     ["出牌拿 CP（play, mode cp）", (m) => m.type === "play" && m.mode === "cp"],
