@@ -69,9 +69,15 @@ const CARD = Object.fromEntries(allCards().map((c) => [c.id, c]));
 // ------------------------------------------------------------------ setup
 
 const START_TURNS = [1, 2, 3, 4, 5, 7, 8];
-const RULES = ["v0.4", "v0.5"];
-// #49: is this a game of the v0.5 draft (ads and media folded into the issues)?
-const V05 = (st) => st.rules === "v0.5";
+const RULES = ["v0.4", "v0.5", "v0.6"];
+// #49: is this a game of the v0.5 draft (ads and media folded into the issues)? v0.6 (#54) is v0.5 plus seven
+// simplifications, so a v0.6 game is a v0.5 game too, unless V06 says otherwise.
+const V05 = (st) => st.rules === "v0.5" || st.rules === "v0.6";
+// #54: the v0.6 draft (simplified): no block, slot 2 always an endorsement, one strategic vote (election day), no
+// 地方大老 (st.fill "candidate" | "free"), the issue slots reshuffled after every momentum phase, momentum halved
+// rounding down for everyone, and the turn order by votes, fewest first, instead of the initiative check.
+const V06 = (st) => st.rules === "v0.6";
+const FILLS = ["candidate", "free"];
 
 // opts.startTurn (裁決 16): the same opening board, starting at that turn
 // (7 and 8 deal from the late deck; the saved piles are empty). An entry for
@@ -85,6 +91,8 @@ export function createGame(seed, opts = {}) {
   if (!START_TURNS.includes(startTurn)) throw new Error("createGame: startTurn must be one of " + START_TURNS.join("/"));
   const rules = opts.rules ?? "v0.4";
   if (!RULES.includes(rules)) throw new Error("createGame: rules must be one of " + RULES.join("/"));
+  const fill = opts.fill ?? "candidate";
+  if (rules === "v0.6" && !FILLS.includes(fill)) throw new Error("createGame: fill must be one of " + FILLS.join("/"));
   const rng = makeRng(seed);
   const counties = COUNTIES.map(([name, region, G, B, N, init]) => {
     const blocks = [];
@@ -139,8 +147,9 @@ export function createGame(seed, opts = {}) {
     log: [],
   };
   st.rng = rng.state;
-  if (rules === "v0.5") {
-    st.rules = "v0.5";
+  if (rules === "v0.5" || rules === "v0.6") {
+    st.rules = rules;
+    if (rules === "v0.6") st.fill = fill; // v0.6 4 (#54): 4a "candidate" or 4b "free"
     delete st.media; // v0.5 二、3.2: no media cubes, no national media box
     issueCubes(st, "econ")[LIEN] = V05_START_ECON; // v0.5 四.5、十三: 連 opens with 2 on 經濟民生
   }
@@ -180,12 +189,30 @@ function beginTurn(st) {
         st.hands[p].push(deck.pop());
       }
     }
-    st.initiative = initiativeCheck(st, rng);
+    if (!V06(st)) st.initiative = initiativeCheck(st, rng);
   });
   st.phase = "order"; st.step = 0; st.idx = 0; st.actor = -1; st.pending = null; st.mstep = null;
   st.saved = [false, false, false];
+  if (V06(st)) {
+    // v0.6 7 (#54): no initiative check and no position to pick; the turn order is the votes, fewest first.
+    const votes = voteOrder(st);
+    st.log.push({ t: "turn", turn: st.turn, initiative: st.initiative, votes, order: st.order.slice() });
+    st.phase = "action";
+    nextActor(st);
+    return st;
+  }
   st.log.push({ t: "turn", turn: st.turn, initiative: st.initiative, votes: boardVotes(st) });
   return st;
+}
+
+// v0.6 7 (#54): st.order is the seats by their blocks on the board, fewest first; a tie: less momentum first,
+// then 陳 → 宋 → 連 (orchestrator 細節 2). The first seat of the order stands in st.initiative, which in v0.6 is
+// only "who acts first" (the debate and the count break their ties by st.order). Returns the votes it used.
+function voteOrder(st) {
+  const v = boardVotes(st), mom = st.mom;
+  st.order = [0, 1, 2].sort((a, b) => v[a] - v[b] || mom[a] - mom[b] || a - b);
+  st.initiative = st.order[0];
+  return v;
 }
 
 // §5.1 (2) with 裁決 1: draw one cube at a time and set it aside until some
@@ -258,7 +285,9 @@ const emptyOf = (st, k, t) => st.counties[k].blocks.some((b) => b.o < 0 && b.t =
 // nothing; v0.3's regional media advantage is gone.
 function fillNeedsCheck(st, seat, k) {
   if (ownCampFree(st, seat)) return false; // #5: 李遠哲挺扁 / 走透透 this turn
-  if (bosses(st, k).some((p) => p !== seat)) return true;
+  // v0.6 4 (#54): no 地方大老. 4a "candidate": only an opponent's candidate there makes a check; 4b "free": never.
+  if (V06(st) && st.fill === "free") return false;
+  if (!V06(st) && bosses(st, k).some((p) => p !== seat)) return true;
   if ([0, 1, 2].some((p) => p !== seat && st.pos[p] === k)) return true;
   return false;
 }
@@ -676,7 +705,7 @@ function playMoves(st, seat) {
     }
     // an opponent's card: CP only, optionally blocking for 2 momentum (§6.2)
     out.push({ type: "play", card: id, mode: "cp", block: false });
-    if (st.mom[seat] >= 2) out.push({ type: "play", card: id, mode: "cp", block: true });
+    if (st.mom[seat] >= 2 && !V06(st)) out.push({ type: "play", card: id, mode: "cp", block: true }); // v0.6 1: no block
   }
   if (!forced && !st.candidateUsed[seat]) out.push({ type: "candidate" });
   return out;
@@ -976,22 +1005,23 @@ function finishPlay(st) {
 
 function startMomentum(st) {
   st.phase = "momentum"; st.actor = -1; st.pending = null;
-  // (1) decay: 宋、連 halve rounding down, 陳 rounding up
-  st.mom = st.mom.map((x, p) => (p === CHEN ? Math.ceil(x / 2) : Math.floor(x / 2)));
+  // (1) decay: 宋、連 halve rounding down, 陳 rounding up (v0.6 6, #54: 陳 rounds down too)
+  st.mom = st.mom.map((x, p) => (p === CHEN && !V06(st) ? Math.ceil(x / 2) : Math.floor(x / 2)));
   st.log.push({ t: "momentum", step: "decay", mom: st.mom.slice() });
   // (2) v0.4 (#34, owner "2b + B"): the media leader gains 1 momentum, after the halving, so that
   // point is halved only at the next turn's end (orchestrator 裁決, #34); a tie is nobody.
   // v0.5 5.3 (#49): the 議題總領先者 takes both steps, at the same moment, logged step "lead".
   const nat = V05(st) ? issueLeader(st) : nationalMediaLeader(st);
   if (nat >= 0) { st.mom[nat] += 1; st.log.push({ t: "momentum", step: V05(st) ? "lead" : "media", seat: nat, mom: st.mom.slice() }); }
-  // (3) the media leader (v0.5: the 議題總領先者) may swap two adjacent slots
-  if (nat >= 0) { st.mstep = "swap"; st.pending = { stage: "swap", seat: nat }; return; }
+  // (3) the media leader (v0.5: the 議題總領先者) may swap two adjacent slots (v0.6 5, #54: nobody swaps)
+  if (nat >= 0 && !V06(st)) { st.mstep = "swap"; st.pending = { stage: "swap", seat: nat }; return; }
   momentumRewards(st);
 }
 
 // (4) slot 2's leader picks first, then slot 1, then slot 3; (5) issue decay.
+// v0.6 2 (#54): slot 2 is always 1 endorsement, no choice; the slots settle in order 1, 2, 3 (momentumFinish).
 function momentumRewards(st) {
-  const second = leader(st.issues[1].cubes);
+  const second = V06(st) ? -1 : leader(st.issues[1].cubes);
   if (second >= 0) { st.mstep = "reward"; st.pending = { stage: "reward", seat: second }; return; }
   momentumFinish(st);
 }
@@ -999,9 +1029,16 @@ function momentumRewards(st) {
 function momentumFinish(st) {
   const first = leader(st.issues[0].cubes);
   if (first >= 0) { st.mom[first] += 1; endorse(st, first); }
+  if (V06(st)) { const second = leader(st.issues[1].cubes); if (second >= 0) endorse(st, second); }
   const third = leader(st.issues[2].cubes);
   if (third >= 0) st.mom[third] += 1;
   for (const i of st.issues) { const p = leader(i.cubes); if (p >= 0) i.cubes[p] -= 1; }
+  // v0.6 5 (#54, orchestrator 細節 1): last, after the decay, the three issue cards take a random slot order (the
+  // engine's RNG), their cubes with them; it may be the order they had.
+  if (V06(st)) {
+    withRng(st, (rng) => { shuffle(rng, st.issues); });
+    st.log.push({ t: "momentum", step: "shuffle", issues: st.issues.map((i) => i.name) });
+  }
   st.log.push({ t: "momentum", step: "done", mom: st.mom.slice() });
   st.pending = null; st.mstep = null;
   st.phase = "save";
@@ -1094,13 +1131,20 @@ function startDebate(st) {
   st.phase = "debate"; st.step = 0; st.idx = 0; st.actor = -1; st.pending = null; st.mstep = null;
   st.saved = [false, false, false];
   st.debate = { picks: [null, null, null], placed: Object.fromEntries(ISSUES.map((n) => [n, [[], [], []]])), settled: [], queue: [], award: null };
-  withRng(st, (rng) => { st.initiative = initiativeCheck(st, rng); });
-  st.log.push({ t: "turn", turn: st.turn, initiative: st.initiative, votes: boardVotes(st) });
+  if (V06(st)) {
+    // v0.6 7 (#54): the debate's order is the votes, fewest first; it breaks the debate's ties (tiePriority).
+    const votes = voteOrder(st);
+    st.log.push({ t: "turn", turn: st.turn, initiative: st.initiative, votes, order: st.order.slice() });
+  } else {
+    withRng(st, (rng) => { st.initiative = initiativeCheck(st, rng); });
+    st.log.push({ t: "turn", turn: st.turn, initiative: st.initiative, votes: boardVotes(st) });
+  }
   if (st.savedDebate.every((pile) => !pile.length)) advanceDebate(st); // nothing to reveal at all
   return st;
 }
 
-const tiePriority = (st) => { const h = st.initiative >= 0 ? st.initiative : 0; return [0, 1, 2].map((i) => (h + i) % 3); };
+// v0.6 7 (#54): a tie goes by this turn's order, the fewest votes first.
+const tiePriority = (st) => { if (V06(st)) return st.order.slice(); const h = st.initiative >= 0 ? st.initiative : 0; return [0, 1, 2].map((i) => (h + i) % 3); };
 const unsettled = (st) => st.issues.map((i) => i.name).filter((n) => !st.debate.settled.includes(n));
 
 function debateMustAct(st) {
@@ -1207,7 +1251,7 @@ function endDebate(st) {
   for (const name of Object.keys(d.placed)) for (const cards of d.placed[name]) st.decks.discard.push(...cards.splice(0));
   st.debate = null;
   st.log.push({ t: "debate", step: "end", issues: st.issues.map((i) => i.name) });
-  strategicVote(st, true); // §九 7: the first strategic vote, half
+  if (!V06(st)) strategicVote(st, true); // §九 7: the first strategic vote, half (v0.6 3, #54: none)
   // §14.1, 裁決 10: the early discard pile is set aside; turn 7 starts a late one
   st.decks.earlyDiscard.push(...st.decks.discard.splice(0));
   endTurnFlags(st);
@@ -1272,6 +1316,15 @@ function startElection(st) {
   st.mom = [0, 0, 0];
   st.log.push({ t: "convert", bag: add, mom });
   st.election = { mom, stage: "order", card: null, county: -1, left: 0, choose: false };
+  if (V06(st)) {
+    // v0.6 7 (#54): the canvassing order is the votes, fewest first (momentum is 0 for all after the conversion,
+    // so a tie goes 陳 → 宋 → 連); no position to pick.
+    const votes = voteOrder(st);
+    st.log.push({ t: "turn", turn: st.turn, initiative: st.initiative, votes, order: st.order.slice() });
+    st.election.stage = "canvass"; st.idx = 0;
+    nextCanvasser(st);
+    return st;
+  }
   withRng(st, (rng) => { st.initiative = initiativeCheck(st, rng); });
   st.log.push({ t: "turn", turn: st.turn, initiative: st.initiative, votes: boardVotes(st) });
   return st;
