@@ -1,6 +1,6 @@
 // tests/sim.js — bot-vs-bot balance (M2, #10). BE's file; not part of `npm test`.
 //
-//   node tests/sim.js <games> [levels=3,3,3] [seed=1] [rotate=1] [workers=N] [quiet=1]
+//   node tests/sim.js <games> [levels=3,3,3] [seed=1] [rotate=1] [workers=N] [quiet=1] [rules=v0.4|v0.5]
 //
 // Game i (0-based) uses seed + i. levels[s] plays seat s (1 樁腳, 2 總幹事, 3 操盤手).
 // rotate=1: the first level in `levels` is the hero and the other two its
@@ -8,7 +8,8 @@
 // second and 連 for the last (#10 §三.3: "主角輪流坐三個位子各 100 局").
 // Prints each seat's win rate, average blocks, average margin and turnout
 // (blocks on the board ÷ 154), the spread and the outliers; the last line is
-// JSON. Games run in child processes (workers, default: CPUs − 1, at most 8);
+// JSON. rules= picks the rule set (#49: v0.5 is the draft that folds ads and media into the issues; default v0.4);
+// the report also shows where each seat's CP went (競選/廣告/議題). Games run in child processes (workers, default: CPUs − 1, at most 8);
 // a chunk whose process dies is run again once, then the whole run fails.
 import { fork } from "node:child_process";
 import os from "node:os";
@@ -34,11 +35,12 @@ function rng(seed) {
 }
 
 // One game. Returns a plain record (it crosses a process boundary).
-export function playGame(seed, levels) {
-  let st = E.createGame(seed);
+export function playGame(seed, levels, rules) {
+  let st = E.createGame(seed, rules ? { rules } : {});
   const R = rng(seed * 977 + 13);
   let ms = 0, decisions = 0, debateCP = null;
   const why = {};
+  const cp = [0, 1, 2].map(() => ({ campaign: 0, ads: 0, issue: 0 }));
   for (let n = 0; n < 20000 && st.phase !== "end"; n++) {
     if (st.turn === 6 && !debateCP) debateCP = st.savedDebate.map((pile) => pile.map((id) => CP[id]));
     const seat = E.mustAct(st)[0];
@@ -46,6 +48,7 @@ export function playGame(seed, levels) {
     const t0 = performance.now();
     const out = B.chooseMove(st, seat, levels[seat], R);
     ms += performance.now() - t0; decisions++;
+    if (out.move.type === "action" && st.pending) cp[seat][out.move.kind] += st.pending.cp;
     why[out.why.key] = (why[out.why.key] || 0) + 1;
     st = E.apply(st, seat, out.move);
   }
@@ -56,7 +59,8 @@ export function playGame(seed, levels) {
   return {
     seed, levels, winner: r.winner, votes: r.votes, leads: r.leads,
     margin: sorted[0] - sorted[1], onBoard: r.votes[0] + r.votes[1] + r.votes[2],
-    ms, decisions, debateCP: debateCP || [[], [], []], why,
+    ms, decisions, debateCP: debateCP || [[], [], []], why, cp,
+    lead: [0, 1, 2].map((p) => st.log.filter((e) => e.t === "momentum" && (e.step === "media" || e.step === "lead") && e.seat === p).length),
     xingpiao: played("yang_exposes"), shouyi: played("lee_authorized"), fanfu: played("shifting_story"),
   };
 }
@@ -71,7 +75,7 @@ function levelsFor(i, n, base, rotate) {
 }
 
 function parseArgs(argv) {
-  const o = { games: parseInt(argv[0] || "100", 10), levels: [3, 3, 3], seed: 1, rotate: false, workers: Math.min(8, Math.max(1, os.cpus().length - 1)), quiet: false };
+  const o = { games: parseInt(argv[0] || "100", 10), levels: [3, 3, 3], seed: 1, rotate: false, workers: Math.min(8, Math.max(1, os.cpus().length - 1)), quiet: false, rules: null };
   for (const a of argv.slice(1)) {
     const [k, v] = a.split("=");
     if (k === "levels") o.levels = v.split(",").map(Number);
@@ -79,6 +83,7 @@ function parseArgs(argv) {
     else if (k === "rotate") o.rotate = v === "1" || v === "true";
     else if (k === "workers") o.workers = Math.max(1, parseInt(v, 10));
     else if (k === "quiet") o.quiet = v === "1" || v === "true";
+    else if (k === "rules") o.rules = v;
     else throw new Error("sim: unknown option " + a);
   }
   if (!(o.games > 0)) throw new Error("sim: games must be a positive number");
@@ -86,7 +91,7 @@ function parseArgs(argv) {
   return o;
 }
 
-function runChunk(list) { return list.map(([seed, levels]) => playGame(seed, levels)); }
+function runChunk(list) { return list.map(([seed, levels, rules]) => playGame(seed, levels, rules)); }
 
 function runInChild(list) {
   return new Promise((resolve, reject) => {
@@ -101,7 +106,7 @@ function runInChild(list) {
 
 async function runAll(o) {
   const jobs = [];
-  for (let i = 0; i < o.games; i++) jobs.push([o.seed + i, levelsFor(i, o.games, o.levels, o.rotate)]);
+  for (let i = 0; i < o.games; i++) jobs.push([o.seed + i, levelsFor(i, o.games, o.levels, o.rotate), o.rules]);
   if (o.workers <= 1 || o.games < 8) return runChunk(jobs);
   const size = Math.max(1, Math.ceil(jobs.length / (o.workers * 4)));
   const chunks = [];
@@ -135,7 +140,7 @@ function summarize(o, games) {
   const ms = games.map((g) => g.ms);
   const dcp = [0, 1, 2].map((p) => games.flatMap((g) => g.debateCP[p]));
   const out = {
-    games: n, levels: o.levels.join(","), seed: o.seed, rotate: o.rotate,
+    games: n, levels: o.levels.join(","), seed: o.seed, rotate: o.rotate, rules: o.rules || "v0.4",
     win: wins.map((w) => pct(w, n)),
     votes: votes.map((v) => r1(avg(v))),
     votesSd: votes.map((v) => r1(sd(v))),
@@ -144,6 +149,9 @@ function summarize(o, games) {
     xingpiao: pct(games.filter((g) => g.xingpiao).length, n), shouyi: pct(games.filter((g) => g.shouyi).length, n), fanfu: pct(games.filter((g) => g.fanfu).length, n),
     debateCP: dcp.map((xs) => Math.round(avg(xs) * 100) / 100),
     msPerGame: Math.round(avg(ms)), msMax: Math.round(Math.max(...ms)), decisions: Math.round(avg(games.map((g) => g.decisions))),
+    // each seat's CP by action kind, in % of its CP (競選/廣告/議題), and the leader's +1 per game
+    cp: [0, 1, 2].map((p) => { const c = { campaign: 0, ads: 0, issue: 0 }; for (const g of games) for (const k in c) c[k] += g.cp[p][k]; const all = c.campaign + c.ads + c.issue || 1; return [c.campaign, c.ads, c.issue].map((x) => r1(100 * x / all)); }),
+    lead: [0, 1, 2].map((p) => Math.round(100 * avg(games.map((g) => g.lead[p]))) / 100),
   };
   if (o.rotate) {
     // the hero is the first level; per seat it sat in
@@ -157,13 +165,14 @@ function summarize(o, games) {
 
 function report(o, games, s) {
   const lines = [];
-  lines.push(`${s.games} 局  levels=${s.levels}${o.rotate ? "（主角輪流坐）" : ""}  seed=${s.seed}…${s.seed + s.games - 1}`);
+  lines.push(`${s.games} 局  rules=${s.rules}  levels=${s.levels}${o.rotate ? "（主角輪流坐）" : ""}  seed=${s.seed}…${s.seed + s.games - 1}`);
   for (let p = 0; p < 3; p++) lines.push(`  ${NAMES[p]}  勝率 ${s.win[p].toFixed(1)}%  平均方塊 ${s.votes[p].toFixed(1)}（σ ${s.votesSd[p]}）`);
   lines.push(`  勝差 平均 ${s.margin}  P90 ${s.marginP90}  最大 ${s.marginMax}`);
   lines.push(`  投票率 平均 ${s.turnout}%  最低 ${s.turnoutMin}%  最高 ${s.turnoutMax}%`);
   lines.push(`  興票案 ${s.xingpiao}%  授意說 ${s.shouyi}%  說法反覆 ${s.fanfu}%`);
   lines.push(`  政見發表會堆平均 CP ${s.debateCP.join(" / ")}`);
   lines.push(`  chooseMove 每局 ${s.msPerGame} ms（最多 ${s.msMax}）、${s.decisions} 個決定`);
+  lines.push(`  CP 競選/廣告/議題 %  ${s.cp.map((c, p) => `${NAMES[p]} ${c.join("/")}`).join("  ")}；領先者 +1 每局 ${s.lead.join(" / ")}`);
   if (s.hero) lines.push(`  主角（等級 ${s.hero.level}）勝率 ${s.hero.win}%  坐陳 ${s.hero.bySeat[0]}、坐宋 ${s.hero.bySeat[1]}、坐連 ${s.hero.bySeat[2]}`);
   // outliers: the widest margins and the lowest turnout
   const wide = games.slice().sort((a, b) => b.margin - a.margin).slice(0, 3).map((g) => `seed ${g.seed} ${g.votes.join("/")}`);

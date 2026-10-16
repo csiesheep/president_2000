@@ -118,6 +118,14 @@ const ADS_WEIGHT = 1.5;
 const ACTION_TURNS = [1, 2, 3, 4, 5, 7, 8];
 const ISSUE_CUBE = 0.12;   // an issue cube becomes a bag cube on election day
 const MEDIA_CUBE = 0.15;   // likewise a media cube
+// v0.5 (#49): the 議題總領先者 (most issue cubes over the three cards) takes the media leader's +1 momentum and
+// swap, so the lead is valued like v0.4's media lead (mediaVec): (MOMV + LEAD_SWAP) at this turn's end, times
+// LEAD_HOLD for every opponent play still to come this turn (each can take the lead back with one cheap cube),
+// and LEAD_PERSIST of it for each later action turn; LEAD_THIN of that when the lead is one cube. Issue cubes
+// decay (each issue's leader loses one every turn), so unlike media the lead does not carry over: LEAD_PERSIST 0.
+// LEAD_WEIGHT scales it the way ADS_WEIGHT scaled the ads estimate. Tuned in #49 (one seat changed against two
+// at these values, 1200 games a run); the numbers are in #49's handover.
+const LEAD_SWAP = 0.4, LEAD_PERSIST = 0, LEAD_THIN = 0.7, LEAD_WEIGHT = 1, LEAD_HOLD = 1;
 // Soft strategic-vote flow by |宋 − 連| in the county (design sim's SOFT), a
 // sharper one for 操盤手 in turns 7–8, and the rule itself on election day.
 const SOFT = [0, 0.35, 0.8, 1, 1];
@@ -148,14 +156,15 @@ function see(st) {
   const seat = st.seat;
   return {
     seat,
-    turn: st.turn, phase: st.phase, step: st.step, initiative: st.initiative,
+    turn: st.turn, phase: st.phase, step: st.step, idx: st.idx, initiative: st.initiative,
     counties: st.counties.map((c) => {
       const v = [0, 0, 0], ty = [{ G: 0, B: 0, N: 0 }, { G: 0, B: 0, N: 0 }, { G: 0, B: 0, N: 0 }], e = { G: 0, B: 0, N: 0 };
       for (const b of c.blocks) { if (b.o >= 0) { v[b.o]++; ty[b.o][b.t]++; } else e[b.t]++; }
       return { v, ty, G: e.G, B: e.B, N: e.N };
     }),
     pos: st.pos.slice(), mom: st.mom.slice(), bag: st.bag.slice(), rest: st.rest.slice(),
-    media: st.media.slice(),
+    // #49: a v0.5 game (ads and media folded into the issues) has no media at all.
+    v05: st.rules === "v0.5", media: Array.isArray(st.media) ? st.media.slice() : [0, 0, 0],
     issues: st.issues.map((i) => ({ name: i.name, cubes: i.cubes.slice() })),
     endorse: st.endorse.slice(),
     active: st.active.slice(), played: { ...st.flags.played }, crossFree: st.flags.crossFree.slice(),
@@ -333,6 +342,23 @@ class Bot {
       V[l] += SV[s] * (i.cubes[l] - second >= 2 ? 1 : 0.75);
     });
     for (const i of issues) for (let q = 0; q < 3; q++) V[q] += i.cubes[q] * ISSUE_CUBE;
+    if (this.v.v05) add3(V, this.leadVec(issues));
+    return V;
+  }
+  // v0.5 (#49): the value of being the 議題總領先者 (see LEAD_* above); a tie is nobody.
+  leadVec(issues) {
+    const V = [0, 0, 0];
+    const tot = [0, 1, 2].map((q) => issues.reduce((s, i) => s + i.cubes[q], 0));
+    const t = this.v.turn;
+    const now = ACTION_TURNS.includes(t) && this.v.phase === "action" ? 1 : 0;
+    const later = ACTION_TURNS.filter((x) => x > t).length;
+    const l = leaderOf(tot);
+    if (l >= 0 && now + later > 0) {
+      const second = Math.max(...tot.filter((_, q) => q !== l));
+      // opponent plays left in this action phase after the one being decided (a skipped seat is ignored)
+      const opp = now ? Math.max(0, (2 - this.v.idx) + 2 * (HAND.play - 1 - this.v.step)) : 0;
+      V[l] += LEAD_WEIGHT * (MOMV + LEAD_SWAP) * (now * Math.pow(LEAD_HOLD, opp) + LEAD_PERSIST * later) * (tot[l] - second >= 2 ? 1 : LEAD_THIN);
+    }
     return V;
   }
   issueChange(changes, q = this.p) {
@@ -437,7 +463,7 @@ class Bot {
   cpValue(cp) {
     const camp = this.campaignValue(cp).v;
     if (this.lv === 1) return { v: camp, kind: "campaign" };
-    const ads = this.adsValue(cp), iss = this.issueValue(cp).v;
+    const ads = this.v.v05 ? -Infinity : this.adsValue(cp), iss = this.issueValue(cp).v; // v0.5 (#49): no ads
     if (camp >= ads && camp >= iss) return { v: camp, kind: "campaign" };
     return ads >= iss ? { v: ads, kind: "ads" } : { v: iss, kind: "issue" };
   }
@@ -517,6 +543,19 @@ class Bot {
   vMom(q, n) { const V = [0, 0, 0]; V[q] = n >= 0 ? n * MOMV : -Math.min(this.v.mom[q], -n) * MOMV; return V; }
   vBag(q, n) { const V = [0, 0, 0]; V[q] = n * BAGV; return V; }
   vIssue(...changes) { return this.issueChange(changes); }
+  // v0.5 (#49) 「任一議題」: chooser q puts n of p's cubes on the best issue for q, or with target takes up to n of
+  // target's off the best issue where target has some (none: nothing). Returns { V, name }.
+  bestAnyIssue(q, p, n, target = -1) {
+    let best = null;
+    for (const i of this.v.issues) {
+      if (target >= 0 && i.cubes[target] <= 0) continue;
+      const V = target >= 0 ? this.issueChange([[i.name, target, -n]], q) : this.issueChange([[i.name, p, n]], q);
+      const ev = this.rel(V, q);
+      if (!best || ev > best.ev) best = { V, ev, name: i.name };
+    }
+    return best || { V: [0, 0, 0], ev: 0, name: null };
+  }
+  vAnyIssue(q, p, n, o = {}) { return this.bestAnyIssue(q, p, n, o.target ?? -1).V; }
   // A media event (v0.4): q +n, or with target, the target −n (never below 0); no choice, no check.
   vMedia(q, n, { target = -1 } = {}) { return target >= 0 ? this.mediaChange(target, -n) : this.mediaChange(q, n); }
   // Rest of this turn for a 本回合 card that waives checks for q.
@@ -526,7 +565,7 @@ class Bot {
   eventVec(id, by = this.p) {
     const c = CARD[id];
     if (c.owner === "local") { const k = ci(c.county); const b = this.bestIn(by, k, { steal: false }); return b ? add3([0, 0, 0], b.d, b.opt.p) : [0, 0, 0]; }
-    const f = EV[id];
+    const f = (this.v.v05 && EV_V05[id]) || EV[id];
     return f ? f(this, by) : [0, 0, 0];
   }
   ownEventAllowed(q, c) {
@@ -796,10 +835,14 @@ class Bot {
         ev = this.rel(this.delta(m.county, [["conv"]]));
       } else if (m.type === "pick") {
         ev = m.seat === p ? 10 : -this.W[p][m.seat];
+      } else if (m.type === "issue" && s.op === "anyIssue") {
+        // v0.5 (#49) 「任一議題」
+        ev = this.rel(m.target != null ? this.issueChange([[m.issue, m.target, -s.n]]) : this.issueChange([[m.issue, s.p, s.n]]));
       } else ev = 0;
       if (!best || ev > best.ev) best = { m, ev };
     }
     const m = best.m;
+    if (m.type === "issue") return { move: m, why: { key: m.target != null ? "issue_tie" : "issue_lead", issue: m.issue, card: this.v.pending.fx.card, gain: r2(best.ev) } };
     const key = m.type === "remove" ? "effect_remove" : m.type === "convert" ? "effect_convert" : m.type === "media" ? "effect_media" : m.type === "pick" ? "effect_tvbs" : "effect_place";
     const why = { key, card: this.v.pending.fx.card, gain: r2(best.ev) };
     if (m.county != null) why.county = COUNTIES[m.county][0];
@@ -1057,6 +1100,26 @@ const EV = {
   lee_secret_help: (b) => sum(b.vPlace(CHEN, 2), b.vMom(LIEN, -1)),
   tvbs_poll: (b, by) => { const min = Math.min(...b.v.mom); const lows = [0, 1, 2].filter((q) => b.v.mom[q] === min); const q = lows.includes(by) ? by : lows[0]; return b.vMom(q, 1); },
   pla_drill_rumor: (b) => sum(b.vIssue(["cross", LIEN, 1], ["cross", SOONG, 1]), b.vMom(CHEN, -1)),
+};
+
+// v0.5 (#49): the nine media cards as rewritten in the draft (engine.js PROGRAMS_V05); the chooser is `by`.
+const EV_V05 = {
+  lo_propaganda: (b, by) => b.vAnyIssue(by, CHEN, 2),
+  hsieh_kaohsiung: (b, by) => sum(placeAt(b, CHEN, "高雄市", 2), b.vAnyIssue(by, CHEN, 1)),
+  advisory_group: (b, by) => {
+    const V = b.vIssue(["clean", CHEN, 1], ["econ", CHEN, 1]);
+    const saved = b.v.issues.map((i) => i.cubes.slice());
+    for (const i of b.v.issues) if (i.name === "clean" || i.name === "econ") i.cubes[CHEN]++;
+    const W = b.vAnyIssue(by, CHEN, 1);
+    b.v.issues.forEach((i, s) => { i.cubes = saved[s]; });
+    return sum(V, W);
+  },
+  chang_yung_fa: (b, by) => sum(b.vAnyIssue(by, CHEN, 1), b.vBag(CHEN, 2)),
+  provincial_staff: (b, by) => sum(b.vAnyIssue(by, SOONG, 1), [0, 0, -BAGV * Math.min(2, b.playsLeft(LIEN))]),
+  chang_doctors: (b, by) => sum(b.vAnyIssue(by, SOONG, 1), b.vBag(SOONG, 2)),
+  expel_soong: (b, by) => sum(b.vAnyIssue(by, SOONG, 2, { target: SOONG }), b.vMom(SOONG, 1)),
+  party_assets_ads: (b, by) => b.vAnyIssue(by, LIEN, 2),
+  massive_ads: (b, by) => b.vAnyIssue(by, LIEN, 3),
 };
 
 // ------------------------------------------------------------------ entry
