@@ -29,6 +29,7 @@ import * as S from "../public/solo.js";
 import * as D from "./driver.js";
 import * as RC from "../src/roomcore.js";
 import * as T from "../public/tutorial.js";
+import * as RU from "../public/rules.js";
 
 const READY = (() => { try { const st = S.newSolo({ seat: 0, level: 1, seed: 1 }).st; return st.rules === "v0.7" && st.issueLuck === "lead"; } catch { return false; } })();
 const c60 = (name, fn) => check(name, () => (READY ? fn() : "TODO: S.newSolo 開的還不是 v0.7 丙（st.rules / st.issueLuck），#60"));
@@ -172,6 +173,18 @@ c60("投票日：轉換之後你看到的第一個畫面，「剛剛」有一行
   }
   const r = nonEmpty(n, "投票日的轉換"); if (r !== true) return r;
   return ok(true, `${n} 局的轉換都寫出三家的催票運氣（${led} 局有人領先議題）`);
+});
+
+// The rules page describes the rules in play, v0.7 since #60: its card gallery (rules.js, 「全部的牌」) draws the same
+// stubs as the table, so no rest cubes there either. Found at #60's first delivery (6d38a16): rules.js still drew them.
+c60("規則頁「全部的牌」也不畫休息方塊：rulesHTML（中英）沒有 data-rest；牌還在", () => {
+  for (const lang of ["zh-Hant", "en"]) {
+    const html = RU.rulesHTML(lang), cards = (html.match(/data-face=/g) || []).length;
+    if (cards < 70) return `${lang} 規則頁只有 ${cards} 張牌面（data-face）`;
+    const n = (html.match(/data-rest="/g) || []).length;
+    if (n) return `${lang} 規則頁還有 ${n} 個 data-rest（休息方塊）`;
+  }
+  return ok(true, "中英規則頁的牌都沒有休息方塊");
 });
 
 test("v07play", () => {
