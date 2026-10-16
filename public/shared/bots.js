@@ -149,6 +149,12 @@ const V07_CHECKS_PER_PLAY = 1.8, V07_CANVASS = 3, V07_CARDS_ELECTION = 4;
 const V07_ISSUE_CUBE = 0;  // an issue cube turns into nothing on election day
 // The draft's numbers as the bots read them (engine.js holds the rule): a card's luck, the cap, luck per momentum.
 const V07_LUCK_CARD = 10, V07_LUCK_MAX = 80, V07_LUCK_PER_MOM = 10;
+// v0.7 option 丙 (#58, st.issueLuck "lead"): each issue a seat leads at the conversion (most cubes on the card, a tie
+// is nobody; after every momentum phase still to come takes 1 off each card's leader) is +10 canvassing luck, outside
+// the 80, at most 95. The bots value a lead at the conversion as that luck over the election-day checks (V07_CANVASS
+// a card, V07_CARDS_ELECTION cards) × V07_SUCCESS × V58_LEAD[seat]. Without the option nothing here is read.
+const V58_LUCK_PER_LEAD = 10, V58_LUCK_LEAD_MAX = 95;
+const V58_LEAD = [1, 1, 1];
 // Soft strategic-vote flow by |宋 − 連| in the county (design sim's SOFT), a
 // sharper one for 操盤手 in turns 7–8, and the rule itself on election day.
 const SOFT = [0, 0.35, 0.8, 1, 1];
@@ -189,6 +195,7 @@ function see(st) {
     // #55: a v0.7 game has no bag and no rest cubes, and a luck per seat instead.
     bag: Array.isArray(st.bag) ? st.bag.slice() : [0, 0, 0], rest: Array.isArray(st.rest) ? st.rest.slice() : [0, 0, 0],
     luck: Array.isArray(st.luck) ? st.luck.slice() : null,
+    issueLuck: st.issueLuck || null, // #58: option 丙
     // #49: a v0.5 game (ads and media folded into the issues) has no media at all.
     // #54: a v0.6 game is a v0.5 game plus the simplifications (no 地方大老: fill "candidate" or "free"; ties by st.order).
     // #55: a v0.7 game is a v0.6 game (fill "candidate") with luck instead of the bag.
@@ -405,6 +412,37 @@ class Bot {
     });
     const cube = this.v.v07 ? V07_ISSUE_CUBE : ISSUE_CUBE; // #55
     for (const i of issues) for (let q = 0; q < 3; q++) V[q] += i.cubes[q] * cube;
+    if (this.v.issueLuck === "lead") add3(V, this.leadLuckVec(issues)); // #58
+    return V;
+  }
+  // #58 丙: momentum phases still to come before the conversion (this turn's unless it is over).
+  decaysLeft() {
+    const t = this.v.turn;
+    return ACTION_TURNS.filter((x) => x > t).length + (ACTION_TURNS.includes(t) && this.v.phase !== "save" ? 1 : 0);
+  }
+  // #58 丙: the issues each seat would lead at the conversion if nobody put a cube on them again.
+  convLeads(issues) {
+    const n = this.decaysLeft(), out = [0, 0, 0];
+    for (const i of issues) {
+      const c = i.cubes.slice();
+      for (let d = 0; d < n; d++) { const l = leaderOf(c); if (l < 0) break; c[l]--; }
+      const l = leaderOf(c);
+      if (l >= 0) out[l]++;
+    }
+    return out;
+  }
+  // #58 丙: the canvassing luck those leads add (within the 95), over the election-day checks, in projected votes.
+  leadLuckVec(issues) {
+    const V = [0, 0, 0], t = this.v.turn;
+    if (t >= 9) return V;
+    const leads = this.convLeads(issues), halve = Math.pow(0.5, this.decaysLeft());
+    const cards = Math.max(V07_CARDS_ELECTION, this.v.savedElection.length); // every election card's checks
+    for (let q = 0; q < 3; q++) {
+      if (!leads[q]) continue;
+      const base = Math.min(V07_LUCK_MAX, this.v.luck[q] + V07_LUCK_PER_MOM * this.v.mom[q] * halve);
+      const bonus = Math.min(Math.max(0, V58_LUCK_LEAD_MAX - base), V58_LUCK_PER_LEAD * leads[q]);
+      V[q] = (bonus / 100) * cards * V07_CANVASS * V07_SUCCESS[this.p] * V58_LEAD[this.p];
+    }
     return V;
   }
   issueChange(changes, q = this.p) {
@@ -415,6 +453,30 @@ class Bot {
       return { name: i.name, cubes: c };
     }));
     return [after[0] - before[0], after[1] - before[1], after[2] - before[2]];
+  }
+  // #58 丙: k (2–4) of the same issue step on one card, within budget (the first costs `cost`, each more 2): the one
+  // with the best value per CP above 0.05 a CP, as { o, k, d, cost }, or null.
+  issueChain(budget, cost) {
+    let best = null;
+    for (const i of this.v.issues) {
+      const opts = [{ name: i.name, x: this.p, n: 1, max: 4 }];
+      if (this.lv >= 3) for (let x = 0; x < 3; x++) if (x !== this.p && i.cubes[x] > 1) opts.push({ name: i.name, x, n: -1, target: x, max: Math.min(4, i.cubes[x]) });
+      for (const o of opts) {
+        for (let k = 2; k <= o.max; k++) {
+          const c = cost + 2 * (k - 1);
+          if (c > budget) break;
+          const ch = this.issueChange([[o.name, o.x, o.n * k]]);
+          const d = this.lv >= 3 ? this.rel(ch) : ch[this.p];
+          if (d <= 0.05 * c) continue;
+          if (!best || d / c > best.d / best.cost) {
+            const l0 = leaderOf(i.cubes), c2 = i.cubes.slice();
+            c2[o.x] = Math.max(0, c2[o.x] + o.n);
+            best = { o: { name: o.name, x: o.x, n: o.n, target: o.target, tie: l0 >= 0 && l0 !== this.p && leaderOf(c2) < 0 }, k, d, cost: c };
+          }
+        }
+      }
+    }
+    return best;
   }
   // Greedy issue plan for cp: { v, first } (first: the first step).
   issueValue(cp, placed = 0) {
@@ -436,6 +498,18 @@ class Bot {
           c2[o.x] = Math.max(0, c2[o.x] + o.n);
           o.tie = l0 >= 0 && l0 !== this.p && leaderOf(c2) < 0;
           if (!best || d > best.d) best = { d, o };
+        }
+      }
+      if ((!best || best.d <= 0.05 * cost) && this.v.issueLuck === "lead") {
+        // #58 丙: one cube is often worth nothing at the conversion (the next momentum phase takes it back); look at 2–4
+        // of the same step on one card, the best value per CP, when no single step is worth its CP.
+        const chain = this.issueChain(budget, cost);
+        if (chain) {
+          total += chain.d; budget -= chain.cost; n += chain.k;
+          if (!first) first = chain.o;
+          const it = this.v.issues.find((i) => i.name === chain.o.name);
+          it.cubes[chain.o.x] = Math.max(0, it.cubes[chain.o.x] + chain.o.n * chain.k);
+          continue;
         }
       }
       if (!best || best.d <= 0.05 * cost) break;
