@@ -75,7 +75,7 @@
 - 你證偽自己的探針時發現 harness 有同樣的洞 → **回報,不要改 tests/**。
 - **看畫面用自己起的 headless Chrome**(CDP,`tools/` 裡的寫法或自己的探針)。**不要用 owner 的 Chrome**(claude-in-chrome 擴充、owner 開著的瀏覽器):那裡有 owner 登入的帳號,不是工具。(2026-10-15,#48 的 FE 用了。)
 - 截圖與暫存檔放在自己的 worktree(未追蹤)或系統暫存資料夾,**不要放到 repo 外的 `C:/Users/sheep/code/` 底下**。(#41 的 FE 放過。)
-- **已知的儀器問題**:在某些 agent 的環境裡,wrangler dev 開房間時 ws 回 500,`candtap38` 的房間那條會紅(base 也紅);改 `public/` 會讓 wrangler 重載後掛掉。遇到時照實報,改了檔就重起伺服器。orchestrator 在合併後的樹上會自己跑房間那幾條。
+- **wrangler dev 的 `--persist-to` 用短路徑**,例如 `C:/Users/sheep/AppData/Local/Temp/w<埠號>`。放在 scratchpad 或 worktree 這種長路徑底下,房間(Durable Object)的 SQLite 檔路徑會超過 Windows 的 260 字元,workerd 開不了檔(`SQLITE_CANTOPEN`)就整個掛掉:房間的 ws 回 500、`candtap38`/`turncard44` 的房間那條紅、之後伺服器沒有回應。(2026-10-15 查到:四次「房間起不來」都是這個。)
 
 ## 驗證與 land(orchestrator)
 
