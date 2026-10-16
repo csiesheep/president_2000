@@ -10,6 +10,7 @@
 //   p2000.advisor       whether the advisor switch is on (shared with the solo page)
 import * as RC from "./roomclient.js";
 import * as Sound from "./sound.js";
+import * as Replay from "./replay.js";
 import { esc } from "./table.js";
 import { drawInto, narrowNow, watchNarrow, bindCounty, bindSeat, bindMenu } from "./drawing.js";
 
@@ -85,6 +86,23 @@ export function mount({ T, lang, qs, store, $ }) {
     if (el) el.classList.add("out");
     card.gone = setTimeout(() => { card = null; draw(); }, CARD_FADE);
   };
+  // The rivals' moves shown big (#47): the server runs the computer in one go, so the cards and stamps come from the log entries
+  // a state adds. The map is already the last picture; the stamps sit beside the card. A decision the player makes skips the rest.
+  const rep = Replay.createReplay({ labels: { hit: T.ui.solo.replay.hit, miss: T.ui.solo.replay.miss, next: T.ui.solo.menu.next }, lang, onIdle: () => draw(), ready: () => !card });
+  // The sounds of a state (#42): plays, cubes put on / taken off (read off the two views), hit / miss. The turn sound is the turn card's.
+  const hearState = (before, view, from) => {
+    const beats = Replay.beatsOf(view.log, from, view.seat), names = (before ? Sound.soundsOf(before, view) : []).filter((n) => n !== "turn");
+    const cubes = names.filter((n) => n === "cube" || n === "uncube");
+    if (cubes.length) {
+      if (beats.length) beats[beats.length - 1].sounds = cubes;
+      else beats.push({ id: null, seat: view.seat, kind: "move", checks: [], cubes: [], sounds: cubes });
+    }
+    Replay.leftover(names, beats).forEach((n, i) => Sound.play(n, i, Math.min(i * 0.12, 0.5)));
+    rep.push(beats);
+  };
+  Replay.bindTaps({ active: () => rep.active(), onStep: () => { rep.skipStep(); }, onAll: () => { rep.skipAll(); draw(); },
+    ignore: "[data-menu], [data-menu-top], #rmenu, .mset, [data-turncard], [data-rp-next], a, input, textarea, form, .t-chat" });
+  addEventListener("p2000:settings", () => { if (Sound.getSpeed() !== "step") rep.skipStep(); });
   const draw = () => {
     if (gone) {
       $("#room").classList.remove("intable");
@@ -93,7 +111,7 @@ export function mount({ T, lang, qs, store, $ }) {
     }
     const cv = cardView();
     if (card && cv && cv.turn !== card.turn) { card.turn = cv.turn; store.set(cardKey(), cv.turn); }
-    if (!card && cv && roomCode && seenCard() !== cv.turn) {
+    if (!card && cv && roomCode && seenCard() !== cv.turn && !rep.running()) {
       store.set(cardKey(), cv.turn);
       card = { turn: cv.turn, t0: performance.now(), out: false };
       card.hold = setTimeout(() => closeCard(false), CARD_HOLD);
@@ -129,6 +147,7 @@ export function mount({ T, lang, qs, store, $ }) {
     if (client.token) u.searchParams.set("token", client.token);
     return u.toString();
   };
+  let sawLobby = false; // this page saw the room before the game began (a reload in mid-game has not: it replays nothing)
   const connect = () => {
     clearTimeout(retry); clearInterval(tick);
     const s = new WebSocket(url());
@@ -137,7 +156,14 @@ export function mount({ T, lang, qs, store, $ }) {
       if (s !== sock) return;
       let msg; try { msg = JSON.parse(ev.data); } catch { return; }
       if (msg.t === "hello") { attempts = 0; say(""); }
+      const pv = client.state && client.state.view, pl = client.snap ? client.snap.logLen : null;
       client = RC.receive(client, msg);
+      if (msg.t === "state" && msg.view && Array.isArray(msg.view.log)) {
+        if (pv && Array.isArray(pv.log) && pl != null && msg.view.log.length >= pl) hearState(pv, msg.view, pl);
+        else if (!pv && sawLobby) { draw(); hearState(null, msg.view, 0); } // the game just started: what the computer did before this seat's first turn
+        sawLobby = false;
+      }
+      if (msg.t === "room" && !msg.started) sawLobby = true;
       if (msg.t === "room" && !roomCode) {
         roomCode = msg.code;
         history.replaceState(null, "", q({ room: roomCode }));
@@ -159,6 +185,7 @@ export function mount({ T, lang, qs, store, $ }) {
     };
   };
   const send = (msg) => {
+    if (msg.t === "move") rep.skipAll(); // a decision skips the rest of the replay
     client = RC.sent({ ...client, error: null }, msg.t === "move" ? msg.move : null);
     if (sock && sock.readyState === 1) sock.send(JSON.stringify(msg));
     draw();

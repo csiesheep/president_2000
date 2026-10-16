@@ -93,7 +93,7 @@ export default {
         levelNote: { 1: "The Volunteer only fills blocks: no taking, triggering or blocking.", 2: "The Campaign chief counts strategic voting, takes blocks, triggers and blocks.", 3: "The Strategist also saves cards for the Policy Forum and cuts issue leads to a tie." },
         start: "Start the campaign", note: "Nine turns. Progress is kept in this tab; a reload brings you back to the same screen.", home: "← Home",
       },
-      menu: { quit: "Abandon this game", confirm: "Abandon this game and go back to setup?", skip: "Click to skip the animation", label: "Menu",
+      menu: { quit: "Abandon this game", confirm: "Abandon this game and go back to setup?", skip: "Tap to jump to this step's result, tap twice to skip the rivals' turn", label: "Menu",
         speed: "Rivals' speed", slow: "Slow", normal: "Normal", fast: "Fast", step: "Step", stepNote: "Step: the rivals stop after each move until you tap Next.", sound: "Sound", volume: "Volume", next: "Next" },
       hdr: {
         ph: { action: "Action {n}/4", order: "Order", momentum: "Momentum", save: "Set aside", debate: "Forum", election: "Election day", end: "The count" },
@@ -138,6 +138,7 @@ export default {
         ok: "Check succeeded: {what}", okPlain: "Check succeeded", did: "You just did: {what}", label: "Your last step",
         fail: "Check failed: {where}. Drew {drew}; that cube goes back to {drew}'s supply.", failNoWhere: "Check failed: drew {drew}; that cube goes back to {drew}'s supply.",
       },
+      replay: { hit: "Hit", miss: "Miss" },
       undo: { btn: "↶ Undo", done: "Went back one step", locked: "A draw was made — can't undo" },
       hand: { title: "Hand {n}", titleDebate: "Policy Forum pile {n}", titleElection: "Election-day pile {n}", kept: "{n} kept for the {dest}", none: "No cards" },
       card: { local: "Local card", cand: "Candidate card" },

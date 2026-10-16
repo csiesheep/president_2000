@@ -6,6 +6,7 @@ import zh from "./i18n/zh-Hant.js";
 import * as Solo from "./solo.js";
 import * as Tut from "./tutorial.js";
 import * as Sound from "./sound.js";
+import * as Replay from "./replay.js";
 import { mount as mountRoom } from "./roompage.js";
 import { drawInto, narrowNow, watchNarrow, bindCounty, bindSeat, bindMenu, placeTutorial } from "./drawing.js";
 
@@ -82,19 +83,26 @@ if (typeof document !== "undefined") {
     };
 
     // The sounds of whatever changed the game since the last draw (#42): read off the two engine states.
-    let heard = null;
+    // A rival's step is replayed (#47): its play / cube / hit / miss sounds belong to the replay's own timeline, so hear() leaves
+    // them out (quiet) and makes only the turn sound itself.
+    let heard = null, quiet = false;
     const hear = () => {
       if (!session || !session.st) { heard = null; return; }
-      if (heard && heard.seed === session.seed && heard.st !== session.st) Sound.playStep(heard.st, session.st);
+      if (heard && heard.seed === session.seed && heard.st !== session.st) {
+        if (quiet) { if (Sound.soundsOf(heard.st, session.st).includes("turn")) Sound.play("turn"); } else Sound.playStep(heard.st, session.st);
+      }
+      quiet = false;
       heard = { seed: session.seed, st: session.st };
     };
-    const stepOpt = () => (Sound.gap() == null && session.st && Solo.botsToMove(session).length ? { botnext: S.menu.next } : {});
+    // The rivals' moves shown big (#47). Not in the tutorial: it has its own steps for the rivals' turn and keeps the old way.
+    const rep = Replay.createReplay({ labels: { hit: S.replay.hit, miss: S.replay.miss }, lang: code, onIdle: () => { if (!card && cardWanted()) pump(); else if (Sound.gap() == null && session && session.st && !Solo.botsToMove(session).length && stage.querySelector("[data-botnext]")) draw(); } });
+    const stepOpt = () => (Sound.gap() == null && session.st && (Solo.botsToMove(session).length || rep.active()) ? { botnext: S.menu.next } : {});
     // The turn card (#44): each turn opens with it, once. It holds the rivals back, stays about 1.5 s and fades out; a tap
     // anywhere closes it (that is not the skip: the rivals only start after it has gone, one step at a time as before).
     // The turn it was shown for is kept in the session (cardSeen), so a reload does not bring it back.
     const CARD_HOLD = 1500, CARD_FADE = 260;
     let card = null; // { turn, t0, hold, gone, out } while it shows
-    const cardWanted = () => !!(session && session.st && !session.tut && session.st.phase !== "end" && session.cardSeen !== session.st.turn);
+    const cardWanted = () => !!(session && session.st && !session.tut && session.st.phase !== "end" && session.cardSeen !== session.st.turn && !rep.active());
     const dropCard = () => { if (card) { clearTimeout(card.hold); clearTimeout(card.gone); card = null; } };
     const closeCard = (tapped) => {
       if (!card || card.out) return;
@@ -129,13 +137,49 @@ if (typeof document !== "undefined") {
       if (card) return; // the rivals wait for the card
       const wait = Sound.gap(); // the rivals' speed (#42); null = step by step, they wait for 下一步
       if (timer || wait == null || !Solo.botsToMove(session).length) return;
-      timer = setTimeout(() => { timer = null; session = Solo.stepBot(session); save(); pump(); }, wait);
+      timer = setTimeout(() => { timer = null; step(); }, wait + rep.blockMs());
     };
-    const skip = () => {
-      if (!timer) return;
-      clearTimeout(timer); timer = null;
-      session = Solo.advance(session); save(); draw();
+    // One rival step, and its replay: the beats are read off the log and the record the step added.
+    const step = () => {
+      const before = session;
+      session = Solo.stepBot(session); save();
+      if (!session.tut) startReplay(before, session);
+      else quiet = false;
+      pump();
     };
+    const startReplay = (before, after) => {
+      const me = after.seat, seen = new Set(before.feed);
+      const beats = Replay.beatsOf(after.st.log, before.st.log.length, me);
+      const names = Sound.soundsOf(before.st, after.st);
+      const cubes = after.feed.filter((e) => !seen.has(e) && ["fill", "cross", "grey", "steal"].includes(e.k) && e.ok && e.county != null).map((e) => ({ county: e.county, seat: e.seat }));
+      const cubeNames = names.filter((n) => n === "cube" || n === "uncube");
+      if (!beats.length) beats.push({ id: null, seat: Solo.botsToMove(before)[0], kind: "move", checks: [], cubes: [], sounds: [] });
+      const last = beats[beats.length - 1];
+      last.cubes = cubes; last.sounds = cubeNames;
+      // whatever else the step sounds like and no beat plays by itself
+      const rest = Replay.leftover(names, beats);
+      rest.forEach((n, i) => Sound.play(n, i, Math.min(i * 0.12, 0.5)));
+      quiet = true;
+      rep.push(beats);
+    };
+    // Two quick taps: the rest of the rivals' turn at once (its remaining sounds as one burst, as before #47).
+    const skipAll = () => {
+      if (!session || !session.st) return;
+      rep.skipAll();
+      if (timer) { clearTimeout(timer); timer = null; }
+      heard = { seed: session.seed, st: session.st };
+      session = Solo.advance(session); save(); pump();
+    };
+    // One tap: the step being shown goes to its result; the next one follows after the usual gap.
+    const skipStep = () => {
+      rep.skipStep();
+      if (timer) { clearTimeout(timer); timer = null; pump(); }
+    };
+    // (in the tutorial a tap still skips the rivals' whole turn, as it always did)
+    let swallow = false;
+    Replay.bindTaps({ active: () => !!session && !!session.st && (!!timer || (!session.tut && rep.active())),
+      onStep: () => { swallow = !!timer; setTimeout(() => { swallow = false; }, 0); if (session.tut) skipAll(); else skipStep(); }, onAll: () => { swallow = !!timer; setTimeout(() => { swallow = false; }, 0); skipAll(); },
+      ignore: "[data-menu], [data-menu-top], #gmenu, .mset, [data-botnext], [data-turncard], [data-rp-next], a, input, textarea" });
     // (in the tutorial the bubble decides what scrolls)
     const toAct = () => { if (session && session.tut) return; const a = $("#act"); if (a && a.scrollIntoView) a.scrollIntoView({ block: "start", behavior: "smooth" }); };
 
@@ -166,15 +210,16 @@ if (typeof document !== "undefined") {
     addEventListener("keydown", (ev) => { if (ev.key === "Escape" && card && !card.out) closeCard(true); });
     // A hand card or a county tapped makes its small sound (a tap that only skips the animation does not).
     stage.addEventListener("click", (ev) => {
-      if (timer) return;
+      if (timer || rep.active()) return;
       const c = ev.target.closest("[data-sel], [data-county]");
       if (c && (c.dataset.county != null || c.dataset.sel)) Sound.play("tap");
     });
     // Step by step: one rival move per tap on 下一步.
     stage.addEventListener("click", (ev) => {
       if (!ev.target.closest("[data-botnext]") || !session || !session.st) return;
-      if (!Solo.botsToMove(session).length) return;
-      session = Solo.stepBot(session); save(); pump();
+      rep.skipStep();
+      if (!Solo.botsToMove(session).length) { draw(); return; }
+      step();
     });
     let stepping = Sound.gap() == null;
     addEventListener("p2000:settings", () => {
@@ -182,11 +227,12 @@ if (typeof document !== "undefined") {
       if (now === stepping || !session || !session.st) return;
       stepping = now;
       if (now && timer) { clearTimeout(timer); timer = null; }
+      if (!now) rep.skipStep();
       pump();
     });
     stage.addEventListener("click", (ev) => {
       const t = ev.target.closest("button, a");
-      if (timer) { skip(); if (t && t.tagName !== "A") return; }
+      if (swallow) { swallow = false; if (t && t.tagName !== "A") return; } // a tap that skipped the rivals does nothing else
       if (!t) return;
       const d = t.dataset;
       if (d.tut) {
@@ -239,6 +285,7 @@ if (typeof document !== "undefined") {
     $("#quit").addEventListener("click", () => {
       if (!confirm(S.menu.confirm)) return;
       if (timer) { clearTimeout(timer); timer = null; }
+      rep.skipAll();
       dropCard(); store.del(KEY); session = null; setup();
     });
 

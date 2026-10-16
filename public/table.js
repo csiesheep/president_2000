@@ -330,6 +330,17 @@ function cardFace(id, x) {
     `<div class="foot"><span>${esc(x.d.terms.canvass)} ${esc(x.county(COUNTIES.findIndex((k) => k[0] === c.county)))}</span><span>${esc(fill(u.restCubes, { n: rest }))}</span></div></div></article>`;
 }
 
+// The big card the rivals' replay shows (#47): the same face as the card sheet (cardFace), eager pictures. The candidate card
+// (id "candidate") has no entry in the card tables: it wears its seat's colour and picture, the way the hand strip draws it.
+export function replayFace(id, seat, lang) {
+  const x = bind(lang);
+  if (id !== "candidate") return cardFace(id, x).replace(/ loading="lazy"/g, "");
+  const key = SEATS[seat], cp = CANDIDATE_CARDS[key].cp;
+  return `<article class="pcard ${key} pcand" data-camp="${key}"><div class="pc-art"><img src="art/candidates/${key}.webp" alt="" width="480" height="640" decoding="async"></div>` +
+    `<span class="cp-tab" data-cp="${cp}"><b>${cp}</b><small>${esc(x.d.ui.cpUnit)}</small></span>` +
+    `<div class="pc-body"><p class="pc-k">${esc(x.tr("card.cand"))}</p><h4 class="ttl">${esc(x.full(seat))}</h4><p class="txt">${esc(x.tr("o.candidate", { cp }))}</p></div></article>`;
+}
+
 // 軍師 (#18): the one option the advisor picked wears a star (choices[i].advised, set by solo.js / roomclient.js).
 function starHTML(x) { return `<i class="star-adv" role="img" aria-label="${esc(x.d.ui.advisor.starLabel)}">★</i>`; }
 
