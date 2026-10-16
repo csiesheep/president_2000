@@ -46,8 +46,12 @@ const SPY = `(() => {
   // every kind of source: AudioBufferSourceNode (noise) has its own start(), the parent's patch never saw it (#42, FE)
   for (const K of ["AudioScheduledSourceNode", "AudioBufferSourceNode", "OscillatorNode", "ConstantSourceNode"]) { const P = window[K] && window[K].prototype; if (!P || !Object.prototype.hasOwnProperty.call(P, "start")) continue; const st = P.start; P.start = function (...a) { window.__audio.started++; return st.apply(this, a); }; }
   addEventListener("p2000:sound", (e) => window.__sounds.push({ name: e.detail && e.detail.name, muted: !!(e.detail && e.detail.muted), t: performance.now() }));
-  window.__saves = []; let last = null;
-  setInterval(() => { try { const v = sessionStorage.getItem("p2000.solo.session"); if (v !== last) { if (last !== null) window.__saves.push(performance.now()); last = v; } } catch { /* storage */ } }, 20);
+  // every save of the game; window.__steps also says whether that step played or triggered a card (#47: a card step
+  // is replayed for ~1.4 s by design, so the speed is read on the gaps after the steps without a card)
+  window.__saves = []; window.__steps = []; let last = null, lastLen = null;
+  setInterval(() => { try { const v = sessionStorage.getItem("p2000.solo.session"); if (v !== last) { const now = performance.now(); let log = []; try { log = JSON.parse(v).st.log; } catch { /* not a game */ }
+    if (last !== null) { window.__saves.push(now); const add = lastLen === null ? [] : log.slice(lastLen); window.__steps.push({ t: now, card: add.some((e) => (e.t === "play" && e.card) || e.t === "trigger") }); }
+    last = v; lastLen = log.length; } } catch { /* storage */ } }, 20);
 })();`;
 async function tab(br, w, h, mobile) {
   const t = await (await fetch(`http://127.0.0.1:${br.port}/json/new?about:blank`, { method: "PUT" })).json();
@@ -212,8 +216,8 @@ try {
     await t.go(base, 1200); await t.ev(`localStorage.setItem("p2000.speed", ${JSON.stringify(sp)}); 1`);
     await load(t, queued);
     await sleep(sp === "slow" ? 6000 : 4000);
-    const saves = JSON.parse(await t.ev("JSON.stringify(window.__saves || [])"));
-    const d = saves.slice(1).map((x, i) => x - saves[i]).filter((x) => x > 60).sort((a, b) => a - b);
+    const steps = JSON.parse(await t.ev("JSON.stringify(window.__steps || [])"));
+    const d = steps.slice(1).map((x, i) => (steps[i].card ? null : x.t - steps[i].t)).filter((x) => x !== null && x > 60).sort((a, b) => a - b);
     gaps[sp] = d.length ? Math.round(d[Math.floor(d.length / 2)]) : null;
     t.close();
   }
