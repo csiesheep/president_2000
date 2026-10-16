@@ -79,6 +79,7 @@ export default {
         early: "{y} 年 {m} 月上旬", mid: "{y} 年 {m} 月中旬", late: "{y} 年 {m} 月下旬", day: "{y} 年 {m} 月 {d} 日",
         weeks: "離投票日還有 {n} 週", today: "今天開票",
         initiative: "這回合{who}拿到主動權",
+        order: "這回合票少的先：{order}",
         headline: "上一回合的頭條", played: "{who}打出", triggered: "{who}觸發",
         votes: "目前票數", unit: "萬",
         hint: "點任何地方繼續", start: "開始第 {n} 回合", label: "回合開場",
@@ -97,7 +98,7 @@ export default {
         speed: "對手速度", slow: "慢", normal: "正常", fast: "快", step: "逐步", stepNote: "逐步：對手每走一步就停下，按「下一步」再繼續。", sound: "音效", volume: "音量", next: "下一步" },
       hdr: {
         ph: { action: "行動 {n}/4", order: "選順位", momentum: "動能階段", save: "留牌", debate: "政見發表會", election: "投票日", end: "開票結果" },
-        turn: "第 {n} 回合", endDate: "3 月 18 日", initiative: "主動權 {who}", star: "主動權", mom: "動能", bag: "袋子", feed: "紀錄", momL: "動能", slotsL: "議題槽", issueTotal: "議題總數", leadIs: "議題總領先者：{who}", leadNone: "議題總領先者：沒有（平手）", tap: "點一下看說明",
+        turn: "第 {n} 回合", endDate: "3 月 18 日", initiative: "主動權 {who}", order: "{who}先走", first: "第一個行動", star: "主動權", mom: "動能", bag: "袋子", feed: "紀錄", momL: "動能", slotsL: "議題槽", issueTotal: "議題總數", leadIs: "議題總領先者：{who}", leadNone: "議題總領先者：沒有（平手）", tap: "點一下看說明",
         yourTurn: "輪到你", busy: "{who} 行動中…", waitHint: "對手行動中。你可以先翻看手牌。",
         slot: { 1: "第一槽", 2: "第二槽", 3: "第三槽" },
         phase: { action: "行動階段 {n} / 4", order: "選行動順位", momentum: "動能階段", save: "留牌", debate: "公辦政見發表會", election: "投票日 · 催票", end: "開票結果" },
@@ -126,6 +127,7 @@ export default {
       now: { title: "剛剛" },
       r: {
         turn: "第 {n} 回合開始 · 主動權 {who} · 發到 {cards} 張牌", turnNoDeal: "第 {n} 回合開始 · 主動權 {who}",
+        turnOrder: "第 {n} 回合開始 · 票少的先：{order} · 發到 {cards} 張牌", turnOrderNoDeal: "第 {n} 回合開始 · 票少的先：{order}", shuffle: "議題槽重排（第一槽到第三槽）：{text}",
         turnDebate: "第 {n} 回合：公辦政見發表會開始", turnElection: "第 {n} 回合：投票日開始",
         decay: "回合結算 · 動能減半：{text}", mediaBonus: "媒體領先 {who} +1 動能", leadBonus: "議題總領先者 {who} +1 動能", slot1: "第一槽「{issue}」{who}領先：+1 動能，抽 1 張背書", slot3: "第三槽「{issue}」{who}領先：+1 動能",
         issueDecay: "各議題槽的領先者少 1 顆方塊", momNow: "結算後動能：{text}", group: "{head}：{what}", times: "×{n}",
@@ -188,7 +190,7 @@ export default {
         open: "未結算", settled: "已結算 · {who}贏，放 {n} 顆", yours: "你已選", picked: "已選", total: "合計 {n}", sums: "CP 合計：宋 {a} · 連 {b} · 陳 {c}",
       },
       f: {
-        turn: "—— 第 {n} 回合 · 主動權 {who} ——", order: "{who}排第 {n} 個行動", orderElection: "{who}選了第 {n} 個催票", playEvent: "{who}把「{card}」當事件打出", playCp: "{who}拿「{card}」做 CP", block: "，並封鎖", cand: "{who}用了候選人牌",
+        turn: "—— 第 {n} 回合 · 主動權 {who} ——", turnOrder: "—— 第 {n} 回合 · 票少的先：{order} ——", order: "{who}排第 {n} 個行動", orderElection: "{who}選了第 {n} 個催票", playEvent: "{who}把「{card}」當事件打出", playCp: "{who}拿「{card}」做 CP", block: "，並封鎖", cand: "{who}用了候選人牌",
         trigger: "{who}觸發了「{card}」",
         fillOk: "{who}在{county}填 1 塊", fillFail: "{who}想在{county}填塊，檢定沒過", crossOk: "{who}在{county}跨營填 1 塊", crossFail: "{who}想在{county}跨營填塊，檢定沒過",
         stealOk: "{who}在{county}搶走{target} 1 顆", stealFail: "{who}想在{county}搶{target}的方塊，檢定沒過",

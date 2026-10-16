@@ -15,7 +15,7 @@ const FEED_MAX = 60;
 
 export function newSolo({ seat, level, seed }) {
   const s = seed >>> 0;
-  const st = E.createGame(s, { rules: "v0.5" }); // #53: new games are played on rulebook v0.5; a v0.4 save (no st.rules) keeps its own rules
+  const st = E.createGame(s, { rules: "v0.6", fill: "candidate" }); // #57: new games are played on rulebook v0.6 (4a); a v0.5 or v0.4 save keeps its own rules
   const session = { v: 1, seat, level, seed: s, rng: (s ^ 0x9e3779b9) >>> 0, st, feed: [], logSeen: 0, rec: [], mine: null };
   const first = fromLog(st, 0);
   return { ...session, feed: first, rec: first, logSeen: st.log.length };
@@ -60,7 +60,8 @@ const perSeat = (list) => { const per = [0, 0, 0]; for (const x of list) per[x.s
 export function fromLog(st, from) {
   const out = [];
   for (const e of st.log.slice(from)) {
-    if (e.t === "turn") out.push({ k: "turn", turn: e.turn, initiative: e.initiative });
+    if (e.t === "turn") out.push({ k: "turn", turn: e.turn, initiative: e.initiative, ...(e.order ? { order: e.order.slice() } : {}) }); // v0.6: the turn's order, fewest votes first
+    else if (e.t === "momentum" && e.step === "shuffle") out.push({ k: "shuffle", issues: e.issues.slice() }); // v0.6: the issue slots drawn again
     else if (e.t === "momentum" && e.step === "endorse") out.push({ k: "endorseOne", seat: e.seat, region: e.region });
     else if (e.t === "debate" && e.step === "reveal") for (const c of e.cards) out.push({ k: c.dead ? "dead" : "reveal", seat: c.seat, card: c.card, issue: c.issue });
     else if (e.t === "debate" && e.step === "settle") out.push({ k: "settle", issue: e.issue, seat: e.seat, cubes: e.cubes });

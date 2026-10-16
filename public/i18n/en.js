@@ -80,6 +80,7 @@ export default {
         early: "Early {m} {y}", mid: "Mid {m} {y}", late: "Late {m} {y}", day: "{d} {m} {y}",
         weeks: "{n} weeks to election day", today: "Election day",
         initiative: "{who} holds the initiative this turn",
+        order: "Fewest votes first this turn: {order}",
         headline: "Last turn's headline", played: "Played by {who}", triggered: "Triggered by {who}",
         votes: "Votes now", unit: "M",
         hint: "Tap anywhere to go on", start: "Start turn {n}", label: "Start of turn",
@@ -98,7 +99,7 @@ export default {
         speed: "Rivals' speed", slow: "Slow", normal: "Normal", fast: "Fast", step: "Step", stepNote: "Step: the rivals stop after each move until you tap Next.", sound: "Sound", volume: "Volume", next: "Next" },
       hdr: {
         ph: { action: "Action {n}/4", order: "Order", momentum: "Momentum", save: "Set aside", debate: "Forum", election: "Election day", end: "The count" },
-        turn: "Turn {n}", endDate: "18 March", initiative: "Initiative: {who}", star: "Initiative", mom: "Momentum", bag: "Bag", feed: "Record", momL: "Momentum", slotsL: "Issue slots", issueTotal: "Issue totals", leadIs: "Issue leader: {who}", leadNone: "Issue leader: nobody (tied)", tap: "Tap for an explanation",
+        turn: "Turn {n}", endDate: "18 March", initiative: "Initiative: {who}", order: "{who} first", first: "Acts first", star: "Initiative", mom: "Momentum", bag: "Bag", feed: "Record", momL: "Momentum", slotsL: "Issue slots", issueTotal: "Issue totals", leadIs: "Issue leader: {who}", leadNone: "Issue leader: nobody (tied)", tap: "Tap for an explanation",
         yourTurn: "Your move", busy: "{who} is acting…", waitHint: "The bots are acting. You can look through your hand meanwhile.",
         slot: { 1: "Slot 1", 2: "Slot 2", 3: "Slot 3" },
         phase: { action: "Action phase {n} / 4", order: "Pick your place in the order", momentum: "Momentum phase", save: "Set aside", debate: "The Policy Forum", election: "Election day · canvassing", end: "The count" },
@@ -127,6 +128,7 @@ export default {
       now: { title: "Just now" },
       r: {
         turn: "Turn {n} begins · initiative: {who} · you are dealt up to {cards} {cards#card|cards}", turnNoDeal: "Turn {n} begins · initiative: {who}",
+        turnOrder: "Turn {n} begins · fewest votes first: {order} · you are dealt up to {cards} {cards#card|cards}", turnOrderNoDeal: "Turn {n} begins · fewest votes first: {order}", shuffle: "Issue slots reshuffled (slot 1 to slot 3): {text}",
         turnDebate: "Turn {n}: the Policy Forum begins", turnElection: "Turn {n}: election day begins",
         decay: "End of turn · momentum halved: {text}", mediaBonus: "Media lead: {who} +1 momentum", leadBonus: "Issue leader: {who} +1 momentum", slot1: "Slot 1, {issue}: {who} leads: +1 momentum and an endorsement", slot3: "Slot 3, {issue}: {who} leads: +1 momentum",
         issueDecay: "The leader of each issue slot loses 1 cube", momNow: "Momentum now: {text}", group: "{head}: {what}", times: "×{n}",
@@ -189,7 +191,7 @@ export default {
         open: "Not settled", settled: "Settled · {who} wins, {n} {n#cube|cubes}", yours: "you picked", picked: "picked", total: "total {n}", sums: "CP totals: Soong {a} · Lien {b} · Chen {c}",
       },
       f: {
-        turn: "—— Turn {n} · initiative: {who} ——", order: "{who} acts in position {n}", orderElection: "{who} picks position {n} to canvass", playEvent: "{who} plays {card} as an event", playCp: "{who} uses {card} for CP", block: ", and blocks it", cand: "{who} uses the candidate card",
+        turn: "—— Turn {n} · initiative: {who} ——", turnOrder: "—— Turn {n} · fewest votes first: {order} ——", order: "{who} acts in position {n}", orderElection: "{who} picks position {n} to canvass", playEvent: "{who} plays {card} as an event", playCp: "{who} uses {card} for CP", block: ", and blocks it", cand: "{who} uses the candidate card",
         trigger: "{who} triggers {card}",
         fillOk: "{who} fills 1 block in {county}", fillFail: "{who} tries to fill in {county}, but the check fails", crossOk: "{who} cross-camp fills 1 block in {county}", crossFail: "{who} tries a cross-camp fill in {county}, but the check fails",
         stealOk: "{who} takes 1 {target} cube in {county}", stealFail: "{who} tries to take a {target} cube in {county}, but the check fails",

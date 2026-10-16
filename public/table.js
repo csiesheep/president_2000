@@ -13,6 +13,10 @@ import { stubHTML } from "./stub.js";
 const CARD = Object.fromEntries(EVENTS.concat(localCards()).map((c) => [c.id, c]));
 const NO = [5, 1, 2]; // the ballot numbers on the 1999 flags: 陳 5, 宋 1, 連 2
 const SHOW_ORDER = [1, 2, 0]; // 宋, 連, 陳: ballot-number order, as in the mockups
+// v0.6 (#54, #57): no initiative; the turn's order (v.order, votes fewest first) is how the candidates' boards stand.
+const isV06 = (v) => !!v && v.rules === "v0.6";
+const orderOf = (v) => (isV06(v) && Array.isArray(v.order) && v.order.length === 3 ? v.order : SHOW_ORDER);
+const orderText = (order, x) => order.map((p) => x.short(p)).join(" → "); // no break inside it: a long line moves it whole
 const REGION_OF = COUNTIES.map((c) => c[1]);
 
 // The pictures (#24, public/art/): one per event card, one per county for its local cards, one per issue,
@@ -93,7 +97,8 @@ const moveCost = (seat, from, to) => { const d = regionDistance(REGION_OF[from],
 // Rulebook v0.4 (#34): media waives no check.
 function fillNeedsCheck(v, seat, k) {
   if ((seat === 0 && v.active.includes("lee_yuan_tseh")) || (seat === 1 && v.active.includes("walk_everywhere"))) return false;
-  if ([0, 1, 2].some((p) => p !== seat && cubesIn(v, k, p) >= BOSS_THRESHOLD)) return true;
+  if (v.rules === "v0.6") { if (v.fill === "free") return false; } // v0.6 (#54): no local boss; 4a "candidate" checks only against a candidate standing there
+  else if ([0, 1, 2].some((p) => p !== seat && cubesIn(v, k, p) >= BOSS_THRESHOLD)) return true;
   if ([0, 1, 2].some((p) => p !== seat && v.pos[p] === k)) return true;
   return false;
 }
@@ -229,8 +234,9 @@ const listSep = (x) => (x.lang === "en" ? ", " : "、");
 function turnLine(e, v, x) {
   if (e.turn === 6) return x.tr("r.turnDebate", { n: e.turn });
   if (e.turn === 9) return x.tr("r.turnElection", { n: e.turn });
-  const who = e.initiative >= 0 ? x.short(e.initiative) : "—";
   const cards = v && Array.isArray(v.hands[v.seat]) ? v.hands[v.seat].length : 0;
+  if (e.order) { const order = orderText(e.order, x); return cards && v.phase !== "end" ? x.tr("r.turnOrder", { n: e.turn, order, cards }) : x.tr("r.turnOrderNoDeal", { n: e.turn, order }); }
+  const who = e.initiative >= 0 ? x.short(e.initiative) : "—";
   return cards && v.phase !== "end" ? x.tr("r.turn", { n: e.turn, who, cards }) : x.tr("r.turnNoDeal", { n: e.turn, who });
 }
 
@@ -459,7 +465,7 @@ function headerHTML(v, ch, x, o) {
   if (v.phase === "end") status = "";
   else if (ch.length) status = `<span class="yrow"><span class="you">${esc(x.tr("hdr.yourTurn"))}</span>${clockHTML(o.clock)}</span>`;
   else status = `<span class="wait">${esc(o.waitLabel ? fill(o.waitLabel, { who: waitNames || "…" }) : x.tr("hdr.busy", { who: waitNames || "…" }))}${clockHTML(o.clock)}</span>`;
-  const init = v.initiative >= 0 && v.phase !== "end" ? ` · ${x.tr("hdr.initiative", { who: x.short(v.initiative) })}` : "";
+  const init = v.phase === "end" ? "" : isV06(v) ? ` · ${x.tr("hdr.order", { who: x.short(orderOf(v)[0]) })}` : v.initiative >= 0 ? ` · ${x.tr("hdr.initiative", { who: x.short(v.initiative) })}` : "";
   const home = "./" + (x.lang === "en" ? "?lang=en" : "");
   return `<header class="t-top"><a class="t-back" href="${home}" aria-label="${esc(x.tr("setup.home"))}">${ICON_BACK}</a>` +
     `<div class="t-ttl"><span class="t-turn" data-turn="1">${esc(x.tr("hdr.turn", { n: v.turn }))}${esc(v.phase === "end" ? ` · ${x.tr("hdr.endDate")}` : init)}</span>` +
@@ -479,8 +485,9 @@ function playersHTML(v, x, o = {}) {
   const inHand = (p) => (Array.isArray(v.hands[p]) ? v.hands[p].length : v.hands[p]);
   const kept = (p) => { const a = v.turn <= 5 ? v.savedDebate[p] : v.savedElection[p]; return Array.isArray(a) ? a.length : a; };
   const onBoard = (p) => v.counties.reduce((s, c) => s + c.blocks.filter((b) => b.o === p).length, 0);
-  const first = (p) => v.initiative === p && v.phase !== "end";
-  const boards = SHOW_ORDER.map((p) => {
+  const first = (p) => (isV06(v) ? v.order[0] === p : v.initiative === p) && v.phase !== "end";
+  const flag = x.tr(isV06(v) ? "hdr.first" : "hdr.star");
+  const boards = orderOf(v).map((p) => {
     const mom = v.mom[p], n = onBoard(p);
     const big = n ? (x.lang === "en" ? (n / 10).toFixed(1) : String(n)) : "0";
     const votes = `<b>${big}</b><small>${esc(n ? L.votes : L.votesNone)}</small>`;
@@ -488,7 +495,7 @@ function playersHTML(v, x, o = {}) {
     return `<article class="pl s${p}${p === v.seat ? " me" : ""}${first(p) ? " first" : ""}">` +
       `<div class="pl-card" data-seat="${p}"><button type="button" class="pl-tap" data-detail="${p}" aria-expanded="false" aria-label="${esc(`${x.full(p)} · ${fill(L.cubes, { n })} · ${L.mom} ${mom}`)}">` +
       `<span class="pl-pic"><img src="art/candidates/${SEATS[p]}.webp" alt="${esc(x.full(p))}" width="480" height="640" loading="lazy" decoding="async"></span><b class="no">${NO[p]}</b>` +
-      `<span class="pl-t"><span class="pl-n">${first(p) ? `<i class="flag-i" role="img" aria-label="${esc(x.tr("hdr.star"))}" title="${esc(x.tr("hdr.star"))}">⚑</i>` : ""}${esc(x.lang === "en" ? x.short(p) : x.full(p))}</span>` +
+      `<span class="pl-t"><span class="pl-n">${first(p) ? `<i class="flag-i" role="img" aria-label="${esc(flag)}" title="${esc(flag)}">⚑</i>` : ""}${esc(x.lang === "en" ? x.short(p) : x.full(p))}</span>` +
       `<span class="pl-v">${votes}</span><span class="pl-mm">${esc(L.mom)} ${dots}</span></span></button></div>` +
       `<div class="pl-d"><span class="pl-h">${esc(fill(L.hand, { n: inHand(p), k: kept(p) }))}</span>` +
       `<button type="button" class="pl-bag helpable${o.help === "bag" ? " on" : ""}" data-help="bag" aria-expanded="${o.help === "bag"}" aria-label="${esc(x.tr("hdr.bag") + " · " + x.tr("hdr.tap"))}">${esc(fill(L.bag, { n: v.bag[p] }))}</button>` +
@@ -512,7 +519,7 @@ function trackHTML(v, x, o = {}) {
   // v0.5 (#49): the issue leader (the most cubes over the three issues together, a tie is nobody) takes the media's
   // place on the table; the total of each candidate and who leads.
   let lead = "";
-  if (v.rules === "v0.5") {
+  if (v.rules === "v0.5" || v.rules === "v0.6") {
     const tot = [0, 1, 2].map((p) => v.issues.reduce((s, i) => s + i.cubes[p], 0)), max = Math.max(...tot);
     const who = tot.filter((n) => n === max).length === 1 ? tot.indexOf(max) : -1;
     lead = `<p class="ct t-lead" data-issue-lead="${who}"><b>${esc(x.tr("hdr.issueTotal"))}</b> ${[0, 1, 2].map((p) => `<span class="n${p === who ? " on" : ""}">${esc(x.short(p))} ${tot[p]}</span>`).join(" · ")}` +
@@ -727,7 +734,8 @@ function debateHTML(v, x) {
 export function feedLine(e, v, x) {
   const tr = x.tr, who = (p) => x.short(p);
   switch (e.k) {
-    case "turn": return tr("f.turn", { n: e.turn, who: who(e.initiative) });
+    case "turn": return e.order ? tr("f.turnOrder", { n: e.turn, order: orderText(e.order, x) }) : tr("f.turn", { n: e.turn, who: who(e.initiative) });
+    case "shuffle": return tr("r.shuffle", { text: e.issues.map((n) => x.issue(n)).join(" → ") }); // v0.6 (#54): the issue slots drawn again
     case "order": return tr(e.election ? "f.orderElection" : "f.order", { who: who(e.seat), n: e.pos + 1 });
     case "play": return tr(e.mode === "event" ? "f.playEvent" : "f.playCp", { who: who(e.seat), card: x.card(e.card) }) + (e.block ? tr("f.block") : "");
     case "cand": return tr("f.cand", { who: who(e.seat) });
@@ -964,7 +972,9 @@ function turnCardHTML(v, x, o) {
   if (n === 9) mid = `<ol class="tc-steps">${T.t9.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>`;
   else if (special) mid = `<p class="tc-body">${esc(T["t" + n].body)}</p>`;
   if (n === 6) mid += `<div class="tc-iss">${(v.issues || []).map((i) => `<span><img src="art/issues/${esc(i.name)}.webp" alt="" width="64" height="48"><b>${esc(x.issue(i.name))}</b></span>`).join("")}</div>`;
-  const first = init != null && init >= 0 ? `<div class="tc-init">${pic(init)}<span>${T.initiative.split("{who}").map(esc).join(`<b>${esc(x.short(init))}</b>`)}</span></div>` : "";
+  const ord = isV06(v) && cur && Array.isArray(cur.order) ? cur.order : null;
+  const first = ord ? `<div class="tc-init">${pic(ord[0])}<span>${T.order.split("{order}").map(esc).join(`<b>${esc(orderText(ord, x))}</b>`)}</span></div>`
+    : init != null && init >= 0 ? `<div class="tc-init">${pic(init)}<span>${T.initiative.split("{who}").map(esc).join(`<b>${esc(x.short(init))}</b>`)}</span></div>` : "";
   const hl = n > 1 ? headlineOf(v.log, n) : null;
   const head = hl ? `<div class="tc-hl" data-headline="${esc(hl.card)}" data-how="${hl.how}" data-who="${SEATS[hl.seat]}"><p class="tc-lbl">${esc(T.headline)}</p><div class="tc-hlr"><img src="${cardArt(hl.card)}" alt="" width="600" height="400"><div><b>${esc(x.card(hl.card))}</b><span>${esc(fill(hl.how === "event" ? T.played : T.triggered, { who: x.short(hl.seat) }))}</span></div></div></div>` : "";
   // Votes: from this turn's log entry (an old save has none: the board as it is now, no change shown).
