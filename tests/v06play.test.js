@@ -50,13 +50,18 @@ function walk(session, lang, seed, each) {
 }
 
 section("57 v0.6 上場");
-c57("新開的單人是 v0.6 candidate；新開的房間也是", () => {
+c57("新開的單人、新開的房間、房間的再來一局都是 v0.6 candidate", () => {
   for (const seed of [1, 2, 3]) { const st = S.newSolo({ seat: 0, level: 2, seed }).st; if (st.rules !== "v0.6" || st.fill !== "candidate") return `單人 seed ${seed}：${st.rules} ${st.fill}`; }
   let room = RC.newRoom({ code: "ABCD", seed: 11, now: 0 });
   const h = (ev) => { room = RC.handle(room, ev, 0).room; };
   h({ type: "open", conn: "A", name: "Ann", token: null }); h({ type: "msg", conn: "A", data: { t: "sit", seat: 0 } }); h({ type: "msg", conn: "A", data: { t: "start", level: 1 } });
-  const r = eq(`${room.st && room.st.rules} ${room.st && room.st.fill}`, "v0.6 candidate", "房間"); if (r !== true) return r;
-  return ok(true, "單人 3 個種子與房間都是 v0.6 candidate");
+  let r = eq(`${room.st && room.st.rules} ${room.st && room.st.fill}`, "v0.6 candidate", "房間"); if (r !== true) return r;
+  // The room's second createGame is the host's rematch once a game has ended (src/roomcore.js); the first game is marked
+  // ended by hand here, playing it out is tests/room.test.js's business.
+  const g0 = room.games; room.st = { ...room.st, phase: "end" };
+  h({ type: "msg", conn: "A", data: { t: "rematch" } });
+  r = eq(`${room.games - g0} ${room.st.rules} ${room.st.fill} ${room.st.turn} ${room.st.phase !== "end"}`, "1 v0.6 candidate 1 true", "房主按再來一局（局數、規則、第 1 回合）"); if (r !== true) return r;
+  return ok(true, "單人 3 個種子、房間、再來一局都是 v0.6 candidate");
 });
 c57("切換前存的 v0.5 單人照常能玩：每個畫面都畫得出來、每個選項都有字（中英）", () => {
   let screens = 0;
