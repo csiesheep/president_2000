@@ -1,8 +1,8 @@
-// tools/replay45.mjs — the rivals' moves replayed: their cards shown big, a stamp for each check (#45, P1 ②).
+// tools/replay47.mjs — the rivals' moves replayed: their cards shown big, a stamp for each check (#47, P1 ②).
 // Orchestrator's instrument: a peer may run it, does not edit it. Needs Chrome and a running LOCAL dev server
 // (it opens a room).
 //
-//   node tools/replay45.mjs http://127.0.0.1:8787/president_2000/
+//   node tools/replay47.mjs http://127.0.0.1:8787/president_2000/
 //
 // Owner, 2026-10-15, approving the P1 designs (sticky 「重播的規格」). Contract:
 //   - each card a rival plays or triggers (the log's "play" with a card, "trigger"; the candidate card too) is shown big
@@ -21,13 +21,13 @@ import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs"
 import * as S from "../public/solo.js";
 
 const base = process.argv[2];
-if (!base) { console.log("usage: node tools/replay45.mjs <base url ending in /president_2000/>"); process.exit(2); }
+if (!base) { console.log("usage: node tools/replay47.mjs <base url ending in /president_2000/>"); process.exit(2); }
 const CHROME = process.env.CHROME || "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // Chrome picks a free port and writes it to DevToolsActivePort in its own folder (see dbc2a88); no background throttling.
 async function launch() {
-  const root = process.env.TEMP || "/tmp", dir = `${root}/replay45_${process.pid}_${Date.now()}`;
-  for (const old of readdirSync(root).filter((d) => d.startsWith("replay45_"))) { try { if (Date.now() - statSync(`${root}/${old}`).mtimeMs > 600000) rmSync(`${root}/${old}`, { recursive: true, force: true }); } catch { /* in use */ } }
+  const root = process.env.TEMP || "/tmp", dir = `${root}/replay47_${process.pid}_${Date.now()}`;
+  for (const old of readdirSync(root).filter((d) => d.startsWith("replay47_"))) { try { if (Date.now() - statSync(`${root}/${old}`).mtimeMs > 600000) rmSync(`${root}/${old}`, { recursive: true, force: true }); } catch { /* in use */ } }
   mkdirSync(dir, { recursive: true });
   const proc = spawn(CHROME, ["--headless=new", "--disable-gpu", "--hide-scrollbars", "--disable-background-timer-throttling", "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows", "--remote-debugging-port=0", `--user-data-dir=${dir}`, "about:blank"], { stdio: "ignore" });
   let port = 0;

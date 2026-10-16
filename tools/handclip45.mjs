@@ -1,7 +1,7 @@
-// tools/handclip46.mjs — a lifted hand card is seen whole at the top, not cut by the hand's strip (#46).
+// tools/handclip45.mjs — a lifted hand card is seen whole at the top, not cut by the hand's strip (#45).
 // Orchestrator's instrument: a peer may run it, does not edit it. Needs Chrome and a running dev server.
 //
-//   node tools/handclip46.mjs http://127.0.0.1:8787/president_2000/
+//   node tools/handclip45.mjs http://127.0.0.1:8787/president_2000/
 //
 // Owner, 2026-10-15, a desktop screenshot: 「desktop 版，牌上方被切掉」 — hovering a hand card lifts it, and the hand's
 // strip (.hs, which scrolls sideways on phones) cut off everything above its own top, the whole picture since #36. At
@@ -13,12 +13,12 @@ import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs"
 import * as S from "../public/solo.js";
 
 const base = process.argv[2];
-if (!base) { console.log("usage: node tools/handclip46.mjs <base url ending in /president_2000/>"); process.exit(2); }
+if (!base) { console.log("usage: node tools/handclip45.mjs <base url ending in /president_2000/>"); process.exit(2); }
 const CHROME = process.env.CHROME || "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function launch() {
-  const root = process.env.TEMP || "/tmp", dir = `${root}/handclip46_${process.pid}_${Date.now()}`;
-  for (const old of readdirSync(root).filter((d) => d.startsWith("handclip46_"))) { try { if (Date.now() - statSync(`${root}/${old}`).mtimeMs > 600000) rmSync(`${root}/${old}`, { recursive: true, force: true }); } catch { /* in use */ } }
+  const root = process.env.TEMP || "/tmp", dir = `${root}/handclip45_${process.pid}_${Date.now()}`;
+  for (const old of readdirSync(root).filter((d) => d.startsWith("handclip45_"))) { try { if (Date.now() - statSync(`${root}/${old}`).mtimeMs > 600000) rmSync(`${root}/${old}`, { recursive: true, force: true }); } catch { /* in use */ } }
   mkdirSync(dir, { recursive: true });
   const proc = spawn(CHROME, ["--headless=new", "--disable-gpu", "--hide-scrollbars", "--disable-background-timer-throttling", "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows", "--remote-debugging-port=0", `--user-data-dir=${dir}`, "about:blank"], { stdio: "ignore" });
   let port = 0;

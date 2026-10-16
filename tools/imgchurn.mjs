@@ -16,7 +16,7 @@
 //   D. the solo setup screen (1440 and 390 wide): tap each of the three candidates and a bot level; the page only
 //      marks which one is picked, so no picture should be rebuilt (#39, owner 2026-10-15: "單人對戰，選候選人時，所有
 //      候選人的圖會閃動" - every tap rewrote the screen and rebuilt all three pictures).
-// Not counted: pictures inside a replayed rival card ([data-replay], #45) or the turn card ([data-turncard], #44) -
+// Not counted: pictures inside a replayed rival card ([data-replay], #47) or the turn card ([data-turncard], #44) -
 // those are new pictures by design, shown once.
 // Pass: no <img> rebuilt in any window (owner, 2026-10-15: "玩 tutorial 時，圖片會一直閃動").
 // It also prints how many times the table was swapped as a whole, for the record.

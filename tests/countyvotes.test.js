@@ -1,4 +1,4 @@
-// A county's size in votes, not blocks (issue #47). Orchestrator's file: a peer may run it and falsify against it,
+// A county's size in votes, not blocks (issue #46). Orchestrator's file: a peer may run it and falsify against it,
 // and does not edit it.
 //
 //   node --test tests/countyvotes.test.js      (or `npm test`)
@@ -21,11 +21,11 @@ const labels = (html) => [...html.matchAll(/data-county="(\d+)"[^<>]*?aria-label
 const gate = (fn) => () => {
   const t = title(S.screen(s, "zh-Hant", { county: 16, narrow: true }), 16);
   if (t === null) return "縣市框的標題找不到（工具）";
-  if (!/萬票/.test(t)) return "TODO: 縣市框的標題還是塊數（#47）";
+  if (!/萬票/.test(t)) return "TODO: 縣市框的標題還是塊數（#46）";
   return fn();
 };
 
-section("47 縣市的大小寫成票數");
+section("46 縣市的大小寫成票數");
 
 check("縣市框的標題：「<縣市> · <n>0萬票」，英文「<n/10>M votes」；不再寫塊數（24 個縣市，手機與桌機）", gate(() => {
   let c = 0;
