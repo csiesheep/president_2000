@@ -1,6 +1,7 @@
 // tests/sim.js — bot-vs-bot balance (M2, #10). BE's file; not part of `npm test`.
 //
 //   node tests/sim.js <games> [levels=3,3,3] [seed=1] [rotate=1] [workers=N] [quiet=1] [rules=v0.4|v0.5|v0.6|v0.7] [fill=candidate|free]
+//                     [luck=a,b,c] [issues=lead]
 //
 // Game i (0-based) uses seed + i. levels[s] plays seat s (1 樁腳, 2 總幹事, 3 操盤手).
 // rotate=1: the first level in `levels` is the hero and the other two its
@@ -10,7 +11,10 @@
 // (blocks on the board ÷ 154), the spread and the outliers; the last line is
 // JSON. rules= picks the rule set (#49: v0.5 is the draft that folds ads and media into the issues; default v0.4;
 // #54: v0.6 is the simplified draft, fill= its 地方大老 variant, candidate when not given; #55: v0.7 is v0.6 4a with luck
-// instead of the bag, fill= not given);
+// instead of the bag, fill= not given; #58: luck= its starting luck [陳, 宋, 連] and issues=lead its option 丙, passed to
+// createGame as { luck, issueLuck }; the JSON line then says "luck" / "issueLuck", and for v0.7 games "leadsAtVote" (the
+// issues each seat led at the conversion, a game's average) and "canvassLuck" (each seat's average luck over its
+// election-day checks));
 // the report also shows where each seat's CP went (競選/廣告/議題). Games run in child processes (workers, default: CPUs − 1, at most 8);
 // a chunk whose process dies is run again once, then the whole run fails.
 import { fork } from "node:child_process";
@@ -37,8 +41,12 @@ function rng(seed) {
 }
 
 // One game. Returns a plain record (it crosses a process boundary).
-export function playGame(seed, levels, rules, fill) {
-  let st = E.createGame(seed, rules ? (fill ? { rules, fill } : { rules }) : {});
+export function playGame(seed, levels, rules, fill, extra = null) {
+  const opts = rules ? (fill ? { rules, fill } : { rules }) : {};
+  if (extra && extra.luck) opts.luck = extra.luck.slice();
+  if (extra && extra.issueLuck) opts.issueLuck = extra.issueLuck;
+  let st = E.createGame(seed, opts);
+  let leadsAtVote = null; // #58: the issues each seat led on the state the conversion read
   const R = rng(seed * 977 + 13);
   let ms = 0, decisions = 0, debateCP = null;
   const why = {};
@@ -52,19 +60,31 @@ export function playGame(seed, levels, rules, fill) {
     ms += performance.now() - t0; decisions++;
     if (out.move.type === "action" && st.pending) cp[seat][out.move.kind] += st.pending.cp;
     why[out.why.key] = (why[out.why.key] || 0) + 1;
-    st = E.apply(st, seat, out.move);
+    const next = E.apply(st, seat, out.move);
+    if (st.rules === "v0.7" && st.phase !== "election" && next.phase === "election") {
+      leadsAtVote = [0, 1, 2].map((p) => st.issues.filter((i) => i.cubes[p] > 0 && i.cubes.every((c, q) => q === p || c < i.cubes[p])).length);
+    }
+    st = next;
   }
   if (st.phase !== "end") throw new Error(`seed ${seed}: did not end`);
   const r = st.result;
   const sorted = r.votes.slice().sort((a, b) => b - a);
   const played = (id) => st.log.some((e) => e.t === "effect" && e.card === id);
-  return {
+  const rec = {
     seed, levels, winner: r.winner, votes: r.votes, leads: r.leads,
     margin: sorted[0] - sorted[1], onBoard: r.votes[0] + r.votes[1] + r.votes[2],
     ms, decisions, debateCP: debateCP || [[], [], []], why, cp,
     lead: [0, 1, 2].map((p) => st.log.filter((e) => e.t === "momentum" && (e.step === "media" || e.step === "lead") && e.seat === p).length),
     xingpiao: played("yang_exposes"), shouyi: played("lee_authorized"), fanfu: played("shifting_story"),
   };
+  if (st.rules === "v0.7") {
+    // #58: the election-day checks are the ones after the conversion
+    const at = st.log.findIndex((e) => e.t === "convert");
+    const checks = at < 0 ? [] : st.log.slice(at).filter((e) => e.t === "check");
+    rec.leadsAtVote = leadsAtVote || [0, 0, 0];
+    rec.canvass = [0, 1, 2].map((p) => { const c = checks.filter((e) => e.seat === p); return [c.length, c.reduce((a, e) => a + e.luck, 0)]; });
+  }
+  return rec;
 }
 
 function levelsFor(i, n, base, rotate) {
@@ -77,7 +97,7 @@ function levelsFor(i, n, base, rotate) {
 }
 
 function parseArgs(argv) {
-  const o = { games: parseInt(argv[0] || "100", 10), levels: [3, 3, 3], seed: 1, rotate: false, workers: Math.min(8, Math.max(1, os.cpus().length - 1)), quiet: false, rules: null, fill: null };
+  const o = { games: parseInt(argv[0] || "100", 10), levels: [3, 3, 3], seed: 1, rotate: false, workers: Math.min(8, Math.max(1, os.cpus().length - 1)), quiet: false, rules: null, fill: null, luck: null, issueLuck: null };
   for (const a of argv.slice(1)) {
     const [k, v] = a.split("=");
     if (k === "levels") o.levels = v.split(",").map(Number);
@@ -87,14 +107,17 @@ function parseArgs(argv) {
     else if (k === "quiet") o.quiet = v === "1" || v === "true";
     else if (k === "rules") o.rules = v;
     else if (k === "fill") o.fill = v;
+    else if (k === "luck") o.luck = v.split(",").map(Number);
+    else if (k === "issues") o.issueLuck = v;
     else throw new Error("sim: unknown option " + a);
   }
   if (!(o.games > 0)) throw new Error("sim: games must be a positive number");
   if (o.levels.length !== 3 || o.levels.some((x) => ![1, 2, 3].includes(x))) throw new Error("sim: levels must be three of 1/2/3");
+  if (o.luck && (o.luck.length !== 3 || o.luck.some((x) => !Number.isInteger(x)))) throw new Error("sim: luck must be three whole numbers");
   return o;
 }
 
-function runChunk(list) { return list.map(([seed, levels, rules, fill]) => playGame(seed, levels, rules, fill)); }
+function runChunk(list) { return list.map(([seed, levels, rules, fill, extra]) => playGame(seed, levels, rules, fill, extra)); }
 
 function runInChild(list) {
   return new Promise((resolve, reject) => {
@@ -109,7 +132,10 @@ function runInChild(list) {
 
 async function runAll(o) {
   const jobs = [];
-  for (let i = 0; i < o.games; i++) jobs.push([o.seed + i, levelsFor(i, o.games, o.levels, o.rotate), o.rules, o.fill]);
+  const extra = o.luck || o.issueLuck ? { luck: o.luck, issueLuck: o.issueLuck } : null;
+  // fail here, not in a worker: the engine checks the options
+  if (extra) E.createGame(o.seed, { ...(o.rules ? { rules: o.rules } : {}), ...(o.fill ? { fill: o.fill } : {}), ...(o.luck ? { luck: o.luck } : {}), ...(o.issueLuck ? { issueLuck: o.issueLuck } : {}) });
+  for (let i = 0; i < o.games; i++) jobs.push([o.seed + i, levelsFor(i, o.games, o.levels, o.rotate), o.rules, o.fill, extra]);
   if (o.workers <= 1 || o.games < 8) return runChunk(jobs);
   const size = Math.max(1, Math.ceil(jobs.length / (o.workers * 4)));
   const chunks = [];
@@ -156,6 +182,12 @@ function summarize(o, games) {
     cp: [0, 1, 2].map((p) => { const c = { campaign: 0, ads: 0, issue: 0 }; for (const g of games) for (const k in c) c[k] += g.cp[p][k]; const all = c.campaign + c.ads + c.issue || 1; return [c.campaign, c.ads, c.issue].map((x) => r1(100 * x / all)); }),
     lead: [0, 1, 2].map((p) => Math.round(100 * avg(games.map((g) => g.lead[p]))) / 100),
   };
+  if (o.luck) out.luck = o.luck.slice();
+  if (o.issueLuck) out.issueLuck = o.issueLuck;
+  if (games.length && games[0].leadsAtVote) {
+    out.leadsAtVote = [0, 1, 2].map((p) => Math.round(100 * avg(games.map((g) => g.leadsAtVote[p]))) / 100);
+    out.canvassLuck = [0, 1, 2].map((p) => { let n = 0, t = 0; for (const g of games) { n += g.canvass[p][0]; t += g.canvass[p][1]; } return n ? r1(t / n) : null; });
+  }
   if (o.rotate) {
     // the hero is the first level; per seat it sat in
     const heroWins = [0, 0, 0], heroGames = [0, 0, 0];
@@ -176,6 +208,7 @@ function report(o, games, s) {
   lines.push(`  政見發表會堆平均 CP ${s.debateCP.join(" / ")}`);
   lines.push(`  chooseMove 每局 ${s.msPerGame} ms（最多 ${s.msMax}）、${s.decisions} 個決定`);
   lines.push(`  CP 競選/廣告/議題 %  ${s.cp.map((c, p) => `${NAMES[p]} ${c.join("/")}`).join("  ")}；領先者 +1 每局 ${s.lead.join(" / ")}`);
+  if (s.leadsAtVote) lines.push(`  轉換時領先的議題（每局）${s.leadsAtVote.map((x, p) => `${NAMES[p]} ${x}`).join(" / ")}；催票運氣平均 ${s.canvassLuck.map((x, p) => `${NAMES[p]} ${x}`).join(" / ")}${s.luck ? `；開局運氣 ${s.luck.join("/")}` : ""}${s.issueLuck ? `；議題換運氣 ${s.issueLuck}` : ""}`);
   if (s.hero) lines.push(`  主角（等級 ${s.hero.level}）勝率 ${s.hero.win}%  坐陳 ${s.hero.bySeat[0]}、坐宋 ${s.hero.bySeat[1]}、坐連 ${s.hero.bySeat[2]}`);
   // outliers: the widest margins and the lowest turnout
   const wide = games.slice().sort((a, b) => b.margin - a.margin).slice(0, 3).map((g) => `seed ${g.seed} ${g.votes.join("/")}`);
