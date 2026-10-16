@@ -17,7 +17,7 @@
 //   - the candidates' panels at the top (.pl-card[data-seat]) stand in this turn's order (st.order: votes, fewest first);
 //   - when the issue cards are reordered (the log's { t: "momentum", step: "shuffle", issues }), the "just now" lines
 //     (S.recent) on the human's next screen say so, every time: one line naming the three issues in their new order.
-// Every check reports 尚未實作 until S.newSolo starts a v0.6 game.
+// Every check reported 尚未實作 until S.newSolo started a v0.6 game; since #57 landed, that is a failure.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { R, section, check, eq, ok, nonEmpty, summary } from "./harness.js";
@@ -28,7 +28,8 @@ import * as RC from "../src/roomcore.js";
 import * as T from "../public/tutorial.js";
 
 const READY = (() => { try { const st = S.newSolo({ seat: 0, level: 1, seed: 1 }).st; return st.rules === "v0.6" && st.fill === "candidate"; } catch { return false; } })();
-const c57 = (name, fn) => check(name, () => (READY ? fn() : "TODO: S.newSolo 開的還不是 v0.6 candidate（st.rules / st.fill），#57"));
+// Since #57 landed (cede573), a new game that is not v0.6 candidate is a failure, not 尚未實作.
+const c57 = (name, fn) => check(name, () => (READY ? fn() : "S.newSolo 開的不是 v0.6 candidate（st.rules / st.fill）：#57 已上線，這是退步，不是尚未實作"));
 const LANGS = ["zh-Hant", "en"];
 const ISSUE_ZH = { cross: "兩岸", clean: "清廉", econ: "經濟民生" };
 const FORBID = { "zh-Hant": /封鎖|地方大老|主動權|進位|議題交換|交換相鄰|第一段棄保|第一次棄保/, en: /initiative|local boss|\bboss(es)?\b|rounds? up|\bswap/i };
