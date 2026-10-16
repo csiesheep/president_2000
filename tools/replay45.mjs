@@ -101,6 +101,9 @@ const load = async (t, s, speed = "normal") => {
   await t.ev(`(()=>{ localStorage.setItem("p2000.speed", ${JSON.stringify(speed)}); sessionStorage.setItem("p2000.solo.session", ${JSON.stringify(JSON.stringify(s))}); return 1; })()`);
   await t.go(`${base}?play`, 100);
   for (let i = 0; i < 100; i++) { try { if (await t.ev(`!!document.querySelector("[data-county]")`)) break; } catch { /* navigating */ } await sleep(30); }
+  // a turn card (#44) shows on a saved game whose turn was not seen yet; wait until it has gone before tapping
+  // (it may be drawn a moment after the map: count it gone only after 0.4 s in a row without it)
+  for (let i = 0, clear = 0; i < 160 && clear < 8; i++) { let up = true; try { up = await t.ev(`(() => { const c = document.querySelector("[data-turncard]"); if (!c) return false; const r = c.getBoundingClientRect(); return r.width > 0 && Number(getComputedStyle(c).opacity) > 0.05; })()`); } catch { /* navigating */ } clear = up ? 0 : clear + 1; await sleep(50); }
 };
 const read = async (t) => JSON.parse(await t.ev(`JSON.stringify({ now: performance.now(), rep: (window.__rep || []).map((r) => ({ id: r.id, on: r.on, off: r.off })), stamps: window.__stamps || [], sounds: window.__sounds || [], saves: window.__saves || [] })`));
 const dur = (r, now) => Math.round((r.off == null ? now : r.off) - r.on);

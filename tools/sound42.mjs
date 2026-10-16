@@ -113,7 +113,10 @@ const load = async (t, s, extra = "") => {
   await t.ev(`(()=>{ sessionStorage.setItem("p2000.solo.session", ${JSON.stringify(JSON.stringify(s))}); ${extra} return 1; })()`);
   await t.go(`${base}?play`, 150);
   // the table is up once the map is drawn (the rivals start right after)
-  for (let i = 0; i < 100; i++) { try { if (await t.ev(`!!document.querySelector("[data-county]")`)) return; } catch { /* navigating */ } await sleep(50); }
+  for (let i = 0; i < 100; i++) { try { if (await t.ev(`!!document.querySelector("[data-county]")`)) break; } catch { /* navigating */ } await sleep(50); }
+  // a turn card (#44) shows on a saved game whose turn was not seen yet; wait until it has gone before tapping
+  // (it may be drawn a moment after the map: count it gone only after 0.4 s in a row without it)
+  for (let i = 0, clear = 0; i < 160 && clear < 8; i++) { let up = true; try { up = await t.ev(`(() => { const c = document.querySelector("[data-turncard]"); if (!c) return false; const r = c.getBoundingClientRect(); return r.width > 0 && Number(getComputedStyle(c).opacity) > 0.05; })()`); } catch { /* navigating */ } clear = up ? 0 : clear + 1; await sleep(50); }
 };
 const logOf = async (t) => JSON.parse((await t.ev(`JSON.stringify((JSON.parse(sessionStorage.getItem("p2000.solo.session") || "null") || { st: { log: [] } }).st.log)`)) || "[]");
 
