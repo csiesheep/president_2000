@@ -138,10 +138,23 @@ const CARD_UP = `[...document.querySelectorAll("[data-replay]")].some((e) => { c
 // Tap the card where something of the page is under it; when twice, tap again as soon as the card has gone (or 330 ms
 // after the first tap, whichever is first). Returns what the page got: clicks that reached a button / link / county of
 // the table, and moves sent.
+const ALIGN = `(() => { const c = [...document.querySelectorAll("[data-replay]")].find((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && Number(getComputedStyle(e).opacity) > 0.05; }); if (!c) return 0;
+  const r = c.getBoundingClientRect(), b = [...document.querySelectorAll("#stage button[data-move], #rstage button[data-move], #rstage button[data-msg]")].find((e) => e.getClientRects().length && !e.disabled); if (!b) return 0;
+  const q = b.getBoundingClientRect(); window.scrollBy(0, q.top + q.height / 2 - (r.top + r.height * 0.4)); return 1; })()`;
+// The shown card's box, to wait until it has stopped flying in (a spot read mid-flight is off the card by the tap).
+const RECT = `JSON.stringify((() => { const c = [...document.querySelectorAll("[data-replay]")].find((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && Number(getComputedStyle(e).opacity) > 0.05; }); if (!c) return null; const r = c.getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map((x) => Math.round(x)); })())`;
 async function tapCard(t, twice) {
-  let o = { card: false };
-  for (let i = 0; i < 120 && !(o = JSON.parse(await t.ev(OVER))).under; i++) await sleep(50);
-  if (!o.under) return { o };
+  let o = { card: false }, seen = false;
+  for (let i = 0; i < 80; i++) {
+    const r1 = await t.ev(RECT); await sleep(80); const r2 = await t.ev(RECT);
+    if (r2 !== "null") seen = true;
+    if (r1 !== "null" && r1 === r2) {
+      o = JSON.parse(await t.ev(OVER)); if (o.under) break;
+      if (o.card) { await t.ev(ALIGN); await sleep(120); o = JSON.parse(await t.ev(OVER)); if (o.under) break; }
+    }
+    await sleep(20);
+  }
+  if (!o.under) return { o: { ...o, card: seen } };
   const t0 = (await read(t)).now;
   await t.tapAt(o.x, o.y);
   let gap = null;
@@ -154,7 +167,7 @@ async function tapCard(t, twice) {
   const m = await read(t), first = m.rep.find((r) => r.on <= t0 && (r.off == null || r.off >= t0));
   return { o, gap, k, gone: first && first.off != null ? Math.round(first.off - t0) : null };
 }
-const tapText = (x) => x.o.under == null ? `${x.o.card ? "no button, link or county was under the shown card" : "no card was shown"} — nothing to test (instrument)`
+const tapText = (x) => x.o.under == null ? `${x.o.card ? "a card was shown, but no button, link or county of the table was under it (even scrolled)" : "no card was shown"} — nothing to test (instrument)`
   : `tapped the card over 「${x.o.under}」${x.gap != null ? `, again ${x.gap} ms later` : ""}: ${x.k.clicks.length} clicks reached the table${x.k.clicks.length ? ` (${x.k.clicks.map((c) => "「" + c.what + "」").join(", ")})` : ""}, ${x.k.sent.length} moves sent (0 / 0)`;
 
 const br = await launch();
@@ -234,7 +247,12 @@ try {
     }
   }
   // A room with bots at 390, the human last in order so the bots act first; returns once a rival card is shown.
+  // (Who acts first is the server's draw: when the human is first, no rival card comes; then another room, up to 4.)
   const openRoom = async (t) => {
+    for (let k = 0; k < 4; k++) { if (await openRoom1(t)) return true; }
+    return false;
+  };
+  const openRoom1 = async (t) => {
     await t.go(`${base}?host`, 1500);
     await t.ev(`(() => { const f = document.querySelector("form.rform"); if (!f) return 0; f.elements.name.value = "測試"; f.requestSubmit(); return 1; })()`);
     for (let i = 0; i < 40 && !(await t.ev(`!!document.querySelector(".btn.sit[data-msg]")`)); i++) await sleep(250);
@@ -243,9 +261,10 @@ try {
     // with the initiative, take the last position so the bots act first; then wait for their cards
     for (let i = 0; i < 60; i++) {
       await t.ev(`(() => { const bs = [...document.querySelectorAll("[data-move]")].filter((x) => { try { return JSON.parse(x.getAttribute("data-move")).type === "order"; } catch { return false; } }); const b = bs[bs.length - 1]; b && b.click(); return 1; })()`);
-      if ((await read(t)).rep.length) break;
+      if ((await read(t)).rep.length) return true;
       await sleep(250);
     }
+    return false;
   };
   // 9. A room: the rivals' cards are replayed and the play sound is asked for.
   {
