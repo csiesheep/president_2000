@@ -28,6 +28,7 @@ export default {
     cpCount: "{cp} CP ×{n}",
     cpUnit: "CP",
     restCubes: "休息方塊 {n}",
+    stubIssue: "議題", stubCanvass: "投票日催票",
     // 軍師 (#18): 牌桌上方的軍師開關、★ 標記，與理由前的一句
     advisor: { label: "軍師", on: "開", off: "關", prefix: "軍師：", starLabel: "軍師推薦", note: "標出操盤手會走的那一步，只用你看得到的畫面。" },
     // 新手教學 (#27)：固定一局，說明框的字。{...} 由 tutorial.js 用畫面上當下的值填。

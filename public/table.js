@@ -8,6 +8,7 @@ import zh from "./i18n/zh-Hant.js";
 import { COUNTIES, REGIONS, REGION_EDGES, SEATS, BOSS_THRESHOLD, ISSUES } from "./shared/board.js";
 import { EVENTS, localCards, CANDIDATE_CARDS } from "./shared/cards.js";
 import { taiwanMap, popPlace } from "./map.js";
+import { stubHTML } from "./stub.js";
 
 const CARD = Object.fromEntries(EVENTS.concat(localCards()).map((c) => [c.id, c]));
 const NO = [5, 1, 2]; // the ballot numbers on the 1999 flags: 陳 5, 宋 1, 連 2
@@ -312,22 +313,25 @@ export function resultBlock(res, x) {
 const sq = (cls) => `<i class="b ${cls}"></i>`;
 const cubesRow = (arr) => arr.map((n, p) => sq("o" + p).repeat(n)).join("");
 
+// The stub at a card's foot (#51): its issue and where it canvasses on election day, apart from the event text; the rest cubes at the right end of row one.
+function stubOf(c, x) {
+  const u = x.d.ui, rest = ({ 2: 2, 3: 1, 4: 0 })[c.cp] ?? 0, issue = c.icon ? u.issues[c.icon] : null;
+  return stubHTML({ issue: issue && issue.name, noIssue: u.noIssue, issueLabel: u.stubIssue, canvassLabel: u.stubCanvass,
+    county: x.county(COUNTIES.findIndex((k) => k[0] === c.county)), rest, restLabel: fill(u.restCubes, { n: rest }) });
+}
+
 function cardFace(id, x) {
   const c = CARD[id], u = x.d.ui;
   const isLocal = c.owner === "local";
   const flags = c.must ? `<em class="flag">${esc(u.must)}</em>` : c.cond ? `<em class="flag alt">${esc(u.conditional)}</em>` : "";
   const band = isLocal ? "local" : c.owner;
-  const issue = c.icon ? u.issues[c.icon] : null;
-  const rest = ({ 2: 2, 3: 1, 4: 0 })[c.cp] ?? 0;
   // The whole card is its camp's colour, with no frame lines (#36): the picture runs to the top and side edges and fades into
-  // the colour, the CP is a corner tab at the top left, the issue a small pill at the top right, and the words sit on the colour.
+  // the colour, the CP is a corner tab at the top left, the words sit on the colour, and a paper stub at the foot (#51) holds the issue and the canvass county.
   return `<article class="pcard ${band}${c.must ? " must" : ""}" data-face="${esc(id)}" data-camp="${band}">` +
     `<div class="pc-art">${cardImg(id, x)}</div>` +
     `<span class="cp-tab" data-cp="${c.cp}" aria-label="${c.cp} ${esc(u.cpUnit)}"><b>${c.cp}</b><small>${esc(u.cpUnit)}</small></span>` +
-    `<span class="iss-pill${issue ? "" : " none"}">${esc(issue ? issue.name : u.noIssue)}</span>` +
     `<div class="pc-body"><p class="pc-k">${esc(u.owner[c.owner])} · ${esc(isLocal ? x.S.card.local : u.kind.event)} · ${esc(u.deck[c.deck])}${flags}</p>` +
-    `<h4 class="ttl">${esc(x.card(id))}</h4><p class="txt">${esc(x.cardText(id))}</p>` +
-    `<div class="foot"><span>${esc(x.d.terms.canvass)} ${esc(x.county(COUNTIES.findIndex((k) => k[0] === c.county)))}</span><span>${esc(fill(u.restCubes, { n: rest }))}</span></div></div></article>`;
+    `<h4 class="ttl">${esc(x.card(id))}</h4><p class="txt">${esc(x.cardText(id))}</p></div>` + stubOf(c, x) + `</article>`;
 }
 
 // The big card the rivals' replay shows (#47): the same face as the card sheet (cardFace), eager pictures. The candidate card
@@ -352,14 +356,13 @@ function miniCard(id, x, cls, attr, star = false, fan = null) {
   const band = c.owner === "local" ? "local" : c.owner;
   const who = c.owner === "local" ? x.S.card.local : c.owner === "ext" ? u.owner.ext : x.S.cand[c.owner].short;
   const style = fan ? ` style="--r:${fan.r}deg;--y:${fan.y}px"` : "";
-  const rest = ({ 2: 2, 3: 1, 4: 0 })[c.cp] ?? 0;
   return `<button type="button" class="hc ${band}${cls ? " " + cls : ""}${star ? " adv" : ""}" data-camp="${band}" ${attr}${style}>` +
     (star ? starHTML(x) : "") +
     `<span class="ha">${cardImg(id, x)}</span>` +
     `<span class="cp-tab" data-cp="${c.cp}" aria-label="${c.cp} ${esc(u.cpUnit)}"><b>${c.cp}</b><small>${esc(u.cpUnit)}</small></span>` +
     `<span class="hb"><span class="hm">${esc(c.owner === "local" ? who : who + " · " + u.kind.event)}${c.must ? `<em>${esc(u.must)}</em>` : ""}</span>` +
     `<span class="hn">${esc(x.card(id))}</span><span class="ht">${esc(x.cardText(id))}</span>` +
-    `<span class="hf"><span>${esc(x.d.terms.canvass)} ${esc(x.county(COUNTIES.findIndex((k) => k[0] === c.county)))}</span><span>${esc(fill(u.restCubes, { n: rest }))}</span></span></span></button>`;
+    `</span>` + stubOf(c, x) + `</button>`;
 }
 
 // The candidate card (#37): in its camp's colour like the event cards (#36), no frame lines; the seat's picture
