@@ -152,9 +152,15 @@ const V07_LUCK_CARD = 10, V07_LUCK_MAX = 80, V07_LUCK_PER_MOM = 10;
 // v0.7 option 丙 (#58, st.issueLuck "lead"): each issue a seat leads at the conversion (most cubes on the card, a tie
 // is nobody; after every momentum phase still to come takes 1 off each card's leader) is +10 canvassing luck, outside
 // the 80, at most 95. The bots value a lead at the conversion as that luck over the election-day checks (V07_CANVASS
-// a card, V07_CARDS_ELECTION cards) × V07_SUCCESS × V58_LEAD[seat]. Without the option nothing here is read.
+// a card, V07_CARDS_ELECTION cards) × V07_SUCCESS × V58_LEAD[seat]; a plan may put 2–4 cubes on one card (issueChain),
+// since one cube alone is usually gone by the conversion. Without the option nothing here is read.
+// V58_LEAD: each seat its best measured setting (#49's ruling), luck 50/50/55 + 丙, 操盤手 ×3, one seat changed against
+// the other two, same seeds 1–2400 paired (the #58 handover has every run). From [1, 1, 1] by rounds of one seat at a
+// time to [2, 1, 3], where no seat did better: 陳 1.5 −0.0 ± 0.8, 3 +0.5 ± 0.9 points; 宋 0.5 −2.1 ± 0.7, 1.5 −1.8 ± 0.8;
+// 連 4 +0.2 ± 0.7, 5 −0.5 ± 0.8. Not valuing the leads at all (0) there: 陳 −4.5 ± 1.0, 宋 −1.4 ± 0.8, 連 −2.8 ± 0.8.
+// Valuing them only in turns 7–8 changed nothing (within ± 0.2).
 const V58_LUCK_PER_LEAD = 10, V58_LUCK_LEAD_MAX = 95;
-const V58_LEAD = [1, 1, 1];
+const V58_LEAD = [2, 1, 3];
 // Soft strategic-vote flow by |宋 − 連| in the county (design sim's SOFT), a
 // sharper one for 操盤手 in turns 7–8, and the rule itself on election day.
 const SOFT = [0, 0.35, 0.8, 1, 1];
