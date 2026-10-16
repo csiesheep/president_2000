@@ -121,9 +121,11 @@ try {
     for (let i = 0; i < 40 && !(await t.ev(`!!document.querySelector(".btn.sit[data-msg]")`)); i++) await sleep(250);
     await t.ev(`(() => { const b = document.querySelector(".btn.sit[data-msg]"); b && b.click(); return 1; })()`); await sleep(800);
     await t.ev(`(() => { const b = document.querySelector(".big.go[data-msg]"); b && b.click(); return 1; })()`);
-    // With the initiative the room first asks for an order: take position 1, then wait for the play decision.
+    // With the initiative the room first asks for an order: take position 1, then wait for the play decision. A rival may
+    // have played one of your cards for CP, so the first thing asked can be whether to trigger it: decline (the candidate
+    // card cannot be used while that is open; seen 1 run in 3 once the game was v0.5, #53).
     for (let i = 0; i < 120 && !(await t.ev(`!!document.querySelector(".tbl [data-cand][data-move]")`)); i++) {
-      await t.ev(`(() => { const b = [...document.querySelectorAll("[data-move]")].find((x) => { try { return JSON.parse(x.getAttribute("data-move")).type === "order"; } catch { return false; } }); b && b.click(); return 1; })()`);
+      await t.ev(`(() => { const b = [...document.querySelectorAll("[data-move]")].find((x) => { try { const t = JSON.parse(x.getAttribute("data-move")).type; return t === "order" || t === "pass"; } catch { return false; } }); b && b.click(); return 1; })()`);
       await sleep(250);
     }
     return t;
