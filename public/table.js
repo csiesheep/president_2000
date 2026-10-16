@@ -405,7 +405,7 @@ function popHTML(v, ch, x, k, narrow) {
     `<div class="pop-art"><img data-county-pic="${COUNTY_SLUG[COUNTIES[k][0]]}" src="art/local/${COUNTY_SLUG[COUNTIES[k][0]]}.webp" alt="" draggable="false"><i class="pop-fade" aria-hidden="true"></i>` +
     `<span class="pop-reg">${esc(x.region(REGION_OF[k]))}</span>` +
     `<button type="button" class="pop-x" data-pop-close="1" aria-label="${esc(tr("map.popClose"))}">×</button></div>` +
-    `<div class="pop-h"><b>${esc(x.county(k))} · ${esc(tr("map.blocks", { n: blocks.length }))}</b></div>` +
+    `<div class="pop-h"><b>${esc(x.county(k))} · ${esc(tr("map.blocks", { n: blocks.length, m: (blocks.length / 10).toFixed(1) }))}</b></div>` +
     `<div class="pop-b"><span class="pbs">${cubes}</span><span class="pbn">${[...own, ...rest.map((s) => `<span>${esc(s)}</span>`)].join("")}</span></div>` +
     (rows.length ? `<div class="pop-o">${rows.map(opt).join("")}</div>` : `<p class="ct">${esc(tr("map.popNone"))}</p>`) + `</div>`;
 }

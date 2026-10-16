@@ -214,7 +214,7 @@ function labelOf(v, k, d, lang) {
   const M = d.ui.solo.map, blocks = v.counties[k].blocks;
   const own = SHOW_ORDER.map((p) => [p, blocks.filter((b) => b.o === p).length]).filter(([, n]) => n > 0).map(([p, n]) => `${cand(d, p).short} ${n}`);
   const here = [0, 1, 2].filter((p) => v.pos[p] === k).map((p) => tr(M.here, { who: cand(d, p).name }));
-  return [nameOf(d, lang, k), tr(M.blocks, { n: blocks.length }), ...own, ...here].join(" · ");
+  return [nameOf(d, lang, k), tr(M.blocks, { n: blocks.length, m: (blocks.length / 10).toFixed(1) }), ...own, ...here].join(" · ");
 }
 
 // The county's wrapper: one focusable element carrying the flags. `inner` is its paper and its candidates.
