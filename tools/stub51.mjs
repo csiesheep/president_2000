@@ -17,7 +17,9 @@
 //   - in it [data-stub-issue]: an <svg> and the issue's name (兩岸 / 清廉 / 經濟民生, 無議題 when the card has none); and
 //     [data-stub-county]: an <svg>, 「投票日催票」 and the county's name. In English: Latin text, no Chinese;
 //   - the issue's name appears nowhere else on the card (the old pill is gone);
-//   - the event text ends above the stub and is not cut (its box and its scroll height fit); no text in the stub is cut;
+//   - the event text ends above the stub and is not cut (its box and its scroll height fit); no text in the stub is cut.
+//     A hand card is a preview (the big face shows it all): there the name and the text may be shortened as they were
+//     before the stub (3 lines, an ellipsis), but must still end above it (orchestrator's ruling on FE's question, #51);
 //   - [data-rest="<n>"] in the stub with n = the card's rest cubes (CP 2 → 2, 3 → 1, 4 → 0); none, or "0", when 0 (not
 //     read on a rules-page local face, which stands for cards of 2 and 3 CP).
 import { spawn } from "node:child_process";
@@ -96,7 +98,7 @@ const READ = `window.__stub = (el) => {
 }; 1`;
 
 // Judge one card against its table entry. en: the English page (Latin text, no Chinese).
-function judge(id, m, en) {
+function judge(id, m, en, preview = false) {
   const w = wantOf(id), bad = [...(m.bad || [])];
   if (!w) return [`${id}: not in the card tables`];
   if (m.stubs !== 1) return [`${id}: ${m.stubs} [data-stub] (1)`];
@@ -115,7 +117,7 @@ function judge(id, m, en) {
   const rest = m.rest == null ? 0 : Number(m.rest);
   if (w.rest !== null && rest !== w.rest) bad.push(`data-rest ${m.rest} (${w.rest})`);
   if (m.issue && !en && m.outside.some((t) => t === w.issue)) bad.push(`the issue 「${w.issue}」 is also outside the stub (the old pill?)`);
-  for (const t of m.texts) { if (t.clipped) bad.push(`「${t.t.slice(0, 10)}」 is cut`); else if (t.bottom > m.stubTop + 1) bad.push(`「${t.t.slice(0, 10)}」 runs into the stub (${Math.round(t.bottom - m.stubTop)} px)`); }
+  for (const t of m.texts) { if (t.clipped && !preview) bad.push(`「${t.t.slice(0, 10)}」 is cut`); if (t.bottom > m.stubTop + 1) bad.push(`「${t.t.slice(0, 10)}」 runs into the stub (${Math.round(t.bottom - m.stubTop)} px)`); }
   return bad.length ? [`${id}: ${bad.join("; ")}`] : [];
 }
 
@@ -141,7 +143,7 @@ try {
     await sleep(8000);
     await t.ev(READ);
     const got = JSON.parse(await t.ev(`JSON.stringify([...document.querySelectorAll(".tbl [data-sel][data-camp], .tbl [data-pick][data-camp]")].map((el) => ({ id: el.getAttribute("data-sel") || el.getAttribute("data-pick"), m: __stub(el) })))`));
-    const bad = got.flatMap((c) => judge(c.id, c.m, false));
+    const bad = got.flatMap((c) => judge(c.id, c.m, false, true));
     rule(got.length >= 4 && !bad.length, `${w} hand: ${got.length} cards (≥ 4), each with its stub${bad.length ? ` — ${bad.slice(0, 3).join(" | ")}` : ""}`);
     // the big face of the first hand card, opened by tapping it
     const opened = await t.ev(`(()=>{ const c = document.querySelector(".tbl [data-sel][data-camp]"); if (!c) return null; c.click(); return c.getAttribute("data-sel"); })()`);
