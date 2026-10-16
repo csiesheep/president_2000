@@ -14,8 +14,14 @@
 //   - one tap anywhere on the table: that step jumps to its result (the card gone within 250 ms) and the next card is
 //     still shown; two quick taps: the rest of the rivals' turn is skipped (no more cards, all steps done at once);
 //   - in a room the same: the rivals' cards are shown and the "play" sound is asked for (#42's p2000:sound).
+//   - a tap the replay uses is the replay's alone (orchestrator's ruling on #47, after the room screenshot showed the big
+//     card over the decision panel): a tap on the shown card, and the second of two quick taps (≤ 400 ms apart) even if
+//     the card has gone by then, never reaches what is under it on the page (the click does not bubble up to the window
+//     from a button, link or county of #stage / #rstage) and sends no move. A decision seen outside the card can still
+//     be pressed as before.
 // Measured in a solo game (陳) where the human's move (a 跨營填 with a check) hands over to the rivals, who trigger
-// one card, play another and make a check, at 390 and 1440 wide; speeds, taps and the room at 390.
+// one card, play another and make a check, at 390 and 1440 wide; speeds, taps and the room at 390; taps on the card at
+// 1440 (over the map) and in the room (over the decision panel).
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import * as S from "../public/solo.js";
@@ -39,6 +45,14 @@ async function launch() {
 const SPY = `(() => {
   window.__rep = []; window.__stamps = []; window.__sounds = []; window.__saves = [];
   addEventListener("p2000:sound", (e) => window.__sounds.push({ name: e.detail && e.detail.name, t: performance.now() }));
+  // clicks that bubbled up to the window (so the page's own handlers had them), and the moves sent to a room. Where the
+  // click landed is read on the way down (the window's capture phase, before any handler): a handler may redraw the
+  // table, and by the bubble phase the button it hit is no longer in #stage.
+  window.__clicks = []; window.__sent = []; let down = null;
+  addEventListener("click", (e) => { const x = e.target, b = x && x.closest ? x.closest("button, a, [data-county]") : null;
+    down = { e, act: !!(b && b.closest("#stage, #rstage")), what: b ? (b.getAttribute("data-move") || b.getAttribute("data-msg") || b.getAttribute("aria-label") || b.getAttribute("data-county") || b.textContent || "").trim().slice(0, 60) : "" }; }, true);
+  addEventListener("click", (e) => { if (down && down.e === e) window.__clicks.push({ t: performance.now(), act: down.act, what: down.what }); down = null; });
+  const WS = window.WebSocket; if (WS) { const send = WS.prototype.send; WS.prototype.send = function (d) { try { const m = JSON.parse(d); if (m && m.t === "move") window.__sent.push({ t: performance.now(), move: m.move }); } catch { /* not json */ } return send.call(this, d); }; }
   const seen = new WeakSet(); let cur = null, last = null;
   const vis = (el) => { if (!el) return false; const r = el.getBoundingClientRect(), s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && Number(s.opacity) > 0.05; };
   setInterval(() => {
@@ -110,6 +124,38 @@ const dur = (r, now) => Math.round((r.off == null ? now : r.off) - r.on);
 // A spot on the table that is no button: the centre of the 剛剛 (just now) block's heading.
 const SPOT = `JSON.stringify((() => { const el = [...document.querySelectorAll("#stage *")].find((e) => e.children.length === 0 && /^(剛剛|Just now)$/.test(e.textContent.trim()) && e.getClientRects().length);
   const r = el ? el.getBoundingClientRect() : document.querySelector("[data-county]").closest("section, div").getBoundingClientRect(); return { x: r.left + Math.min(r.width / 2, 40), y: r.top + r.height / 2 }; })())`;
+// A spot on the shown card with a button, link or county of the page right under it (null when nothing is under it).
+const OVER = `JSON.stringify((() => { const vis = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && Number(getComputedStyle(e).opacity) > 0.05; };
+  const c = [...document.querySelectorAll("[data-replay]")].find(vis); if (!c) return { card: false };
+  const r = c.getBoundingClientRect();
+  for (let fy = 0.12; fy <= 0.9; fy += 0.06) for (let fx = 0.12; fx <= 0.9; fx += 0.06) {
+    const x = Math.round(r.left + r.width * fx), y = Math.round(r.top + r.height * fy); if (x < 1 || y < 1 || x > innerWidth - 2 || y > innerHeight - 2) continue;
+    const u = document.elementsFromPoint(x, y).find((e) => e.closest("#stage, #rstage")), b = u && u.closest("button, a, [data-county]");
+    if (b) return { card: true, x, y, under: (b.getAttribute("data-move") || b.getAttribute("data-msg") || b.getAttribute("data-county") || b.textContent || "").trim().slice(0, 60) };
+  }
+  return { card: true, under: null }; })())`;
+const CARD_UP = `[...document.querySelectorAll("[data-replay]")].some((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && Number(getComputedStyle(e).opacity) > 0.05; })`;
+// Tap the card where something of the page is under it; when twice, tap again as soon as the card has gone (or 330 ms
+// after the first tap, whichever is first). Returns what the page got: clicks that reached a button / link / county of
+// the table, and moves sent.
+async function tapCard(t, twice) {
+  let o = { card: false };
+  for (let i = 0; i < 120 && !(o = JSON.parse(await t.ev(OVER))).under; i++) await sleep(50);
+  if (!o.under) return { o };
+  const t0 = (await read(t)).now;
+  await t.tapAt(o.x, o.y);
+  let gap = null;
+  if (twice) {
+    for (let i = 0; i < 40; i++) { const now = (await read(t)).now; if (!(await t.ev(CARD_UP)) || now - t0 >= 330) break; await sleep(15); }
+    gap = Math.round((await read(t)).now - t0); await t.tapAt(o.x, o.y);
+  }
+  await sleep(900);
+  const k = JSON.parse(await t.ev(`JSON.stringify({ clicks: (window.__clicks || []).filter((c) => c.t >= ${t0} && c.act), sent: (window.__sent || []).filter((s) => s.t >= ${t0}) })`));
+  const m = await read(t), first = m.rep.find((r) => r.on <= t0 && (r.off == null || r.off >= t0));
+  return { o, gap, k, gone: first && first.off != null ? Math.round(first.off - t0) : null };
+}
+const tapText = (x) => x.o.under == null ? `${x.o.card ? "no button, link or county was under the shown card" : "no card was shown"} — nothing to test (instrument)`
+  : `tapped the card over 「${x.o.under}」${x.gap != null ? `, again ${x.gap} ms later` : ""}: ${x.k.clicks.length} clicks reached the table${x.k.clicks.length ? ` (${x.k.clicks.map((c) => "「" + c.what + "」").join(", ")})` : ""}, ${x.k.sent.length} moves sent (0 / 0)`;
 
 const br = await launch();
 try {
@@ -178,10 +224,17 @@ try {
       rule(shownBefore >= 1 && after.length === 0 && left === game.after.st.log.length, `390 two taps: ${shownBefore ? "tapped while a card was up" : "no card was up to tap on"}; ${after.length} cards shown afterwards (0); the game's log reached ${left} of ${game.after.st.log.length} entries`);
       t.close();
     }
+    // 8. Two quick taps on the shown card at 1440 (it lies over the map): neither reaches a county or button under it.
+    {
+      const t = await tab(br, 1440, 900, false);
+      await load(t, game.queued);
+      const x = await tapCard(t, true);
+      rule(x.o.under != null && x.k.clicks.length === 0 && x.k.sent.length === 0, `1440 taps on the card: ${tapText(x)}`);
+      t.close();
+    }
   }
-  // 8. A room with bots: their cards are replayed and the play sound is asked for.
-  {
-    const t = await tab(br, 390, 844, true);
+  // A room with bots at 390, the human last in order so the bots act first; returns once a rival card is shown.
+  const openRoom = async (t) => {
     await t.go(`${base}?host`, 1500);
     await t.ev(`(() => { const f = document.querySelector("form.rform"); if (!f) return 0; f.elements.name.value = "測試"; f.requestSubmit(); return 1; })()`);
     for (let i = 0; i < 40 && !(await t.ev(`!!document.querySelector(".btn.sit[data-msg]")`)); i++) await sleep(250);
@@ -193,9 +246,22 @@ try {
       if ((await read(t)).rep.length) break;
       await sleep(250);
     }
+  };
+  // 9. A room: the rivals' cards are replayed and the play sound is asked for.
+  {
+    const t = await tab(br, 390, 844, true);
+    await openRoom(t);
     await sleep(3000);
     const m = await read(t);
     rule(m.rep.length >= 1 && m.sounds.some((s) => s.name === "play"), `390 room: ${m.rep.length} rival cards shown (${m.rep.map((r) => r.id).join(",") || "none"}), play sounds ${m.sounds.filter((s) => s.name === "play").length}`);
+    t.close();
+  }
+  // 10. A room: two quick taps on the shown card, over the decision panel: neither reaches the panel, no move is sent.
+  {
+    const t = await tab(br, 390, 844, true);
+    await openRoom(t);
+    const x = await tapCard(t, true);
+    rule(x.o.under != null && x.k.clicks.length === 0 && x.k.sent.length === 0, `390 room, taps on the card: ${tapText(x)}`);
     t.close();
   }
 } finally { br.close(); }
