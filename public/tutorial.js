@@ -71,6 +71,7 @@ const STEPS = [
   { id: "blocks", kind: "next", plan: (c) => ({ target: `data-county="${homeOf(c)}"`, vars: (x) => ({ ...base(c, x), blocks: c.v.counties[homeOf(c)].blocks.length }) }) },
   { id: "order", kind: "move", plan: (c) => {
     const m = c.st.phase === "order" ? c.legal.find((q) => q.type === "order" && q.pos === 0) : null;
+    if (c.st.rules === "v0.6") return { kind: "next", target: `data-seat="${c.seat}"`, vars: (x) => base(c, x) }; // v0.6 (#57): no order to pick; read who goes first
     return { moves: m ? [m] : [], target: m ? mv(m) : null, vars: (x) => base(c, x) };
   } },
   { id: "play", kind: "move", plan: (c) => {
@@ -119,10 +120,11 @@ function locate(s) {
   const c = ctx(s), waiting = Solo.botsToMove(s).length > 0 || !E.mustAct(s.st).includes(s.seat);
   for (let i = s.tut.i; i < STEPS.length; i++) {
     const d = STEPS[i], p = d.plan(c);
-    if (waiting) return { i, d, p, c, waiting };
-    if (d.kind === "move" && !p.moves.length) continue;
-    if (d.kind === "county" && p.county == null) continue;
-    return { i, d, p, c, waiting };
+    const kind = p.kind || d.kind;
+    if (waiting) return { i, d, p, c, waiting, kind };
+    if (kind === "move" && !p.moves.length) continue;
+    if (kind === "county" && p.county == null) continue;
+    return { i, d, p, c, waiting, kind };
   }
   return null;
 }
@@ -135,7 +137,7 @@ export function step(s, lang) {
   if (!at) return { id: "done", kind: "done", text: "", target: null, moves: [], county: null };
   const x = bind(lang), T = x.d.ui.tutorial.steps, k = at.p.key || at.d.id;
   return {
-    id: at.d.id, kind: at.d.kind, text: fill(T[k], at.p.vars(x)),
+    id: at.d.id, kind: at.kind, text: fill(T[k], at.p.vars(x)),
     target: at.p.target || null, moves: at.p.moves || [], county: at.p.county ?? null,
   };
 }
@@ -144,16 +146,16 @@ const to = (s, i) => ({ ...s, tut: i >= STEPS.length ? null : { i } });
 
 export function next(s) {
   const at = locate(s);
-  return at && !at.waiting && at.d.kind === "next" ? to(s, at.i + 1) : s;
+  return at && !at.waiting && at.kind === "next" ? to(s, at.i + 1) : s;
 }
 export function openCounty(s, k) {
   const at = locate(s);
-  return at && !at.waiting && at.d.kind === "county" && at.p.county === k ? to(s, at.i + 1) : s;
+  return at && !at.waiting && at.kind === "county" && at.p.county === k ? to(s, at.i + 1) : s;
 }
 // A move that is not the step's own leaves the session exactly as it was.
 export function act(s, m) {
   const at = locate(s);
-  if (!at || at.waiting || at.d.kind !== "move" || !at.p.moves.some((q) => key(q) === key(m))) return s;
+  if (!at || at.waiting || at.kind !== "move" || !at.p.moves.some((q) => key(q) === key(m))) return s;
   return to(Solo.act(s, m), at.i + 1);
 }
 // Out of the tutorial, whenever: what is left is a normal game.
