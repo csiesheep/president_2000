@@ -312,6 +312,8 @@ button.btn.menub { width: 40px; height: 40px; padding: 0; justify-content: cente
 .t-hand .hh a { color: var(--paper); }
 .t-hand .hs { display: flex; align-items: flex-start; padding: 16px 22px 2px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scrollbar-width: none; }
 .t-hand .hs::-webkit-scrollbar { display: none; }
+/* A mouse lifts a card above the strip, and the strip (it scrolls sideways, so it clips upward too) would cut it: the strip keeps room above the cards, taken back by a negative margin so the layout does not move. */
+@media (hover: hover) { .t-hand .hh { position: relative; z-index: 1; } .t-hand .hs { padding-top: 38px; margin-top: -22px; pointer-events: none; } .t-hand .hs > * { pointer-events: auto; } }
 .t-hand .hs > :first-child { margin-left: auto; } .t-hand .hs > :last-child { margin-right: auto; }
 .t-hand .none { color: #cdbd9c; font-size: 12px; }
 .hc {
@@ -553,6 +555,7 @@ html { scroll-padding-bottom: 190px; }
   .t-hand { position: sticky; bottom: -96px; margin: 0 -24px; padding-bottom: 0; }
   .t-hand .hh { justify-content: center; gap: 28px; }
   .t-hand .hs { padding: 22px 24px 6px; }
+  @media (hover: hover) { .t-hand .hs { padding-top: 126px; margin-top: -104px; } }
   .hc { width: 158px; height: 244px; margin-left: -22px; border-radius: 12px; }
   .hc .ha { height: 52%; border-radius: 12px 12px 0 0; }
   .hc .cp-tab { padding: 6px 11px 7px 10px; border-radius: 12px 0 12px 0; }
