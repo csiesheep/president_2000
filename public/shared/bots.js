@@ -132,6 +132,23 @@ const MEDIA_CUBE = 0.15;   // likewise a media cube
 // left out, no seat better: the issue slots ×0.5 / ×1.5, and valuing the 議題總領先者's +1 (v0.6 has no swap).
 // v0.4 and v0.5 never read this.
 const V06_MOMV = [0, 0, 0.2];
+// v0.7 (#55): no bag; a check succeeds with the seat's luck (st.luck, %). Whatever put cubes in a bag gives +10 luck
+// (at most 80), and momentum left at the conversion gives +10 luck per momentum to the election-day canvassing.
+// The value of +1 luck point for a seat is (its checks still to come) × V07_SUCCESS / 100: V07_SUCCESS is what one
+// more successful check is worth, in projected votes. Checks still to come: V07_CHECKS_PER_PLAY per play left in
+// the action turns (this turn's and the later ones) plus V07_CANVASS per election card (3 checks a card).
+// V07_MOMV is momentum's value besides the canvassing luck (triggers). Each seat plays its best measured setting
+// (#49's ruling). Measured with 操盤手 ×3, one seat changed against the other two, same seeds paired (the #55 handover
+// has the runs): 宋 won more valuing luck higher (0.6 → 1.2: +2.3 ± 0.9 points, 2400 games; 1.2 → 1.8: +1.7 ± 0.5,
+// 4800 games; 2.4 no better); 陳 did no better anywhere from 0.3 to 1.2 than at 0.6 (0.3: −3.0 ± 0.8); 連 was flat from 0.6 to 1.8 (within
+// ±0.6) and worse at 0.3 (−4.5 ± 1.0). V07_MOMV: no seat did better at another value (陳 0.3 / 0.5, 宋 0.2–0.5,
+// 連 0 / 0.5). v0.4–v0.6 never read these.
+const V07_MOMV = [0, 0, 0.2];
+const V07_SUCCESS = [0.6, 1.8, 0.6];
+const V07_CHECKS_PER_PLAY = 1.8, V07_CANVASS = 3, V07_CARDS_ELECTION = 4;
+const V07_ISSUE_CUBE = 0;  // an issue cube turns into nothing on election day
+// The draft's numbers as the bots read them (engine.js holds the rule): a card's luck, the cap, luck per momentum.
+const V07_LUCK_CARD = 10, V07_LUCK_MAX = 80, V07_LUCK_PER_MOM = 10;
 // Soft strategic-vote flow by |宋 − 連| in the county (design sim's SOFT), a
 // sharper one for 操盤手 in turns 7–8, and the rule itself on election day.
 const SOFT = [0, 0.35, 0.8, 1, 1];
@@ -168,10 +185,14 @@ function see(st) {
       for (const b of c.blocks) { if (b.o >= 0) { v[b.o]++; ty[b.o][b.t]++; } else e[b.t]++; }
       return { v, ty, G: e.G, B: e.B, N: e.N };
     }),
-    pos: st.pos.slice(), mom: st.mom.slice(), bag: st.bag.slice(), rest: st.rest.slice(),
+    pos: st.pos.slice(), mom: st.mom.slice(),
+    // #55: a v0.7 game has no bag and no rest cubes, and a luck per seat instead.
+    bag: Array.isArray(st.bag) ? st.bag.slice() : [0, 0, 0], rest: Array.isArray(st.rest) ? st.rest.slice() : [0, 0, 0],
+    luck: Array.isArray(st.luck) ? st.luck.slice() : null,
     // #49: a v0.5 game (ads and media folded into the issues) has no media at all.
     // #54: a v0.6 game is a v0.5 game plus the simplifications (no 地方大老: fill "candidate" or "free"; ties by st.order).
-    v05: st.rules === "v0.5" || st.rules === "v0.6", v06: st.rules === "v0.6", fill: st.fill,
+    // #55: a v0.7 game is a v0.6 game (fill "candidate") with luck instead of the bag.
+    v05: st.rules === "v0.5" || st.rules === "v0.6" || st.rules === "v0.7", v06: st.rules === "v0.6" || st.rules === "v0.7", v07: st.rules === "v0.7", fill: st.fill,
     media: Array.isArray(st.media) ? st.media.slice() : [0, 0, 0],
     issues: st.issues.map((i) => ({ name: i.name, cubes: i.cubes.slice() })),
     endorse: st.endorse.slice(),
@@ -197,15 +218,36 @@ class Bot {
   constructor(view, level, rng) {
     this.v = see(view);
     this.p = view.seat; this.lv = level; this.rng = rng;
-    this.MOMV = this.v.v06 ? V06_MOMV[this.p] : MOMV; // #54
+    this.MOMV = this.v.v07 ? V07_MOMV[this.p] + this.momCanvass() : this.v.v06 ? V06_MOMV[this.p] : MOMV; // #54, #55
     const t = this.v.turn;
     this.flow = level === 1 ? null : level >= 3 && t >= 9 ? EXACT : level >= 3 && t >= 7 ? SHARP : SOFT;
     this.pc = this.v.counties.map((_, k) => this.projCounty(k));
     this.T = this.pc.reduce((a, x) => add3(a, x), [0, 0, 0]);
     this.W = [0, 1, 2].map((q) => this.weights(q));
     this.share = [0, 1, 2].map((q) => { const s = this.v.bag[0] + this.v.bag[1] + this.v.bag[2]; return s ? this.v.bag[q] / s : 1 / 3; });
+    if (this.v.v07) this.share = [0, 1, 2].map((q) => this.luckNow(q) / 100); // #55: the chance is the luck
   }
 
+  // v0.7 (#55): the luck q's next check uses in an action turn (省府舊部's turn: 連 at 50; engine luckOf).
+  luckNow(q) { return q === LIEN && this.v.active.includes("provincial_staff") ? 50 : this.v.luck[q]; }
+  // q's checks still to come in the action turns and on election day (V07_CHECKS_PER_PLAY, V07_CANVASS above).
+  checksLeft(q) {
+    const t = this.v.turn;
+    const later = ACTION_TURNS.filter((x) => x > t).length;
+    const now = ACTION_TURNS.includes(t) && this.v.phase === "action" ? this.playsLeft(q) : 0;
+    const cards = t >= 9 ? 0 : t >= 7 ? Math.max(V07_CARDS_ELECTION - (t === 8 ? 2 : 0), this.v.savedElection.length) : V07_CARDS_ELECTION;
+    return (now + HAND.play * later) * V07_CHECKS_PER_PLAY + cards * V07_CANVASS;
+  }
+  // The value of q's luck going up by dl points (capped at 80), counted for the seat valuing it (this.p).
+  vLuck(q, dl) { const V = [0, 0, 0]; const d = Math.max(0, Math.min(V07_LUCK_MAX - this.v.luck[q], dl)); V[q] = (d / 100) * this.checksLeft(q) * V07_SUCCESS[this.p]; return V; }
+  // v0.7: one momentum now, halved at every momentum phase still to come, is +10 canvassing luck at the conversion.
+  momCanvass() {
+    const t = this.v.turn;
+    const halvings = ACTION_TURNS.filter((x) => x > t).length + (ACTION_TURNS.includes(t) && this.v.phase === "action" ? 1 : 0);
+    return t >= 9 ? 0 : Math.pow(0.5, halvings) * (V07_LUCK_PER_MOM / 100) * V07_CANVASS * V07_CARDS_ELECTION * V07_SUCCESS[this.p];
+  }
+  // 省府舊部 (v0.7): 連's checks this turn at 50 instead of its luck.
+  vProvincial() { const V = [0, 0, 0]; V[LIEN] = -Math.max(0, this.v.luck[LIEN] - 50) / 100 * this.playsLeft(LIEN) * V07_CHECKS_PER_PLAY * V07_SUCCESS[this.p]; return V; }
   // How much seat q counts each seat's gains (W_MAIN, W_OTHER above).
   weights(q) {
     const opp = [0, 1, 2].filter((x) => x !== q);
@@ -273,19 +315,29 @@ class Bot {
     for (let x = 0; x < 3; x++) if (x !== q && this.v.pos[x] === k) return true;
     return false;
   }
-  pFill(q, k) { return this.fillNeedsCheck(q, k) ? this.share[q] : 1; }
-  pCross(q) { return this.v.crossFree[q] > 0 ? 1 : this.share[q]; }
+  // v0.7 (#55): a check against a particular opponent x succeeds with q's luck ÷ (q's + x's); x < 0: q's luck.
+  // Before v0.7 every check is q's share of the bag.
+  pVs(q, x) { return this.v.v07 && x >= 0 ? this.luckNow(q) / (this.luckNow(q) + this.luckNow(x)) : this.share[q]; }
+  // v0.7: the opponent of a placement in county k, an opponent's candidate standing there (the luckier one; engine candidateVs).
+  candVs(q, k) {
+    if (!this.v.v07 || k == null) return -1;
+    let vs = -1;
+    for (let x = 0; x < 3; x++) if (x !== q && this.v.pos[x] === k && (vs < 0 || this.luckNow(x) > this.luckNow(vs))) vs = x;
+    return vs;
+  }
+  pFill(q, k) { return this.fillNeedsCheck(q, k) ? this.pVs(q, this.candVs(q, k)) : 1; }
+  pCross(q, k) { return this.v.crossFree[q] > 0 ? 1 : this.pVs(q, this.candVs(q, k)); }
 
   // The placements / removals open to q in county k, each with its odds.
   // what: "fill" own camp, "cross" the other camp, "steal" a cube of q2's.
   options(q, k, { cross = true, steal = true, check = true, grey = false } = {}) {
     const c = this.v.counties[k], own = CAMP[q], oth = OTHER(own), out = [];
     if (c[own] > 0) out.push({ type: "fill", ops: [["add", q, own]], p: check ? this.pFill(q, k) : 1 });
-    if (cross && c[oth] > 0) out.push({ type: "cross", ops: [["add", q, oth]], p: check ? this.pCross(q) : 1 });
+    if (cross && c[oth] > 0) out.push({ type: "cross", ops: [["add", q, oth]], p: check ? this.pCross(q, k) : 1 });
     if (grey && c.N > 0) out.push({ type: "grey", ops: [["add", q, "N"]], p: 1 });
     if (steal) for (let x = 0; x < 3; x++) {
       if (x === q) continue;
-      for (const t of ["G", "B", "N"]) if (c.ty[x][t] > 0) out.push({ type: "steal", target: x, t, ops: [["rem", x, t]], p: check ? this.share[q] : 1 });
+      for (const t of ["G", "B", "N"]) if (c.ty[x][t] > 0) out.push({ type: "steal", target: x, t, ops: [["rem", x, t]], p: check ? this.pVs(q, x) : 1 });
     }
     return out;
   }
@@ -351,7 +403,8 @@ class Bot {
       const second = Math.max(...i.cubes.filter((_, q) => q !== l));
       V[l] += SV[s] * (i.cubes[l] - second >= 2 ? 1 : 0.75);
     });
-    for (const i of issues) for (let q = 0; q < 3; q++) V[q] += i.cubes[q] * ISSUE_CUBE;
+    const cube = this.v.v07 ? V07_ISSUE_CUBE : ISSUE_CUBE; // #55
+    for (const i of issues) for (let q = 0; q < 3; q++) V[q] += i.cubes[q] * cube;
     return V;
   }
   issueChange(changes, q = this.p) {
@@ -502,7 +555,7 @@ class Bot {
         }
       }
       if (!best) break;
-      const pr = check ? this.share[q] : 1;
+      const pr = check ? this.pVs(q, target) : 1;
       add3(V, best.d, pr);
       if (toBag) V[target] += BAGV * pr;
       used.push(best.k);
@@ -515,7 +568,7 @@ class Bot {
   // The swap cards (棄連保扁 …): in one county target −1 (checked), then q +1 (checked).
   vSwap(q, target) {
     let best = null;
-    const sh = this.share[q];
+    const sh = this.pVs(q, target);
     for (let k = 0; k < NC; k++) {
       const c = this.v.counties[k];
       for (const t of ["G", "B", "N"]) {
@@ -534,7 +587,7 @@ class Bot {
     return this.vPlace(q, 1, { check: true });
   }
   vMom(q, n) { const V = [0, 0, 0]; V[q] = n >= 0 ? n * this.MOMV : -Math.min(this.v.mom[q], -n) * this.MOMV; return V; }
-  vBag(q, n) { const V = [0, 0, 0]; V[q] = n * BAGV; return V; }
+  vBag(q, n) { if (this.v.v07) return this.vLuck(q, V07_LUCK_CARD); const V = [0, 0, 0]; V[q] = n * BAGV; return V; } // #55: +10 luck
   vIssue(...changes) { return this.issueChange(changes); }
   // v0.5 (#49) 「任一議題」: chooser q puts n of p's cubes on the best issue for q, or with target takes up to n of
   // target's off the best issue where target has some (none: nothing). Returns { V, name }.
@@ -558,7 +611,7 @@ class Bot {
   eventVec(id, by = this.p) {
     const c = CARD[id];
     if (c.owner === "local") { const k = ci(c.county); const b = this.bestIn(by, k, { steal: false }); return b ? add3([0, 0, 0], b.d, b.opt.p) : [0, 0, 0]; }
-    const f = (this.v.v05 && EV_V05[id]) || EV[id];
+    const f = (this.v.v07 && EV_V07[id]) || (this.v.v05 && EV_V05[id]) || EV[id];
     return f ? f(this, by) : [0, 0, 0];
   }
   ownEventAllowed(q, c) {
@@ -619,14 +672,14 @@ class Bot {
     const v = this.v, p = this.p, lv = this.lv;
     const cpCache = {};
     const cpv = (cp) => (cpCache[cp] ??= this.cpValue(cp));
-    const restV = (cp) => (lv >= 2 ? (REST_CUBES[cp] + (p === LIEN && !v.active.includes("provincial_staff") ? 1 : 0)) * BAGV : 0);
+    const restV = (cp) => (lv >= 2 && !v.v07 ? (REST_CUBES[cp] + (p === LIEN && !v.active.includes("provincial_staff") ? 1 : 0)) * BAGV : 0); // v0.7: no rest
     // 操盤手 keeps the best card for the pile being built (turns 1–5: the debate, by CP).
     const keep = lv >= 3 ? this.keepPlan() : null;
     const opts = [];
     for (const m of legal) {
       if (lv === 1 && m.block) continue;
       if (m.type === "candidate") {
-        const cc = CANDIDATE_CARDS[SEATS[p]];
+        const cc = v.v07 ? { cp: p === LIEN ? 4 : CANDIDATE_CARDS[SEATS[p]].cp, rest: 0 } : CANDIDATE_CARDS[SEATS[p]]; // #55: 連 4 CP, no rest
         let val = cpv(cc.cp).v + (lv >= 2 ? cc.rest * BAGV : 0) - 0.8;
         if (lv === 1) {
           // 助選員: plays it on a turn picked at random among 1–3, at its first play
@@ -749,8 +802,8 @@ class Bot {
       const k = m.county, c = this.v.counties[k];
       let ops, pr;
       if (m.type === "fill") { ops = [["add", p, CAMP[p]]]; pr = this.pFill(p, k); }
-      else if (m.type === "cross") { ops = [["add", p, OTHER(CAMP[p])]]; pr = this.pCross(p); }
-      else { ops = [["rem", m.target, m.t]]; pr = this.share[p]; }
+      else if (m.type === "cross") { ops = [["add", p, OTHER(CAMP[p])]]; pr = this.pCross(p, k); }
+      else { ops = [["rem", m.target, m.t]]; pr = this.pVs(p, m.target); }
       const ev = this.ev(pr, this.rel(this.delta(k, ops)));
       if (!best || ev > best.ev) best = { m, ev, pr, c };
     }
@@ -807,7 +860,7 @@ class Bot {
       let ev;
       if (m.type === "fill" || m.type === "cross") {
         const t = m.type === "fill" ? CAMP[p] : OTHER(CAMP[p]);
-        const pr = s.check ? (m.type === "cross" ? this.pCross(p) : this.pFill(p, m.county)) : 1;
+        const pr = s.check ? (m.type === "cross" ? this.pCross(p, m.county) : this.pFill(p, m.county)) : 1;
         const undo = this.commit(m.county, [["add", p, t]]);
         let more = 0;
         if (s.then) for (const t2 of s.then) if (t2.op === "remove") more += this.rel(this.vRemove(p, t2.target, t2.left, { pool: [m.county] }));
@@ -815,14 +868,14 @@ class Bot {
         undo();
         ev = this.ev(pr, this.rel(this.delta(m.county, [["add", p, t]])) + more);
       } else if (m.type === "remove") {
-        const pr = s.check ? this.share[p] : 1;
+        const pr = s.check ? this.pVs(p, m.target) : 1;
         const d = this.delta(m.county, [["rem", m.target, m.t]]);
         const undo = this.commit(m.county, [["rem", m.target, m.t]]);
         let more = 0;
         if (s.then) for (const t2 of s.then) if (t2.op === "place") { const b = this.bestIn(p, m.county, { steal: false, check: t2.check }); if (b) more += b.ev; }
         if (s.pick === "same" && s.left > 1) more += this.rel(this.vRemove(p, m.target, s.left - 1, { pool: [m.county] }));
         undo();
-        ev = this.ev(pr, this.rel(d)) + (s.check ? this.share[p] : 1) * more;
+        ev = this.ev(pr, this.rel(d)) + pr * more;
         if (s.toBag) ev -= this.W[p][m.target] * BAGV;
       } else if (m.type === "convert") {
         ev = this.rel(this.delta(m.county, [["conv"]]));
@@ -850,7 +903,7 @@ class Bot {
     let best = null;
     for (const m of legal) {
       const t = m.type === "fill" ? CAMP[p] : OTHER(CAMP[p]);
-      const pr = local ? (m.type === "cross" ? this.pCross(p) : this.pFill(p, m.county)) : 1;
+      const pr = local ? (m.type === "cross" ? this.pCross(p, m.county) : this.pFill(p, m.county)) : 1;
       const ev = this.ev(pr, this.rel(this.delta(m.county, [["add", p, t]])));
       if (!best || ev > best.ev) best = { m, ev };
     }
@@ -1113,6 +1166,19 @@ const EV_V05 = {
   expel_soong: (b, by) => sum(b.vAnyIssue(by, SOONG, 2, { target: SOONG }), b.vMom(SOONG, 1)),
   party_assets_ads: (b, by) => b.vAnyIssue(by, LIEN, 2),
   massive_ads: (b, by) => b.vAnyIssue(by, LIEN, 3),
+};
+
+// v0.7 (#55): 興票案 without the bag (engine.js PROGRAMS_V07) and 省府舊部 on 連's luck. The eight cards with
+// 「袋中 +n」 go through vBag (+10 luck).
+const EV_V07 = {
+  provincial_staff: (b, by) => sum(b.vAnyIssue(by, SOONG, 1), b.vProvincial()),
+  yang_exposes: (b) => {
+    const V = b.vRemove(LIEN, SOONG, 4, { pick: "free" });
+    const clean = b.v.issues.find((i) => i.name === "clean").cubes[SOONG];
+    return sum(V, b.vIssue(["clean", SOONG, -clean]), b.vMom(SOONG, -b.v.mom[SOONG]));
+  },
+  lee_authorized: (b) => sum(b.vPlace(SOONG, 2), b.vIssue(["clean", SOONG, 1])),
+  shifting_story: (b) => sum(b.vRemove(LIEN, SOONG, 2, { pick: "free" }), b.vMom(LIEN, 1)),
 };
 
 // ------------------------------------------------------------------ entry

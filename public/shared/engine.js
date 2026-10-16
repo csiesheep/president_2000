@@ -69,15 +69,25 @@ const CARD = Object.fromEntries(allCards().map((c) => [c.id, c]));
 // ------------------------------------------------------------------ setup
 
 const START_TURNS = [1, 2, 3, 4, 5, 7, 8];
-const RULES = ["v0.4", "v0.5", "v0.6"];
+const RULES = ["v0.4", "v0.5", "v0.6", "v0.7"];
 // #49: is this a game of the v0.5 draft (ads and media folded into the issues)? v0.6 (#54) is v0.5 plus seven
 // simplifications, so a v0.6 game is a v0.5 game too, unless V06 says otherwise.
-const V05 = (st) => st.rules === "v0.5" || st.rules === "v0.6";
+const V05 = (st) => st.rules === "v0.5" || st.rules === "v0.6" || st.rules === "v0.7";
 // #54: the v0.6 draft (simplified): no block, slot 2 always an endorsement, one strategic vote (election day), no
 // 地方大老 (st.fill "candidate" | "free"), the issue slots reshuffled after every momentum phase, momentum halved
 // rounding down for everyone, and the turn order by votes, fewest first, instead of the initiative check.
-const V06 = (st) => st.rules === "v0.6";
+const V06 = (st) => st.rules === "v0.6" || st.rules === "v0.7";
 const FILLS = ["candidate", "free"];
+// #55: the v0.7 draft (luck): v0.6 4a (fill "candidate") without the bag, the rest cubes and the refill. Each seat has
+// a luck in percent (st.luck, [陳, 宋, 連]); a support check succeeds with the checking seat's luck as the chance (or,
+// against a particular opponent, luck ÷ (luck + theirs): supportCheck) and does nothing else when it fails. Whatever added cubes to a bag adds LUCK_CARD to the owner's luck instead (draft 3,
+// orchestrator 細節 3); luck stays within LUCK_MIN–LUCK_MAX (細節 1). A v0.7 game is a v0.6 game (and so a v0.5 one)
+// unless V07 says otherwise.
+const V07 = (st) => st.rules === "v0.7";
+const LUCK_START = [50, 50, 60], LUCK_MIN = 20, LUCK_MAX = 80, LUCK_CARD = 10;
+const LUCK_PROVINCIAL = 50; // 細節 5: 省府舊部's turn, 連's checks use this luck
+const LUCK_PER_MOM = 10, LUCK_ELECTION_MAX = 80; // 細節 7: election day, per momentum before the conversion; at most
+const LIEN_CANDIDATE_CP_V07 = 4; // 細節 6: 連's candidate card, 3 CP and 2 rest cubes in v0.6
 
 // opts.startTurn (裁決 16): the same opening board, starting at that turn
 // (7 and 8 deal from the late deck; the saved piles are empty). An entry for
@@ -93,6 +103,7 @@ export function createGame(seed, opts = {}) {
   if (!RULES.includes(rules)) throw new Error("createGame: rules must be one of " + RULES.join("/"));
   const fill = opts.fill ?? "candidate";
   if (rules === "v0.6" && !FILLS.includes(fill)) throw new Error("createGame: fill must be one of " + FILLS.join("/"));
+  if (rules === "v0.7" && fill !== "candidate") throw new Error("createGame: v0.7 is v0.6 with fill candidate");
   const rng = makeRng(seed);
   const counties = COUNTIES.map(([name, region, G, B, N, init]) => {
     const blocks = [];
@@ -147,9 +158,10 @@ export function createGame(seed, opts = {}) {
     log: [],
   };
   st.rng = rng.state;
-  if (rules === "v0.5" || rules === "v0.6") {
+  if (rules === "v0.5" || rules === "v0.6" || rules === "v0.7") {
     st.rules = rules;
-    if (rules === "v0.6") st.fill = fill; // v0.6 4 (#54): 4a "candidate" or 4b "free"
+    if (rules === "v0.6" || rules === "v0.7") st.fill = fill; // v0.6 4 (#54): 4a "candidate" or 4b "free"; v0.7: 4a
+    if (rules === "v0.7") { st.luck = LUCK_START.slice(); delete st.bag; delete st.rest; } // #55: luck, no bag, no rest
     delete st.media; // v0.5 二、3.2: no media cubes, no national media box
     issueCubes(st, "econ")[LIEN] = V05_START_ECON; // v0.5 四.5、十三: 連 opens with 2 on 經濟民生
   }
@@ -245,7 +257,18 @@ function refill(st) {
 
 // §8: draw one cube. Own colour: success, the cube goes back. Another colour:
 // failure, that cube goes back to its owner's supply (out of the bag).
-function supportCheck(st, seat) {
+//
+// v0.7 (#55): the chance is the seat's luck (luckOf). Against a particular opponent `vs` (owner, 2026-10-16:
+// 「有特定對手，就要考慮其的運氣，歸一化成成功率」; orchestrator's reading) it is luck ÷ (luck + the opponent's luck, as
+// luckOf gives it). The entry logs the luck, the opponent (-1: none) and the chance in percent (p, one decimal).
+function supportCheck(st, seat, vs = -1) {
+  if (V07(st)) return withRng(st, (rng) => {
+    const luck = luckOf(st, seat);
+    const p = vs < 0 ? luck : (100 * luck) / (luck + luckOf(st, vs));
+    const ok = rng.next() * 100 < p;
+    st.log.push({ t: "check", seat, ok, luck, vs, p: Math.round(p * 10) / 10 });
+    return ok;
+  });
   return withRng(st, (rng) => {
     if (st.bag[0] + st.bag[1] + st.bag[2] === 0) refill(st);
     const drew = drawColour(st.bag, rng);
@@ -255,6 +278,24 @@ function supportCheck(st, seat) {
     return ok;
   });
 }
+
+// #55: the luck seat's check uses now. Election day (the canvassing is its only check): luck + LUCK_PER_MOM × the
+// momentum before the conversion, at most LUCK_ELECTION_MAX. A turn of 省府舊部: 連 checks with LUCK_PROVINCIAL.
+function luckOf(st, seat) {
+  if (st.phase === "election" && st.election) return Math.min(LUCK_ELECTION_MAX, st.luck[seat] + LUCK_PER_MOM * st.election.mom[seat]);
+  if (seat === LIEN && activeHas(st, "provincial_staff")) return LUCK_PROVINCIAL;
+  return st.luck[seat];
+}
+// #55 (orchestrator's reading of the owner's 「特定對手」): a placement in county k is checked against an opponent's
+// candidate standing there, the one with the higher luck when both do (a tie: the first seat); none there, -1.
+function candidateVs(st, seat, k) {
+  let vs = -1;
+  for (let q = 0; q < 3; q++) if (q !== seat && st.pos[q] === k && (vs < 0 || luckOf(st, q) > luckOf(st, vs))) vs = q;
+  return vs;
+}
+const addLuck = (st, p, n) => { st.luck[p] = Math.min(LUCK_MAX, Math.max(LUCK_MIN, st.luck[p] + n)); };
+// A card's 「袋中 +n」: n cubes into p's bag; in v0.7 (#55) p's luck +LUCK_CARD, whatever n was.
+const addBag = (st, p, n) => { if (V07(st)) addLuck(st, p, LUCK_CARD); else st.bag[p] += n; };
 
 // ------------------------------------------------------------------ derived values (never cached)
 
@@ -327,12 +368,12 @@ const EFFECTS = {
   no_nuke4: (st) => { addIssue(st, "econ", CHEN, 1); addIssue(st, "econ", LIEN, -1); addMom(st, SOONG, 1); },
   lin_chairman: (st) => { addIssue(st, "clean", CHEN, 1); addMom(st, CHEN, 1); },
   poll_lead: (st) => addMom(st, SOONG, 2),
-  million_signatures: (st) => { st.bag[SOONG] += 3; addMom(st, SOONG, 1); },
+  million_signatures: (st) => { addBag(st, SOONG, 3); addMom(st, SOONG, 1); },
   lien_siew: (st) => addIssue(st, "econ", LIEN, 2),
   hand_in_hand: (st) => { addMom(st, LIEN, 1); addIssue(st, "econ", LIEN, 1); },
   stability: (st) => addIssue(st, "cross", LIEN, 2),
-  local_factions: (st) => { st.bag[LIEN] += 4; },
-  party_congress: (st) => { st.bag[LIEN] += 4; addMom(st, LIEN, 1); },
+  local_factions: (st) => { addBag(st, LIEN, 4); },
+  party_congress: (st) => { addBag(st, LIEN, 4); addMom(st, LIEN, 1); },
   poll_published: (st) => { const p = leader(st.issues[0].cubes); if (p >= 0) addMom(st, p, 1); },
   // 外力: 新中間路線 shields 陳's cubes this turn (#5 裁決 7); the momentum still moves.
   strait_tension: (st) => { for (let p = 0; p < 3; p++) if (!extShielded(st, p)) addIssue(st, "cross", p, -1); addMom(st, CHEN, 1); },
@@ -340,9 +381,9 @@ const EFFECTS = {
   us_congress: (st) => { addIssue(st, "cross", CHEN, 1); addIssue(st, "cross", LIEN, 1); },
   stock_crash: (st) => { addIssue(st, "econ", LIEN, 1); for (let p = 0; p < 3; p++) addMom(st, p, -1); },
   // v0.3 (#4): the five new cards that need no choice
-  chang_chiu: (st) => { st.bag[CHEN] += 3; addMom(st, CHEN, 1); },
+  chang_chiu: (st) => { addBag(st, CHEN, 3); addMom(st, CHEN, 1); },
   provincial_build: (st) => addIssue(st, "econ", SOONG, 2),
-  econ_cabinet: (st) => { addIssue(st, "econ", LIEN, 1); st.bag[LIEN] += 2; },
+  econ_cabinet: (st) => { addIssue(st, "econ", LIEN, 1); addBag(st, LIEN, 2); },
   kmt_anniversary: (st) => { addMom(st, LIEN, 1); addIssue(st, "cross", LIEN, 1); },
   pla_drill_rumor: (st) => { addIssue(st, "cross", LIEN, 1); addIssue(st, "cross", SOONG, 1); addMom(st, CHEN, -1); },
   // #5: the 本回合 cards. Their lasting part is a flag read from st.active
@@ -375,7 +416,10 @@ function useCrossWaiver(st, seat) {
   return false;
 }
 // A cross-camp placement by `seat` that needs a check: waived, or checked.
-const crossCheck = (st, seat) => useCrossWaiver(st, seat) || supportCheck(st, seat);
+// k: the county (v0.7, #55: an opponent's candidate there is the check's opponent).
+const crossCheck = (st, seat, k) => useCrossWaiver(st, seat) || supportCheck(st, seat, V07(st) ? candidateVs(st, seat, k) : -1);
+// A placement on seat's own camp in county k that may need a check (§8.1).
+const fillCheck = (st, seat, k) => !fillNeedsCheck(st, seat, k) || supportCheck(st, seat, V07(st) ? candidateVs(st, seat, k) : -1);
 
 // The turn is over: the 本回合 cards leave the game and their flags end.
 function endTurnFlags(st) {
@@ -497,7 +541,15 @@ const PROGRAMS_V05 = {
   party_assets_ads: (by) => [anyIssue(by, LIEN, 2)],
   massive_ads: (by) => [anyIssue(by, LIEN, 3)],
 };
-const programOf = (st, id) => (V05(st) && PROGRAMS_V05[id]) || PROGRAMS[id];
+// #55: 興票案 without the bag (draft 細節 4). 楊吉雄爆料 and 說法反覆 remove 宋's cubes (連 picks, a county may be
+// picked again) and nothing goes anywhere; 李登輝授意說 lets 宋 place +1 in each of 2 counties, no check (the
+// wording of 軍公教警's 「宋在任 2 個縣市各 +1」: distinct counties, own camp or the other).
+const PROGRAMS_V07 = {
+  yang_exposes: () => [removeFrom(LIEN, SOONG, 4, { pick: "free", tally: "yangReturned" }), { op: "issueTo", name: "clean", p: SOONG, v: 0 }, { op: "momTo", p: SOONG, v: 0 }],
+  lee_authorized: () => [place(SOONG, 2), iss("clean", SOONG, 1)],
+  shifting_story: () => [removeFrom(LIEN, SOONG, 2, { pick: "free" }), mom(LIEN, 1)],
+};
+const programOf = (st, id) => (V07(st) && PROGRAMS_V07[id]) || (V05(st) && PROGRAMS_V05[id]) || PROGRAMS[id];
 
 // 棄連保扁、棄連保宋、黨內整合: in one county, the target −1 (checked, Q5
 // default) and then the player +1 (§8.1). With no target cube anywhere the
@@ -553,7 +605,7 @@ function runProgram(st) {
     const s = q[0];
     if (s.op === "mom") { addMom(st, s.p, s.n); q.shift(); continue; }
     if (s.op === "issue") { addIssue(st, s.name, s.p, s.n); q.shift(); continue; }
-    if (s.op === "bag") { st.bag[s.p] += s.n; q.shift(); continue; }
+    if (s.op === "bag") { addBag(st, s.p, s.n); q.shift(); continue; }
     if (s.op === "media") {
       if (s.target < 0) st.media[s.seat] += s.n; else st.media[s.target] = Math.max(0, st.media[s.target] - s.n);
       q.shift(); continue;
@@ -578,12 +630,12 @@ function applyEffect(st, seat, m) {
   if (s.op === "place") {
     key = m.county;
     let ok = true;
-    if (s.check) ok = m.type === "cross" ? crossCheck(st, seat) : !fillNeedsCheck(st, seat, key) || supportCheck(st, seat);
+    if (s.check) ok = m.type === "cross" ? crossCheck(st, seat, key) : fillCheck(st, seat, key);
     if (s.fromBag) st.bag[seat]--;
     if (ok) putCube(st,seat, key, m.type === "fill" ? CAMP[seat] : otherCamp(seat));
   } else if (s.op === "remove") {
     key = m.county;
-    if (!s.check || supportCheck(st, seat)) {
+    if (!s.check || supportCheck(st, seat, m.target)) {
       st.counties[key].blocks.find((b) => b.o === m.target && b.t === m.t).o = -1;
       if (s.toBag) st.bag[m.target]++;
       if (s.tally) st.flags[s.tally]++;
@@ -863,14 +915,15 @@ function applyPlay(st, seat, m) {
   if (m.type === "candidate") {
     const cc = CANDIDATE_CARDS[SEATS[seat]];
     st.candidateUsed[seat] = true;
-    st.rest[seat] += cc.rest; // 裁決 15: 連's candidate card rests 2, no +1
+    if (!V07(st)) st.rest[seat] += cc.rest; // 裁決 15: 連's candidate card rests 2, no +1
+    const cp = V07(st) && seat === LIEN ? LIEN_CANDIDATE_CP_V07 : cc.cp; // #55: no rest cubes; 連's card 4 CP
     st.log.push({ t: "play", seat, card: "candidate", mode: "cp" });
-    st.pending = { seat, card: "candidate", mode: "cp", blocked: false, stage: "kind", cp: cc.cp };
+    st.pending = { seat, card: "candidate", mode: "cp", blocked: false, stage: "kind", cp };
     return;
   }
   const id = m.card, c = CARD[id];
   st.hands[seat].splice(st.hands[seat].indexOf(id), 1);
-  st.rest[seat] += restFor(st, seat, c.cp); // §6.4: to the rest area now, into the bag at saving
+  if (!V07(st)) st.rest[seat] += restFor(st, seat, c.cp); // §6.4: to the rest area now, into the bag at saving (v0.7: none)
   if (m.block) { st.mom[seat] -= 2; st.log.push({ t: "block", seat, card: id }); }
   st.log.push({ t: "play", seat, card: id, mode: m.mode });
   st.pending = { seat, card: id, mode: m.mode, blocked: !!m.block, stage: "kind", cp: c.cp };
@@ -892,7 +945,7 @@ function applyPlay(st, seat, m) {
 
 function applyLocal(st, seat, m) {
   const k = m.county;
-  const ok = m.type === "cross" ? crossCheck(st, seat) : !fillNeedsCheck(st, seat, k) || supportCheck(st, seat);
+  const ok = m.type === "cross" ? crossCheck(st, seat, k) : fillCheck(st, seat, k);
   if (ok) putCube(st,seat, k, m.type === "fill" ? CAMP[seat] : otherCamp(seat));
   finishPlay(st);
 }
@@ -918,11 +971,11 @@ function applyCampaign(st, seat, pd, m) {
   pd.ops++;
   st.pos[seat] = k; // the piece stops at the county of the last operation
   if (m.type === "fill") {
-    if (!fillNeedsCheck(st, seat, k) || supportCheck(st, seat)) putCube(st,seat, k, CAMP[seat]);
+    if (fillCheck(st, seat, k)) putCube(st,seat, k, CAMP[seat]);
   } else if (m.type === "cross") {
-    if (crossCheck(st, seat)) putCube(st,seat, k, otherCamp(seat));
+    if (crossCheck(st, seat, k)) putCube(st,seat, k, otherCamp(seat));
   } else if (m.type === "steal") {
-    if (supportCheck(st, seat)) {
+    if (supportCheck(st, seat, m.target)) {
       // 裁決 8 / §4: the block returns to its printed colour
       st.counties[k].blocks.find((b) => b.o === m.target && b.t === m.t).o = -1;
     }
@@ -1093,7 +1146,7 @@ function applySave(st, seat, m) {
 
 // Everyone has saved: the rest area goes into the bag and the turn ends.
 function endSave(st) {
-  for (let p = 0; p < 3; p++) { st.bag[p] += st.rest[p]; st.rest[p] = 0; }
+  if (!V07(st)) for (let p = 0; p < 3; p++) { st.bag[p] += st.rest[p]; st.rest[p] = 0; } // v0.7 (#55): no rest, no bag
   endTurnFlags(st); // #5 裁決 6: after saving, before the next deal
   if (st.turn === 5) return startDebate(st);
   if (st.turn === 8) return startElection(st);
@@ -1310,11 +1363,13 @@ function startElection(st) {
   const mom = st.mom.slice();
   // v0.5 十二 1 (#49): no media to convert; the issue cubes and momentum ×2 as in v0.4.
   const add = [0, 1, 2].map((p) => (V05(st) ? 0 : st.media[p]) + st.issues.reduce((s, i) => s + i.cubes[p], 0) + 2 * st.mom[p]);
-  for (let p = 0; p < 3; p++) st.bag[p] += add[p];
+  // v0.7 (#55, 細節 7): no bag; the conversion only keeps the momentum (st.election.mom), which raises the
+  // canvassing luck (luckOf). The issue cubes and the momentum still go to 0 and turn into nothing.
+  if (!V07(st)) for (let p = 0; p < 3; p++) st.bag[p] += add[p];
   if (!V05(st)) st.media = [0, 0, 0];
   for (const i of st.issues) i.cubes = [0, 0, 0];
   st.mom = [0, 0, 0];
-  st.log.push({ t: "convert", bag: add, mom });
+  st.log.push(V07(st) ? { t: "convert", mom } : { t: "convert", bag: add, mom });
   st.election = { mom, stage: "order", card: null, county: -1, left: 0, choose: false };
   if (V06(st)) {
     // v0.6 7 (#54): the canvassing order is the votes, fewest first (momentum is 0 for all after the conversion,

@@ -1,6 +1,6 @@
 // tests/sim.js — bot-vs-bot balance (M2, #10). BE's file; not part of `npm test`.
 //
-//   node tests/sim.js <games> [levels=3,3,3] [seed=1] [rotate=1] [workers=N] [quiet=1] [rules=v0.4|v0.5|v0.6] [fill=candidate|free]
+//   node tests/sim.js <games> [levels=3,3,3] [seed=1] [rotate=1] [workers=N] [quiet=1] [rules=v0.4|v0.5|v0.6|v0.7] [fill=candidate|free]
 //
 // Game i (0-based) uses seed + i. levels[s] plays seat s (1 樁腳, 2 總幹事, 3 操盤手).
 // rotate=1: the first level in `levels` is the hero and the other two its
@@ -9,7 +9,8 @@
 // Prints each seat's win rate, average blocks, average margin and turnout
 // (blocks on the board ÷ 154), the spread and the outliers; the last line is
 // JSON. rules= picks the rule set (#49: v0.5 is the draft that folds ads and media into the issues; default v0.4;
-// #54: v0.6 is the simplified draft, fill= its 地方大老 variant, candidate when not given);
+// #54: v0.6 is the simplified draft, fill= its 地方大老 variant, candidate when not given; #55: v0.7 is v0.6 4a with luck
+// instead of the bag, fill= not given);
 // the report also shows where each seat's CP went (競選/廣告/議題). Games run in child processes (workers, default: CPUs − 1, at most 8);
 // a chunk whose process dies is run again once, then the whole run fails.
 import { fork } from "node:child_process";
