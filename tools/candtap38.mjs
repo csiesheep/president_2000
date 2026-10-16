@@ -55,16 +55,21 @@ const Q = "候選人牌整局只能用一次。現在就用嗎？", YES = "確�
 const LOOK = `JSON.stringify((() => {
   const shown = (el) => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden";
   const btn = (label) => [...document.querySelectorAll("button")].find((b) => shown(b) && b.textContent.trim() === label);
-  const yes = btn(${JSON.stringify(YES)}), cand = document.querySelector(".tbl [data-cand]"), face = [...document.querySelectorAll("[data-face]")].find(shown);
+  const yes = btn(${JSON.stringify(YES)}), cand = document.querySelector(".tbl [data-cand]"), face = [...document.querySelectorAll("[data-face]")].find((f) => shown(f) && !f.closest("[data-replay]"));
   return { question: [...document.querySelectorAll("p, div, span")].some((e) => shown(e) && e.childElementCount === 0 && e.textContent.trim() === ${JSON.stringify(Q)}),
     yes: !!yes, yesMove: yes ? yes.getAttribute("data-move") : null, no: !!btn(${JSON.stringify(NO)}),
     face: face ? face.getAttribute("data-face") : null,
     cand: cand ? { usable: cand.hasAttribute("data-move") && !cand.disabled, used: cand.hasAttribute("data-used") } : null };
 })())`;
 const look = async (t) => JSON.parse(await t.ev(LOOK));
-const tapCard = (t) => t.ev(`(() => { const c = [...document.querySelectorAll(".tbl [data-sel]")].find((x) => !x.disabled); if (!c) return null; c.click(); return c.getAttribute("data-sel"); })()`);
-const tapCand = (t) => t.ev(`(() => { const c = document.querySelector(".tbl [data-cand]"); if (!c) return false; c.click(); return true; })()`);
-const tapYes = (t) => t.ev(`(() => { const b = [...document.querySelectorAll("button")].find((x) => x.getClientRects().length && x.textContent.trim() === ${JSON.stringify(YES)}); if (!b) return false; b.click(); return true; })()`);
+// A rival's card replayed big (#47) or the turn card (#44) lies over the table and takes a tap: wait until neither is up
+// (0.4 s in a row), so a tap lands on the table (FE on #53: one red in three was a replay face read as the hand's, or a
+// tap the turn card swallowed).
+const CLEAR = `(() => { const up = (el) => el.getClientRects().length > 0 && Number(getComputedStyle(el).opacity) > 0.05; return ![...document.querySelectorAll("[data-replay], [data-turncard]")].some(up); })()`;
+async function settle(t) { for (let i = 0, clear = 0; i < 300 && clear < 8; i++) { clear = (await t.ev(CLEAR)) ? clear + 1 : 0; await sleep(50); } }
+const tapCard = async (t) => { await settle(t); return t.ev(`(() => { const c = [...document.querySelectorAll(".tbl [data-sel]")].find((x) => !x.disabled); if (!c) return null; c.click(); return c.getAttribute("data-sel"); })()`); };
+const tapCand = async (t) => { await settle(t); return t.ev(`(() => { const c = document.querySelector(".tbl [data-cand]"); if (!c) return false; c.click(); return true; })()`); };
+const tapYes = async (t) => { await settle(t); return t.ev(`(() => { const b = [...document.querySelectorAll("button")].find((x) => x.getClientRects().length && x.textContent.trim() === ${JSON.stringify(YES)}); if (!b) return false; b.click(); return true; })()`); };
 const say = (o) => JSON.stringify(o);
 
 const out = [];
@@ -96,7 +101,8 @@ async function flows(where, open) {
   rule(!!id2 && n2.face === id2 && !n2.question, `${where}: tap the candidate card, then ${id2} → its face, the question gone (face ${n2.face}, question ${n2.question})`);
   // … and closing that face (← 收起) does not bring the old question back (FE, #38: a face drawn over a question
   // still standing underneath passes the line above).
-  const closed = await t.ev(`(() => { const b = document.querySelector(".sheet [data-sel='']"); if (!b) return false; b.click(); return true; })()`); await sleep(500);
+  await settle(t);
+  const closed = await t.ev(`(() => { const b = document.querySelector(".sheet [data-sel='']"); if (!b) return false; b.click(); return true; })()`); await sleep(500); await settle(t);
   const n3 = await look(t);
   rule(closed && !n3.face && !n3.question, `${where}: … then ← 收起 → no face and no question left over (${closed ? `face ${n3.face}, question ${n3.question}` : "no ← 收起 button on the face"})`);
   t.close();
