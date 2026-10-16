@@ -95,7 +95,7 @@ if (typeof document !== "undefined") {
       heard = { seed: session.seed, st: session.st };
     };
     // The rivals' moves shown big (#47). Not in the tutorial: it has its own steps for the rivals' turn and keeps the old way.
-    const rep = Replay.createReplay({ labels: { hit: S.replay.hit, miss: S.replay.miss }, lang: code, onIdle: () => { if (!card && cardWanted()) pump(); else if (Sound.gap() == null && session && session.st && !Solo.botsToMove(session).length && stage.querySelector("[data-botnext]")) draw(); } });
+    const rep = Replay.createReplay({ labels: { hit: S.replay.hit, miss: S.replay.miss }, lang: code, rules: () => session && session.st && session.st.rules, onIdle: () => { if (!card && cardWanted()) pump(); else if (Sound.gap() == null && session && session.st && !Solo.botsToMove(session).length && stage.querySelector("[data-botnext]")) draw(); } });
     const stepOpt = () => (Sound.gap() == null && session.st && (Solo.botsToMove(session).length || rep.active()) ? { botnext: S.menu.next } : {});
     // The turn card (#44): each turn opens with it, once. It holds the rivals back, stays about 1.5 s and fades out; a tap
     // anywhere closes it (that is not the skip: the rivals only start after it has gone, one step at a time as before).

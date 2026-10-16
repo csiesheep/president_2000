@@ -42,7 +42,7 @@ export function leftover(names, beats) {
   return left.filter((n) => n !== "turn");
 }
 
-export function createReplay({ labels, lang, onIdle, ready } = {}) {
+export function createReplay({ labels, lang, onIdle, ready, rules } = {}) { // rules: () => the game's rules ("v0.7": no rest cubes on the big card)
   let root = null, queue = [], cur = null, gapTimer = null, waiting = false;
   const reduced = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const ensureRoot = () => {
@@ -132,7 +132,7 @@ export function createReplay({ labels, lang, onIdle, ready } = {}) {
       card = document.createElement("div");
       card.className = "rp-card";
       card.setAttribute("data-replay", b.id);
-      card.innerHTML = replayFace(b.id, b.seat, lang);
+      card.innerHTML = replayFace(b.id, b.seat, lang, rules ? rules() : undefined);
       card.style.transform = noMove ? "none" : "translate(0, -22vh) scale(.3) rotate(-9deg)";
       box.insertBefore(card, box.firstChild);
       void card.offsetWidth;

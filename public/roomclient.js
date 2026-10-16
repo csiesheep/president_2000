@@ -138,7 +138,7 @@ function nextFeed(client, view) {
 function justNow(client, next, view) {
   if (next.fresh) return { rec: next.added, mine: null };
   const me = view.seat, slice = next.slice || [];
-  const checks = slice.filter((e) => e.t === "check" && e.seat === me).map((e) => ({ ok: e.ok, drew: e.drew }));
+  const checks = slice.filter((e) => e.t === "check" && e.seat === me).map((e) => ({ ok: e.ok, drew: e.drew, p: e.p }));
   const own = next.added.filter((e) => e.seat === me && !["turn", "slot", "endorseOne", "mediaBonus", "leadBonus"].includes(e.k));
   const declined = client.sentMove && client.sentMove.type === "pass";
   if ((!client.sentMove || declined) && !checks.length && !own.length) return { rec: (client.rec || []).concat(next.added).slice(-FEED_MAX), mine: client.mine };

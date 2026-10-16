@@ -14,7 +14,8 @@ const CARD = Object.fromEntries(EVENTS.concat(localCards()).map((c) => [c.id, c]
 const NO = [5, 1, 2]; // the ballot numbers on the 1999 flags: 陳 5, 宋 1, 連 2
 const SHOW_ORDER = [1, 2, 0]; // 宋, 連, 陳: ballot-number order, as in the mockups
 // v0.6 (#54, #57): no initiative; the turn's order (v.order, votes fewest first) is how the candidates' boards stand.
-const isV06 = (v) => !!v && v.rules === "v0.6";
+const isV06 = (v) => !!v && (v.rules === "v0.6" || v.rules === "v0.7"); // v0.7 (#60) is built on v0.6: the order, the reshuffled issues, no local boss
+const isV07 = (v) => !!v && v.rules === "v0.7"; // v0.7 (#55, #58): luck instead of the bag and the rest cubes
 const orderOf = (v) => (isV06(v) && Array.isArray(v.order) && v.order.length === 3 ? v.order : SHOW_ORDER);
 const orderText = (order, x) => order.map((p) => x.short(p)).join(" → "); // no break inside it: a long line moves it whole
 const REGION_OF = COUNTIES.map((c) => c[1]);
@@ -97,7 +98,7 @@ const moveCost = (seat, from, to) => { const d = regionDistance(REGION_OF[from],
 // Rulebook v0.4 (#34): media waives no check.
 function fillNeedsCheck(v, seat, k) {
   if ((seat === 0 && v.active.includes("lee_yuan_tseh")) || (seat === 1 && v.active.includes("walk_everywhere"))) return false;
-  if (v.rules === "v0.6") { if (v.fill === "free") return false; } // v0.6 (#54): no local boss; 4a "candidate" checks only against a candidate standing there
+  if (isV06(v)) { if (v.fill === "free") return false; } // v0.6 (#54): no local boss; 4a "candidate" checks only against a candidate standing there
   else if ([0, 1, 2].some((p) => p !== seat && cubesIn(v, k, p) >= BOSS_THRESHOLD)) return true;
   if ([0, 1, 2].some((p) => p !== seat && v.pos[p] === k)) return true;
   return false;
@@ -123,24 +124,55 @@ function checkKind(v, seat, m) {
   return null;
 }
 // The bag is public: a check succeeds with your cubes / all cubes in the bag.
-const bagRate = (v, seat) => { const t = v.bag[0] + v.bag[1] + v.bag[2]; return t > 0 ? Math.round((100 * v.bag[seat]) / t) : null; };
+const bagRate = (v, seat) => { if (!v.bag) return null; const t = v.bag[0] + v.bag[1] + v.bag[2]; return t > 0 ? Math.round((100 * v.bag[seat]) / t) : null; };
+
+// v0.7 (#55, #58): the luck a seat's check uses now, as the engine's luckOf has it (the numbers are the engine's LUCK_*): on
+// election day luck + 10 x the momentum before the conversion, at most 80, then + 10 per issue led (option 丙, st.issueLuck
+// "lead"), at most 95; in 省府舊部's turn 連 checks with 50.
+const LUCK_PER_MOM = 10, LUCK_ELECTION_MAX = 80, LUCK_PER_LEAD = 10, LUCK_LEAD_MAX = 95, LUCK_PROVINCIAL = 50;
+function electionLuck(luck, mom, leads) {
+  const base = Math.min(LUCK_ELECTION_MAX, luck + LUCK_PER_MOM * mom);
+  return leads != null ? Math.min(LUCK_LEAD_MAX, base + LUCK_PER_LEAD * leads) : base;
+}
+export function luckNow(v, seat) {
+  if (v.phase === "election" && v.election) return electionLuck(v.luck[seat], v.election.mom[seat], v.election.leads ? v.election.leads[seat] : null);
+  if (seat === 2 && (v.active || []).includes("provincial_staff")) return LUCK_PROVINCIAL;
+  return v.luck[seat];
+}
+// The chance (percent, one decimal, as the engine logs it) that seat's support check for move m succeeds, or null (v0.6 and before:
+// the bag). Against a particular opponent (the owner of the block a steal or a removal takes; a candidate standing in the county
+// of a fill; the one with the higher luck when two do) it is mine / (mine + theirs); else mine.
+export function checkRate(v, seat, m) {
+  if (!isV07(v)) return null;
+  let vs = -1;
+  if (m.type === "steal" || m.type === "remove") vs = m.target;
+  else if (m.type === "fill" || m.type === "cross") {
+    for (let q = 0; q < 3; q++) if (q !== seat && v.pos[q] === m.county && (vs < 0 || luckNow(v, q) > luckNow(v, vs))) vs = q;
+  }
+  const mine = luckNow(v, seat), p = vs == null || vs < 0 ? mine : (100 * mine) / (mine + luckNow(v, vs));
+  return Math.round(p * 10) / 10;
+}
+// The percent the words show: the bag's share (v0.6 and before) or the chance above, rounded.
+const rateOf = (v, seat, m) => (isV07(v) ? Math.round(checkRate(v, seat, m)) : bagRate(v, seat));
+// 連's candidate card: 4 CP in v0.7 (細節 6), 3 before.
+const candCp = (v, seat) => (isV07(v) && seat === 2 ? 4 : CANDIDATE_CARDS[SEATS[seat]].cp);
 
 // ---------------------------------------------------------------- the words of one legal move
 
 // " · no check" / " · check about 34%" / "" (not sure): the tail of a placement's label.
 function suffixFor(v, m, x) {
-  const rate = bagRate(v, v.seat), ck = checkKind(v, v.seat, m);
+  const rate = rateOf(v, v.seat, m), ck = checkKind(v, v.seat, m);
   return ck === "none" ? x.tr("o.noCheck") : ck === "check" && rate != null ? x.tr("o.check", { p: rate }) : "";
 }
 
 export function labelMove(v, m, lang) {
   const x = bind(lang), seat = v.seat, tr = x.tr;
-  const rate = bagRate(v, seat);
+  const rate = rateOf(v, seat, m);
   const suffix = suffixFor(v, m, x);
   const cpOf = (id) => CARD[id].cp;
   switch (m.type) {
     case "order": return tr(v.phase === "election" ? "o.orderElection" : "o.order", { n: m.pos + 1 });
-    case "candidate": return tr("o.candidate", { cp: CANDIDATE_CARDS[SEATS[seat]].cp });
+    case "candidate": return tr("o.candidate", { cp: candCp(v, seat) });
     case "play": {
       const name = x.card(m.card);
       if (m.mode === "event") return tr("o.playEvent", { card: name });
@@ -303,9 +335,15 @@ export function changedCounties(entries, tried = false) {
 export function resultLine(res, x) {
   if (!res || !res.checks || !res.checks.length) return null;
   const c = res.checks[res.checks.length - 1], ents = (res.lines || []).filter((e) => entryPhrase(e, x));
+  // v0.7 (#55): a check has a chance, not a drawn cube: the line says the chance used.
+  const luck = c.p != null ? { p: Math.round(c.p) } : null;
   if (c.ok) {
     const e = ents.slice().reverse().find((q) => q.ok);
-    return e ? x.tr("res.ok", { what: entryPhrase(e, x) }) : x.tr("res.okPlain");
+    return e ? x.tr(luck ? "res.okLuck" : "res.ok", { what: entryPhrase(e, x), ...luck }) : x.tr(luck ? "res.okPlainLuck" : "res.okPlain", luck || undefined);
+  }
+  if (luck) {
+    const e = ents.slice().reverse().find((q) => !q.ok) || ents[ents.length - 1];
+    return e ? x.tr("res.failLuck", { where: entryPhrase({ ...e, ok: false }, x), ...luck }) : x.tr("res.failNoWhereLuck", luck);
   }
   const drew = c.drew != null ? x.short(c.drew) : "…", e = ents.slice().reverse().find((q) => !q.ok) || ents[ents.length - 1];
   return e ? x.tr("res.fail", { where: entryPhrase({ ...e, ok: false }, x), drew }) : x.tr("res.failNoWhere", { drew });
@@ -328,7 +366,7 @@ const cubesRow = (arr) => arr.map((n, p) => sq("o" + p).repeat(n)).join("");
 
 // The stub at a card's foot (#51): its issue and where it canvasses on election day, apart from the event text; the rest cubes at the right end of row one.
 function stubOf(c, x) {
-  const u = x.d.ui, rest = ({ 2: 2, 3: 1, 4: 0 })[c.cp] ?? 0, issue = c.icon ? u.issues[c.icon] : null;
+  const u = x.d.ui, rest = x.v7 ? 0 : ({ 2: 2, 3: 1, 4: 0 })[c.cp] ?? 0, issue = c.icon ? u.issues[c.icon] : null;
   return stubHTML({ issue: issue && issue.name, noIssue: u.noIssue, issueLabel: u.stubIssue, canvassLabel: u.stubCanvass,
     county: x.county(COUNTIES.findIndex((k) => k[0] === c.county)), rest, restLabel: fill(u.restCubes, { n: rest }) });
 }
@@ -349,10 +387,11 @@ function cardFace(id, x) {
 
 // The big card the rivals' replay shows (#47): the same face as the card sheet (cardFace), eager pictures. The candidate card
 // (id "candidate") has no entry in the card tables: it wears its seat's colour and picture, the way the hand strip draws it.
-export function replayFace(id, seat, lang) {
+export function replayFace(id, seat, lang, rules) {
   const x = bind(lang);
+  x.v7 = rules === "v0.7";
   if (id !== "candidate") return cardFace(id, x).replace(/ loading="lazy"/g, "");
-  const key = SEATS[seat], cp = CANDIDATE_CARDS[key].cp;
+  const key = SEATS[seat], cp = x.v7 && seat === 2 ? 4 : CANDIDATE_CARDS[key].cp;
   return `<article class="pcard ${key} pcand" data-camp="${key}"><div class="pc-art"><img src="art/candidates/${key}.webp" alt="" width="480" height="640" decoding="async"></div>` +
     `<span class="cp-tab" data-cp="${cp}"><b>${cp}</b><small>${esc(x.d.ui.cpUnit)}</small></span>` +
     `<div class="pc-body"><p class="pc-k">${esc(x.tr("card.cand"))}</p><h4 class="ttl">${esc(x.full(seat))}</h4><p class="txt">${esc(x.tr("o.candidate", { cp }))}</p></div></article>`;
@@ -384,7 +423,7 @@ function miniCard(id, x, cls, attr, star = false, fan = null) {
 function candCard(v, ch, x) {
   const me = v.seat, can = ch.find((c) => c.move.type === "candidate"), used = !!v.candidateUsed[me];
   if (v.phase === "debate" || v.phase === "election" || v.phase === "end" || v.phase === "save") return "";
-  const L = x.d.ui.look.card, key = SEATS[me], cp = CANDIDATE_CARDS[key].cp;
+  const L = x.d.ui.look.card, key = SEATS[me], cp = candCp(v, me);
   const head = `<span class="ha"><img src="art/candidates/${key}.webp" alt="" draggable="false"></span>` +
     `<span class="cp-tab" data-cp="${cp}"><b>${cp}</b><small>${esc(x.d.ui.cpUnit)}</small></span>` +
     `<span class="cc-s">${esc(used ? L.used : L.seal)}</span>` +
@@ -498,7 +537,9 @@ function playersHTML(v, x, o = {}) {
       `<span class="pl-t"><span class="pl-n">${first(p) ? `<i class="flag-i" role="img" aria-label="${esc(flag)}" title="${esc(flag)}">⚑</i>` : ""}${esc(x.lang === "en" ? x.short(p) : x.full(p))}</span>` +
       `<span class="pl-v">${votes}</span><span class="pl-mm">${esc(L.mom)} ${dots}</span></span></button></div>` +
       `<div class="pl-d"><span class="pl-h">${esc(fill(L.hand, { n: inHand(p), k: kept(p) }))}</span>` +
-      `<button type="button" class="pl-bag helpable${o.help === "bag" ? " on" : ""}" data-help="bag" aria-expanded="${o.help === "bag"}" aria-label="${esc(x.tr("hdr.bag") + " · " + x.tr("hdr.tap"))}">${esc(fill(L.bag, { n: v.bag[p] }))}</button>` +
+      (isV07(v)
+        ? `<button type="button" class="pl-bag pl-luck helpable${o.help === "luck" ? " on" : ""}" data-help="luck" aria-expanded="${o.help === "luck"}" aria-label="${esc(x.tr("hdr.luck") + " · " + x.tr("hdr.tap"))}">${esc(fill(L.luck, { n: luckNow(v, p) }))}</button>`
+        : `<button type="button" class="pl-bag helpable${o.help === "bag" ? " on" : ""}" data-help="bag" aria-expanded="${o.help === "bag"}" aria-label="${esc(x.tr("hdr.bag") + " · " + x.tr("hdr.tap"))}">${esc(fill(L.bag, { n: v.bag[p] }))}</button>`) +
       `<button type="button" class="pl-m helpable${o.help === "mom" ? " on" : ""}" data-help="mom" aria-expanded="${o.help === "mom"}" aria-label="${esc(x.tr("hdr.momL") + " " + mom + " · " + x.tr("hdr.tap"))}">${esc(L.mom)} <b>${mom}</b></button></div></article>`;
   }).join("");
   return `<section class="t-players" aria-label="${esc(L.label)}">${boards}</section>`;
@@ -506,7 +547,7 @@ function playersHTML(v, x, o = {}) {
 
 // The one-line explanation under the header, for whichever small label was tapped (o.help).
 function helpHTML(x, o) {
-  if (!o.help || !["mom", "bag", "slot"].includes(o.help)) return "";
+  if (!o.help || !["mom", "bag", "luck", "slot"].includes(o.help)) return "";
   return `<p class="help" role="note">${esc(x.tr("help." + o.help))} <button type="button" class="hx" data-help="">${esc(x.tr("help.close"))}</button></p>`;
 }
 
@@ -519,7 +560,7 @@ function trackHTML(v, x, o = {}) {
   // v0.5 (#49): the issue leader (the most cubes over the three issues together, a tie is nobody) takes the media's
   // place on the table; the total of each candidate and who leads.
   let lead = "";
-  if (v.rules === "v0.5" || v.rules === "v0.6") {
+  if (v.rules === "v0.5" || isV06(v)) {
     const tot = [0, 1, 2].map((p) => v.issues.reduce((s, i) => s + i.cubes[p], 0)), max = Math.max(...tot);
     const who = tot.filter((n) => n === max).length === 1 ? tot.indexOf(max) : -1;
     lead = `<p class="ct t-lead" data-issue-lead="${who}"><b>${esc(x.tr("hdr.issueTotal"))}</b> ${[0, 1, 2].map((p) => `<span class="n${p === who ? " on" : ""}">${esc(x.short(p))} ${tot[p]}</span>`).join(" · ")}` +
@@ -596,7 +637,7 @@ function prompt(v, ch, x) {
     const e = v.election;
     if (e.stage === "order") return `<p class="pr">${t("p.orderElection")}</p>`;
     if (e.choose) {
-      const k = e.county, r = bagRate(v, me);
+      const k = e.county, r = isV07(v) ? Math.round(luckNow(v, me)) : bagRate(v, me);
       return `<p class="pr"><b>${esc(x.card(e.card))}</b> · ${t("p.canvassPlace", { county: x.county(k), left: e.left })}${r != null ? " " + t("p.canvassRate", { p: r }) : ""}</p>`;
     }
     return `<p class="pr">${t("p.canvass")}</p>`;
@@ -756,7 +797,12 @@ export function feedLine(e, v, x) {
     case "dead": return tr("f.dead", { who: who(e.seat), card: x.card(e.card), issue: x.issue(e.issue) });
     case "settle": return tr("f.settle", { issue: x.issue(e.issue), who: who(e.seat), n: e.cubes });
     case "canvass": return tr("f.canvass", { who: who(e.seat), county: x.county(e.county) });
-    case "convert": return tr("f.convert");
+    case "convert": {
+      if (!e.mom || !v || !v.luck) return tr("f.convert");
+      // v0.7 (#55, #58): the conversion turns the momentum (and, with 丙, the issues led) into the canvassing luck.
+      const text = SHOW_ORDER.map((p) => `${who(p)} ${electionLuck(v.luck[p], e.mom[p], e.leads ? e.leads[p] : null)}%`).join(" · ");
+      return tr(e.leads ? "f.convertLuckLead" : "f.convertLuck", { text });
+    }
     case "strategic": case "endorse": {
       const text = SHOW_ORDER.filter((p) => e.per[p]).map((p) => `${who(p)} +${e.per[p]}`).join(" · ");
       if (!text) return e.k === "strategic" ? tr("f.strategicNone") : "";
@@ -999,6 +1045,7 @@ function turnCardHTML(v, x, o) {
 
 export function tableHTML(view, choices, lang, opts = {}) {
   const x = bind(lang), v = view, o = opts;
+  x.v7 = isV07(v); // v0.7: no rest cubes on the stubs
   const map = taiwanMap(v, lang, { changed: o.changed, selected: o.county, narrow: o.narrow, overlay: o.county != null ? popHTML(v, choices, x, o.county, o.narrow) : "" });
   // Three columns on a wide desk (the players; the issues and the map; the notes and the decision). On a
   // phone the columns dissolve (display: contents) and style.css puts the pieces in one order.

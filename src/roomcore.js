@@ -184,7 +184,7 @@ export function handle(room0, ev, now) {
       if (![1, 2, 3].includes(d.level)) return err(room0, ev.conn, "bad_level");
       room.started = true; room.level = d.level;
       for (let s = 0; s < 3; s++) if (room.seats[s].kind === "empty") room.seats[s] = { kind: "bot", token: null };
-      room.st = E.createGame(derive(room, "engine")[0], { rules: "v0.6", fill: "candidate" });
+      room.st = E.createGame(derive(room, "engine")[0], { rules: "v0.7", issueLuck: "lead" });
     } else if (d.t === "move") {
       if (p.seat == null) return err(room0, ev.conn, "not_seated");
       if (!room.started) return err(room0, ev.conn, "not_started");
@@ -207,7 +207,7 @@ export function handle(room0, ev, now) {
       if (room.st.phase !== "end") return err(room0, ev.conn, "not_ended");
       if (token !== room.host) return err(room0, ev.conn, "not_host");
       room.games++;
-      room.st = E.createGame(derive(room, `engine ${room.games}`)[0], { rules: "v0.6", fill: "candidate" });
+      room.st = E.createGame(derive(room, `engine ${room.games}`)[0], { rules: "v0.7", issueLuck: "lead" });
       room.wait = [null, null, null];
     } else {
       return err(room0, ev.conn, "bad_message");

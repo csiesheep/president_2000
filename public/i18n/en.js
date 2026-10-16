@@ -63,7 +63,7 @@ export default {
     // Direction C (#26): the box lid on the home page, the player boards, the candidate card
     look: {
       home: { meta: "3 players · 9 turns", sub: "Soong, Lien, Chen. Put your blocks on 24 counties and get to election day.", play: "Play solo", playSub: "Against three levels of AI", host: "Host a room", hostSub: "Send the code to friends", join: "Join", joinSub: "Enter the 4-character code", boxTitle: "What's in the box", box: "70 event cards · a local card for each of 24 counties · luck markers · a board of 24 counties · three issue slots. It plays like the tabletop game: play a card, place blocks, roll the dice for support checks.", rules: "Open the rulebook" },
-      board: { label: "Player boards", cubes: "{n} on the board", mom: "Momentum", hand: "Hand {n} · kept {k}", bag: "Bag {n}", votes: "M votes", votesNone: " votes" },
+      board: { label: "Player boards", cubes: "{n} on the board", mom: "Momentum", hand: "Hand {n} · kept {k}", bag: "Bag {n}", luck: "Luck {n}%", votes: "M votes", votesNone: " votes" },
       card: { seal: "Once a game", used: "Used" },
     },
     solo: {
@@ -99,7 +99,7 @@ export default {
         speed: "Rivals' speed", slow: "Slow", normal: "Normal", fast: "Fast", step: "Step", stepNote: "Step: the rivals stop after each move until you tap Next.", sound: "Sound", volume: "Volume", next: "Next" },
       hdr: {
         ph: { action: "Action {n}/4", order: "Order", momentum: "Momentum", save: "Set aside", debate: "Forum", election: "Election day", end: "The count" },
-        turn: "Turn {n}", endDate: "18 March", initiative: "Initiative: {who}", order: "{who} first", first: "Acts first", star: "Initiative", mom: "Momentum", bag: "Bag", feed: "Record", momL: "Momentum", slotsL: "Issue slots", issueTotal: "Issue totals", leadIs: "Issue leader: {who}", leadNone: "Issue leader: nobody (tied)", tap: "Tap for an explanation",
+        turn: "Turn {n}", endDate: "18 March", initiative: "Initiative: {who}", order: "{who} first", first: "Acts first", star: "Initiative", mom: "Momentum", bag: "Bag", luck: "Luck", feed: "Record", momL: "Momentum", slotsL: "Issue slots", issueTotal: "Issue totals", leadIs: "Issue leader: {who}", leadNone: "Issue leader: nobody (tied)", tap: "Tap for an explanation",
         yourTurn: "Your move", busy: "{who} is acting…", waitHint: "The bots are acting. You can look through your hand meanwhile.",
         slot: { 1: "Slot 1", 2: "Slot 2", 3: "Slot 3" },
         phase: { action: "Action phase {n} / 4", order: "Pick your place in the order", momentum: "Momentum phase", save: "Set aside", debate: "The Policy Forum", election: "Election day · canvassing", end: "The count" },
@@ -122,6 +122,7 @@ export default {
       help: {
         mom: "Momentum: your pull. It is halved at the end of each turn (rounded down), then the overall issue leader gains 1, and leading an issue adds to it. Spend it to trigger your card that an opponent used for CP, or to convert it into cubes on election day.",
         bag: "Bag: a support check draws one cube from here. Your own colour is a success; another colour fails and that cube goes back to its owner. The numbers are the cubes of each colour in the bag.",
+        luck: "Luck: the chance (%) that a support check succeeds. Against a particular opponent it is your luck / (your luck + theirs). Canvassing on election day adds your momentum and the issues you lead.",
         slot: "Issue slots: at the end of the turn the leader of slot 1 gains 1 momentum and draws an endorsement, the leader of slot 2 draws an endorsement, and the leader of slot 3 gains 1 momentum. Then each slot's leader loses 1 cube.",
         close: "Close",
       },
@@ -142,6 +143,7 @@ export default {
       res: {
         ok: "Check succeeded: {what}", okPlain: "Check succeeded", did: "You just did: {what}", label: "Your last step",
         fail: "Check failed: {where}. Drew {drew}; that cube goes back to {drew}'s supply.", failNoWhere: "Check failed: drew {drew}; that cube goes back to {drew}'s supply.",
+        okLuck: "Check succeeded ({p}% chance): {what}", okPlainLuck: "Check succeeded ({p}% chance)", failLuck: "Check failed ({p}% chance): {where}", failNoWhereLuck: "Check failed ({p}% chance)",
       },
       replay: { hit: "Hit", miss: "Miss" },
       undo: { btn: "↶ Undo", done: "Went back one step", locked: "A draw was made — can't undo" },
@@ -203,6 +205,7 @@ export default {
         save: "{who} sets aside {n} {n#card|cards}", pick: "{who} has picked",
         reveal: "Turned over: {who}, {card} → {issue}", dead: "Turned over: {who}, {card} → {issue} (already settled, no effect)", settle: "{issue} is settled: {who} wins, {n} {n#cube|cubes}",
         canvass: "{who} canvasses {county}", convert: "Election day: issues and momentum become cubes in the bag",
+        convertLuck: "Election day: momentum becomes canvassing luck: {text}", convertLuckLead: "Election day: momentum and the issues led become canvassing luck: {text}",
         strategic: "Strategic voting: swing blocks go to {text}", strategicHalf: "First strategic vote (half): {text}", strategicNone: "Strategic voting: no swing blocks move", endorse: "Endorsements: non-voter blocks {text}", result: "The count is done",
       },
       end: {

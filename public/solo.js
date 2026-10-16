@@ -15,7 +15,7 @@ const FEED_MAX = 60;
 
 export function newSolo({ seat, level, seed }) {
   const s = seed >>> 0;
-  const st = E.createGame(s, { rules: "v0.6", fill: "candidate" }); // #57: new games are played on rulebook v0.6 (4a); a v0.5 or v0.4 save keeps its own rules
+  const st = E.createGame(s, { rules: "v0.7", issueLuck: "lead" }); // #60: new games are played on rulebook v0.7 with option 丙 (luck 50/50/60); a v0.6, v0.5 or v0.4 save keeps its own rules
   const session = { v: 1, seat, level, seed: s, rng: (s ^ 0x9e3779b9) >>> 0, st, feed: [], logSeen: 0, rec: [], mine: null };
   const first = fromLog(st, 0);
   return { ...session, feed: first, rec: first, logSeen: st.log.length };
@@ -65,7 +65,7 @@ export function fromLog(st, from) {
     else if (e.t === "momentum" && e.step === "endorse") out.push({ k: "endorseOne", seat: e.seat, region: e.region });
     else if (e.t === "debate" && e.step === "reveal") for (const c of e.cards) out.push({ k: c.dead ? "dead" : "reveal", seat: c.seat, card: c.card, issue: c.issue });
     else if (e.t === "debate" && e.step === "settle") out.push({ k: "settle", issue: e.issue, seat: e.seat, cubes: e.cubes });
-    else if (e.t === "convert") out.push({ k: "convert" });
+    else if (e.t === "convert") out.push(e.mom ? { k: "convert", mom: e.mom.slice(), ...(e.leads ? { leads: e.leads.slice() } : {}) } : { k: "convert" }); // v0.7: the momentum (and with 丙 the issues led) the canvassing luck is made of
     else if (e.t === "strategic") out.push({ k: "strategic", half: e.half, per: perSeat(e.moved) });
     else if (e.t === "endorse") out.push({ k: "endorse", per: perSeat(e.given) });
     else if (e.t === "result") out.push({ k: "result" });
@@ -133,7 +133,7 @@ function move(session, seat, m, why) {
   const after = [...settle, ...logged];
   const rec = reset ? after : (session.rec || []).concat(human ? after : entries).slice(-FEED_MAX);
   const mine = human
-    ? { checks: slice.filter((e) => e.t === "check" && e.seat === seat).map((e) => ({ ok: e.ok, drew: e.drew })), lines: lines.filter((l) => l.k !== "say") }
+    ? { checks: slice.filter((e) => e.t === "check" && e.seat === seat).map((e) => ({ ok: e.ok, drew: e.drew, p: e.p })), lines: lines.filter((l) => l.k !== "say") }
     : session.mine || null;
   return { ...session, st: a, feed, rec, mine, logSeen: a.log.length };
 }
