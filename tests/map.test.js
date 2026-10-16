@@ -15,8 +15,8 @@
 //     a cube of that seat, or an empty green / blue / grey (non-voter) block;
 //   - one element per candidate pawn with data-pawn="chen|soong|lien" and data-of="<county it stands in>";
 //   - one element per media region with data-region="<r>", data-media="<陳>,<宋>,<連>" (rulebook v0.3; from v0.4, #34,
-//     media is one national box: no data-media on the regions, and one element data-media-national="<陳>,<宋>,<連>") and
-//     data-endorse="<seat index or -1>".
+//     media is one national box: no data-media on the regions, and one element data-media-national="<陳>,<宋>,<連>"; in a
+//     v0.5 game, #53, there is no media: neither) and data-endorse="<seat index or -1>".
 // public/table.js's tableHTML(view, choices, lang, opts) draws that map, and with opts.county = k it
 // opens the county's box: an element with data-popover="<k>", and for each choice whose move acts on
 // county k (move.county === k, or a pawn move with move.to === k) one button with data-choice="<i>"
@@ -163,14 +163,20 @@ c25("剛剛有變動、已選取：data-changed 只在 opts.changed 的縣市、
   return ok(true, "changed 3 個、selected 1 個，都標對；沒給就沒有");
 });
 
-c25("七個區：data-region 0…6 各一個，data-endorse 是背書持有者；媒體（v0.3）每區 data-media，（v0.4，#34）一個 data-media-national", () => {
+c25("七個區：data-region 0…6 各一個，data-endorse 是背書持有者；媒體（v0.3）每區 data-media，（v0.4，#34）一個 data-media-national，（v0.5，#53）沒有媒體", () => {
   const ne = nonEmpty(POOL.length, "對局裡的決定"); if (ne !== true) return ne;
-  const national = typeof POOL[0].v.media[0] === "number";
-  let withMedia = 0;
+  // v0.5 (#53): the state has no media at all, and the map shows none.
+  const kind = (v) => (v.media === undefined ? "none" : typeof v.media[0] === "number" ? "national" : "regions");
+  let withMedia = 0, without = 0;
   for (const p of POOL) {
     const html = M.taiwanMap(p.v, p.lang, {});
     const rs = tags(html, "data-region");
-    if (national) {
+    const national = kind(p.v) === "national";
+    if (kind(p.v) === "none") {
+      if (tags(html, "data-media-national").length) return `${p.where}：v0.5 沒有媒體，地圖卻有 data-media-national`;
+      if (rs.some((t) => attr(t.tag, "data-media") != null)) return `${p.where}：v0.5 沒有媒體，區卻帶著 data-media`;
+      without++;
+    } else if (national) {
       const nm = tags(html, "data-media-national");
       if (nm.length !== 1) return `${p.where}：有 ${nm.length} 個 data-media-national，應為 1`;
       if (nm[0].v !== p.v.media.join(",")) return `${p.where}：data-media-national 是「${nm[0].v}」，view 是 ${p.v.media.join(",")}`;
@@ -180,13 +186,13 @@ c25("七個區：data-region 0…6 各一個，data-endorse 是背書持有者�
     if (JSON.stringify(idx) !== JSON.stringify([0, 1, 2, 3, 4, 5, 6])) return `${p.where}：data-region 是 ${JSON.stringify(idx)}`;
     for (const t of rs) {
       const r = Number(t.v);
-      if (!national && attr(t.tag, "data-media") !== p.v.media[r].join(",")) return `${p.where}：${B.REGIONS[r]} 的 data-media 是「${attr(t.tag, "data-media")}」，view 是 ${p.v.media[r].join(",")}`;
+      if (kind(p.v) === "regions" && attr(t.tag, "data-media") !== p.v.media[r].join(",")) return `${p.where}：${B.REGIONS[r]} 的 data-media 是「${attr(t.tag, "data-media")}」，view 是 ${p.v.media[r].join(",")}`;
       if (Number(attr(t.tag, "data-endorse")) !== p.v.endorse[r]) return `${p.where}：${B.REGIONS[r]} 的 data-endorse 是「${attr(t.tag, "data-endorse")}」，view 是 ${p.v.endorse[r]}`;
     }
-    if (national ? p.v.media.some((n) => n > 0) : p.v.media.some((m) => m.some((n) => n > 0))) withMedia++;
+    if (kind(p.v) === "national" ? p.v.media.some((n) => n > 0) : kind(p.v) === "regions" ? p.v.media.some((m) => m.some((n) => n > 0)) : false) withMedia++;
   }
-  const ne2 = nonEmpty(withMedia, "有媒體方塊的局面"); if (ne2 !== true) return ne2;
-  return ok(true, `${POOL.length} 個局面的${national ? "全國媒體" : "七區媒體"}與背書都對`);
+  if (without < POOL.length) { const ne2 = nonEmpty(withMedia, "有媒體方塊的局面"); if (ne2 !== true) return ne2; }
+  return ok(true, `${POOL.length} 個局面的區與背書都對；${without ? `其中 ${without} 個是 v0.5，沒有媒體` : `媒體 ${withMedia} 個局面有方塊`}`);
 });
 
 c25("點縣市開選項框：tableHTML 帶 opts.county=k 時，data-pop=k 的選項正好是所有作用在縣市 k 的選項（含移到 k），一個不多一個不少；沒帶 county 就沒有選項框", () => {
