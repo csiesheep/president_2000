@@ -88,7 +88,7 @@ export default {
         phase: { action: "Action phase {n} / 4", order: "Pick your place in the order", momentum: "Momentum phase", save: "Set aside", debate: "The Policy Forum", election: "Election day · canvassing", end: "The count" },
       },
       map: {
-        title: "The regions", here: "{who} is here", endorse: "Endorsed by", media: "Media", national: "National media", blocks: "{n} {n#block|blocks}", empty: "empty {n}", boss: "{who}, local boss",
+        title: "The regions", here: "{who} is here", endorse: "Endorsed by", media: "Media", national: "National media", blocks: "{m}M votes", empty: "empty {n}", boss: "{who}, local boss",
         legendEmpty: "empty swing blocks", legendGrey: "non-voter blocks", changed: "changed just now",
         you: "You", board: "Map of Taiwan", hint: "Tap a county to see its blocks and act there.", popNone: "Nothing to do in this county right now.", popGrey: "non-voter {n}", popClose: "Close", islands: "Outer islands", legendPawn: "round marker: where a candidate stands", legendCubes: "Chen, Soong, Lien cubes", popMove: "Move here · {left} CP left",
         short: {

@@ -87,7 +87,7 @@ export default {
         phase: { action: "行動階段 {n} / 4", order: "選行動順位", momentum: "動能階段", save: "留牌", debate: "公辦政見發表會", election: "投票日 · 催票", end: "開票結果" },
       },
       map: {
-        title: "各區票勢", here: "{who}在此", endorse: "背書", media: "媒體", national: "全國媒體", blocks: "{n} 塊", empty: "空 {n}", boss: "{who}是地方大老",
+        title: "各區票勢", here: "{who}在此", endorse: "背書", media: "媒體", national: "全國媒體", blocks: "{n}0萬票", empty: "空 {n}", boss: "{who}是地方大老",
         legendEmpty: "空的游離塊", legendGrey: "沒投票的無色塊", changed: "剛剛有變動",
         you: "你", board: "台灣地圖", hint: "點縣市看票塊，在框裡下指令。", popNone: "這個縣市現在沒有可以做的事。", popGrey: "無色 {n}", popClose: "關閉", islands: "外島", legendPawn: "圓標是候選人所在的縣市", legendCubes: "陳宋連的方塊", popMove: "移到這裡 · 移動後剩 {left} CP",
         short: {
