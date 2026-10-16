@@ -87,6 +87,10 @@ const V07 = (st) => st.rules === "v0.7";
 const LUCK_START = [50, 50, 60], LUCK_MIN = 20, LUCK_MAX = 80, LUCK_CARD = 10;
 const LUCK_PROVINCIAL = 50; // 細節 5: 省府舊部's turn, 連's checks use this luck
 const LUCK_PER_MOM = 10, LUCK_ELECTION_MAX = 80; // 細節 7: election day, per momentum before the conversion; at most
+// #58 option 丙 (owner, 2026-10-16: 「丙，用 50/50/55 跑模擬」; 95 is orchestrator 細節): with opts.issueLuck "lead", each
+// issue a seat leads at the conversion (most cubes on that card, a tie is nobody) adds LUCK_PER_LEAD to its canvassing
+// luck, outside LUCK_ELECTION_MAX, at most LUCK_LEAD_MAX: min(95, min(80, luck + 10 × momentum) + 10 × issues led).
+const ISSUE_LUCK = ["lead"], LUCK_PER_LEAD = 10, LUCK_LEAD_MAX = 95;
 const LIEN_CANDIDATE_CP_V07 = 4; // 細節 6: 連's candidate card, 3 CP and 2 rest cubes in v0.6
 
 // opts.startTurn (裁決 16): the same opening board, starting at that turn
@@ -96,6 +100,10 @@ const LIEN_CANDIDATE_CP_V07 = 4; // 細節 6: 連's candidate card, 3 CP and 2 r
 // opts.rules (#49): "v0.4" (the default, today's game) or "v0.5", the draft that folds the ads and the national
 // media into the issues. A v0.5 state says st.rules === "v0.5" and has no st.media; 連 opens with 2 on 經濟民生
 // (v0.5 四.5, 十三). A v0.4 state has no `rules` field at all, so it is byte for byte what it was before #49.
+//
+// #58: v0.7 only, two options. opts.luck [陳, 宋, 連]: the starting luck (each LUCK_MIN–LUCK_MAX; not given: the draft's
+// LUCK_START). opts.issueLuck "lead": option 丙 (LUCK_PER_LEAD above), st.issueLuck === "lead". Without them a v0.7
+// state has no issueLuck field and is the draft's, byte for byte.
 export function createGame(seed, opts = {}) {
   const startTurn = opts.startTurn ?? 1;
   if (!START_TURNS.includes(startTurn)) throw new Error("createGame: startTurn must be one of " + START_TURNS.join("/"));
@@ -104,6 +112,9 @@ export function createGame(seed, opts = {}) {
   const fill = opts.fill ?? "candidate";
   if (rules === "v0.6" && !FILLS.includes(fill)) throw new Error("createGame: fill must be one of " + FILLS.join("/"));
   if (rules === "v0.7" && fill !== "candidate") throw new Error("createGame: v0.7 is v0.6 with fill candidate");
+  if ((opts.luck != null || opts.issueLuck != null) && rules !== "v0.7") throw new Error("createGame: luck and issueLuck are v0.7 options");
+  if (opts.luck != null && !(Array.isArray(opts.luck) && opts.luck.length === 3 && opts.luck.every((x) => Number.isInteger(x) && x >= LUCK_MIN && x <= LUCK_MAX))) throw new Error(`createGame: luck must be three whole numbers ${LUCK_MIN}–${LUCK_MAX}`);
+  if (opts.issueLuck != null && !ISSUE_LUCK.includes(opts.issueLuck)) throw new Error("createGame: issueLuck must be one of " + ISSUE_LUCK.join("/"));
   const rng = makeRng(seed);
   const counties = COUNTIES.map(([name, region, G, B, N, init]) => {
     const blocks = [];
@@ -161,7 +172,8 @@ export function createGame(seed, opts = {}) {
   if (rules === "v0.5" || rules === "v0.6" || rules === "v0.7") {
     st.rules = rules;
     if (rules === "v0.6" || rules === "v0.7") st.fill = fill; // v0.6 4 (#54): 4a "candidate" or 4b "free"; v0.7: 4a
-    if (rules === "v0.7") { st.luck = LUCK_START.slice(); delete st.bag; delete st.rest; } // #55: luck, no bag, no rest
+    if (rules === "v0.7") { st.luck = (opts.luck ?? LUCK_START).slice(); delete st.bag; delete st.rest; } // #55: luck, no bag, no rest
+    if (rules === "v0.7" && opts.issueLuck != null) st.issueLuck = opts.issueLuck; // #58: option 丙
     delete st.media; // v0.5 二、3.2: no media cubes, no national media box
     issueCubes(st, "econ")[LIEN] = V05_START_ECON; // v0.5 四.5、十三: 連 opens with 2 on 經濟民生
   }
@@ -282,7 +294,11 @@ function supportCheck(st, seat, vs = -1) {
 // #55: the luck seat's check uses now. Election day (the canvassing is its only check): luck + LUCK_PER_MOM × the
 // momentum before the conversion, at most LUCK_ELECTION_MAX. A turn of 省府舊部: 連 checks with LUCK_PROVINCIAL.
 function luckOf(st, seat) {
-  if (st.phase === "election" && st.election) return Math.min(LUCK_ELECTION_MAX, st.luck[seat] + LUCK_PER_MOM * st.election.mom[seat]);
+  if (st.phase === "election" && st.election) {
+    const base = Math.min(LUCK_ELECTION_MAX, st.luck[seat] + LUCK_PER_MOM * st.election.mom[seat]);
+    // #58 丙: the issues led at the conversion, outside the 80, at most 95.
+    return st.election.leads ? Math.min(LUCK_LEAD_MAX, base + LUCK_PER_LEAD * st.election.leads[seat]) : base;
+  }
   if (seat === LIEN && activeHas(st, "provincial_staff")) return LUCK_PROVINCIAL;
   return st.luck[seat];
 }
@@ -1363,14 +1379,17 @@ function startElection(st) {
   const mom = st.mom.slice();
   // v0.5 十二 1 (#49): no media to convert; the issue cubes and momentum ×2 as in v0.4.
   const add = [0, 1, 2].map((p) => (V05(st) ? 0 : st.media[p]) + st.issues.reduce((s, i) => s + i.cubes[p], 0) + 2 * st.mom[p]);
+  // #58 丙: the issues each seat leads, counted now, before the cubes go to 0.
+  const leads = st.issueLuck === "lead" ? [0, 1, 2].map((p) => st.issues.filter((i) => leader(i.cubes) === p).length) : null;
   // v0.7 (#55, 細節 7): no bag; the conversion only keeps the momentum (st.election.mom), which raises the
   // canvassing luck (luckOf). The issue cubes and the momentum still go to 0 and turn into nothing.
   if (!V07(st)) for (let p = 0; p < 3; p++) st.bag[p] += add[p];
   if (!V05(st)) st.media = [0, 0, 0];
   for (const i of st.issues) i.cubes = [0, 0, 0];
   st.mom = [0, 0, 0];
-  st.log.push(V07(st) ? { t: "convert", mom } : { t: "convert", bag: add, mom });
+  st.log.push(V07(st) ? (leads ? { t: "convert", mom, leads } : { t: "convert", mom }) : { t: "convert", bag: add, mom });
   st.election = { mom, stage: "order", card: null, county: -1, left: 0, choose: false };
+  if (leads) st.election.leads = leads; // #58 丙: read by luckOf
   if (V06(st)) {
     // v0.6 7 (#54): the canvassing order is the votes, fewest first (momentum is 0 for all after the conversion,
     // so a tie goes 陳 → 宋 → 連); no position to pick.
