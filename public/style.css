@@ -757,6 +757,7 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
 .rp { position: fixed; inset: 0; z-index: 70; pointer-events: none; overflow: hidden; }
 .rp-box { position: absolute; left: 50%; top: 54%; width: min(212px, 58vw); transform: translate(-50%, -50%); }
 .rp-box.nocard { top: 60%; width: 0; }
+.rp-card, .rp-tray { pointer-events: auto; }
 .rp-card { opacity: 0; filter: drop-shadow(0 22px 26px rgba(0, 0, 0, .5)); will-change: transform, opacity; }
 .rp-card .pcard { max-width: none; width: 100%; margin: 0; transform: none; box-shadow: none; }
 .rp-card .pcand .pc-art { aspect-ratio: 2 / 1; overflow: hidden; }

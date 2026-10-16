@@ -237,13 +237,20 @@ export function createReplay({ labels, lang, onIdle, ready } = {}) {
 
 // Taps on the table while the rivals' moves show: one tap jumps the step being shown to its result, two quick taps skip the
 // rest (the rivals' turn). `active()` says whether anything is going on; `ignore` is a selector for what is not "the table".
+// A tap the replay uses belongs to the replay alone: one that lands on the big card or the stamps' plate (they take clicks), and the
+// second of two quick taps (even when the card has gone by then), are stopped here and reach nothing under them. A tap on a
+// decision or anything else visible outside the card still goes through (and skips what is left).
 const TAP_GAP = 450;
 export function bindTaps({ active, onStep, onAll, ignore }) {
   let last = -1e9;
   document.addEventListener("click", (ev) => {
-    if (ev.target.closest && ev.target.closest(ignore)) return;
-    const now = performance.now();
-    if (!active() && now - last > TAP_GAP) return;
-    if (now - last <= TAP_GAP) { last = -1e9; onAll(); } else { last = now; onStep(); }
+    const t = ev.target, onCard = !!(t && t.closest && t.closest(".rp-card, .rp-tray"));
+    if (!onCard && t && t.closest && t.closest(ignore)) return;
+    const now = performance.now(), quick = now - last <= TAP_GAP;
+    if (!onCard && !active() && !quick) return;
+    if (quick) { last = -1e9; ev.stopPropagation(); ev.preventDefault(); onAll(); return; }
+    last = now;
+    if (onCard) { ev.stopPropagation(); ev.preventDefault(); }
+    onStep();
   }, true);
 }
