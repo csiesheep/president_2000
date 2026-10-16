@@ -8,8 +8,10 @@
 //   - #49's acceptance (they set the exit code):
 //       · v0.4 is untouched: its numbers equal what this tool measured on main 10eefec, before #49;
 //       · every v0.5 game ends, is a v0.5 game (st.rules), and no bot ever chose an ad or media move;
-//       · the v0.5 bots use the issues: every seat spends at least 5 % of its CP on the issue action (in v0.4 宋 spent
-//         about 3 % and 連 0.4 %, with ads to buy momentum; in v0.5 the issues are the only way to it).
+//       · the v0.5 bots use the issues at all: some seat spends at least 5 % of its CP on the issue action. Each seat's
+//         share is printed and not counted (orchestrator's ruling on #49: a seat for whom the issues are not worth it in
+//         v0.5 plays its best and leaves them; forcing 5 % on every seat made 連 play worse and the numbers the owner
+//         reads less true. That 連 does best leaving the issues is itself a finding for the owner).
 //   - the owner's bands for v0.5 (printed as 帶內／帶外, never counted: whether v0.5 is still a three-way race is the
 //     owner's call, not the peer's): every candidate wins 25–42 %, the average margin ≤ 6 blocks, turnout 80–92 %.
 // Then the two rule sets side by side: where the CP went, the leader's +1 momentum (media leader in v0.4, issue leader
@@ -76,7 +78,7 @@ const m4 = `win ${V04_MAIN.win}, margin ${V04_MAIN.margin}, turnout ${V04_MAIN.t
 rule(!same || (a.ended === N && a4 === m4), same ? `v0.4 untouched: ${a.ended} of ${N} games, ${a4}${a4 === m4 ? "" : ` — on main 10eefec: ${m4}`}` : `v0.4: ${a.ended} of ${N} games (${N} ≠ 600: not compared with main)`);
 rule(b.ended === N && b.rules === N && !b.errors.length, `v0.5: ${b.ended} of ${N} games ended, ${b.rules} were v0.5 games (st.rules)${b.errors.length ? "; errors: " + b.errors.join(" | ") : ""}`);
 rule(b.ended > 0 && b.bad.length === 0, `v0.5: no ad or media move chosen by a bot${b.bad.length ? " — " + b.bad.join(", ") : ""} (${b.ended} games)`);
-rule(b.ended > 0 && b.cpPct.every((c) => c.issue >= 5), `v0.5: every seat spends ≥ 5 % of its CP on issues — ${b.cpPct.map((c, p) => `${NAMES[p]} ${c.issue.toFixed(1)} %`).join(", ")} (v0.4: ${a.cpPct.map((c, p) => `${NAMES[p]} ${c.issue.toFixed(1)} %`).join(", ")})`);
+rule(b.ended > 0 && b.rules === N && b.cpPct.some((c) => c.issue >= 5), `v0.5: some seat spends ≥ 5 % of its CP on issues (each seat's share is a reading) — ${b.cpPct.map((c, p) => `${NAMES[p]} ${c.issue.toFixed(1)} %`).join(", ")} (v0.4: ${a.cpPct.map((c, p) => `${NAMES[p]} ${c.issue.toFixed(1)} %`).join(", ")})`);
 // the owner's bands
 const inBand = (okk, what) => band.push(`${okk ? "帶內" : "帶外"} ${what}`);
 for (let p = 0; p < 3; p++) inBand(b.winN[p] >= 25 && b.winN[p] <= 42, `v0.5 ${NAMES[p]} wins ${b.winN[p].toFixed(1)} % (25–42; v0.4 ${a.winN[p].toFixed(1)} %)`);
