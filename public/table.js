@@ -152,6 +152,13 @@ export function labelMove(v, m, lang) {
     case "ad": return tr("o.ad") + suffix;
     case "media": return m.target == null ? tr("o.mediaPlace") : tr("o.mediaRemove", { who: x.short(m.target) }); // v0.4 (#34): the national box
     case "issue": {
+      // A card's 「任一議題」 (v0.5): the card's effect, not an issue action, so no CP: the issue and the cubes.
+      const fx = v.pending && v.pending.stage === "effect" && v.pending.fx && v.pending.fx.queue[0];
+      if (fx && fx.op === "anyIssue") {
+        const iss = v.issues.find((i) => i.name === m.issue);
+        const n = m.target == null ? fx.n : Math.min(fx.n, iss.cubes[m.target]);
+        return m.target == null ? tr("o.anyIssue", { issue: x.issue(m.issue), n }) : tr("o.anyIssueRemove", { issue: x.issue(m.issue), who: x.short(m.target), n });
+      }
       const cost = v.pending && v.pending.placed ? 2 : 1;
       return m.target == null ? tr("o.issuePlace", { issue: x.issue(m.issue), cost }) : tr("o.issueRemove", { issue: x.issue(m.issue), who: x.short(m.target), cost });
     }
@@ -502,7 +509,16 @@ function trackHTML(v, x, o = {}) {
   const slots = v.issues.map((iss, i) => `<button type="button" class="slot helpable${o.help === "slot" ? " on" : ""}" data-issue="${esc(iss.name)}" data-help="slot" aria-expanded="${o.help === "slot"}" aria-label="${esc(x.tr("hdr.slotsL") + " · " + x.tr("hdr.slot." + (i + 1)) + " · " + x.issue(iss.name))}">` +
     `<span class="sp">${issueImg(iss.name, x)}</span><span class="sb"><span class="sl">${esc(x.tr("hdr.slot." + (i + 1)))}</span><b>${esc(x.issue(iss.name))}</b>` +
     `<span class="cb">${cubesRow(iss.cubes) || `<em>—</em>`}</span></span></button>`).join("");
-  return `<section class="t-track" data-issues="1" aria-label="${esc(x.tr("hdr.slotsL"))}"><button type="button" class="slotsl helpable${o.help === "slot" ? " on" : ""}" data-help="slot" aria-expanded="${o.help === "slot"}" aria-label="${esc(x.tr("hdr.slotsL") + " · " + x.tr("hdr.tap"))}">${esc(x.tr("hdr.slotsL"))} <i aria-hidden="true">?</i></button>${slots}</section>`;
+  // v0.5 (#49): the issue leader (the most cubes over the three issues together, a tie is nobody) takes the media's
+  // place on the table; the total of each candidate and who leads.
+  let lead = "";
+  if (v.rules === "v0.5") {
+    const tot = [0, 1, 2].map((p) => v.issues.reduce((s, i) => s + i.cubes[p], 0)), max = Math.max(...tot);
+    const who = tot.filter((n) => n === max).length === 1 ? tot.indexOf(max) : -1;
+    lead = `<p class="ct t-lead" data-issue-lead="${who}"><b>${esc(x.tr("hdr.issueTotal"))}</b> ${[0, 1, 2].map((p) => `<span class="n${p === who ? " on" : ""}">${esc(x.short(p))} ${tot[p]}</span>`).join(" · ")}` +
+      ` <em>${esc(who >= 0 ? x.tr("hdr.leadIs", { who: x.short(who) }) : x.tr("hdr.leadNone"))}</em></p>`;
+  }
+  return `<section class="t-track" data-issues="1" aria-label="${esc(x.tr("hdr.slotsL"))}"><button type="button" class="slotsl helpable${o.help === "slot" ? " on" : ""}" data-help="slot" aria-expanded="${o.help === "slot"}" aria-label="${esc(x.tr("hdr.slotsL") + " · " + x.tr("hdr.tap"))}">${esc(x.tr("hdr.slotsL"))} <i aria-hidden="true">?</i></button>${slots}${lead}</section>`;
 }
 
 // ---------------------------------------------------------------- the action panel
@@ -554,6 +570,7 @@ function fxPrompt(v, x) {
   else if (s.op === "remove") line = x.tr("p.fxRemove", { left, who: x.short(s.target) });
   else if (s.op === "media") line = s.target < 0 ? x.tr("p.fxMedia", { left }) : x.tr("p.fxMediaRemove", { left, who: x.short(s.target) });
   else if (s.op === "convert") line = x.tr("p.fxConvert", { left });
+  else if (s.op === "anyIssue") line = s.target < 0 ? x.tr("p.fxIssue", { n: s.n, who: x.short(s.p) }) : x.tr("p.fxIssueRemove", { n: s.n, who: x.short(s.target) });
   else line = x.tr("p.fxTvbs");
   return `<p class="pr"><b>${esc(cardName)}</b> · ${esc(line)}</p><p class="ct">${esc(x.cardText(pd.fx.card))}</p>`;
 }
@@ -741,6 +758,7 @@ export function feedLine(e, v, x) {
     // The end-of-turn settlement (solo.js settleEntries): why momentum moved.
     case "decay": return tr("r.decay", { text: e.per.map((q, p) => `${who(p)} ${q[0]}→${q[1]}`).join(" · ") });
     case "mediaBonus": return tr("r.mediaBonus", { who: who(e.seat) }); // v0.4 (#34): §5.3 step 2
+    case "leadBonus": return tr("r.leadBonus", { who: who(e.seat) }); // v0.5 (#49): the issue leader's +1
     case "slot": return tr(e.slot === 1 ? "r.slot1" : "r.slot3", { issue: x.issue(e.issue), who: who(e.seat) });
     case "issueDecay": return tr("r.issueDecay");
     case "momNow": return tr("r.momNow", { text: SHOW_ORDER.map((p) => `${who(p)} ${e.mom[p]}`).join(" · ") });

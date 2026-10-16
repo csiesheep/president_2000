@@ -97,7 +97,7 @@ export default {
         speed: "對手速度", slow: "慢", normal: "正常", fast: "快", step: "逐步", stepNote: "逐步：對手每走一步就停下，按「下一步」再繼續。", sound: "音效", volume: "音量", next: "下一步" },
       hdr: {
         ph: { action: "行動 {n}/4", order: "選順位", momentum: "動能階段", save: "留牌", debate: "政見發表會", election: "投票日", end: "開票結果" },
-        turn: "第 {n} 回合", endDate: "3 月 18 日", initiative: "主動權 {who}", star: "主動權", mom: "動能", bag: "袋子", feed: "紀錄", momL: "動能", slotsL: "議題槽", tap: "點一下看說明",
+        turn: "第 {n} 回合", endDate: "3 月 18 日", initiative: "主動權 {who}", star: "主動權", mom: "動能", bag: "袋子", feed: "紀錄", momL: "動能", slotsL: "議題槽", issueTotal: "議題總數", leadIs: "議題總領先者：{who}", leadNone: "議題總領先者：沒有（平手）", tap: "點一下看說明",
         yourTurn: "輪到你", busy: "{who} 行動中…", waitHint: "對手行動中。你可以先翻看手牌。",
         slot: { 1: "第一槽", 2: "第二槽", 3: "第三槽" },
         phase: { action: "行動階段 {n} / 4", order: "選行動順位", momentum: "動能階段", save: "留牌", debate: "公辦政見發表會", election: "投票日 · 催票", end: "開票結果" },
@@ -127,7 +127,7 @@ export default {
       r: {
         turn: "第 {n} 回合開始 · 主動權 {who} · 發到 {cards} 張牌", turnNoDeal: "第 {n} 回合開始 · 主動權 {who}",
         turnDebate: "第 {n} 回合：公辦政見發表會開始", turnElection: "第 {n} 回合：投票日開始",
-        decay: "回合結算 · 動能減半：{text}", mediaBonus: "媒體領先 {who} +1 動能", slot1: "第一槽「{issue}」{who}領先：+1 動能，抽 1 張背書", slot3: "第三槽「{issue}」{who}領先：+1 動能",
+        decay: "回合結算 · 動能減半：{text}", mediaBonus: "媒體領先 {who} +1 動能", leadBonus: "議題總領先者 {who} +1 動能", slot1: "第一槽「{issue}」{who}領先：+1 動能，抽 1 張背書", slot3: "第三槽「{issue}」{who}領先：+1 動能",
         issueDecay: "各議題槽的領先者少 1 顆方塊", momNow: "結算後動能：{text}", group: "{head}：{what}", times: "×{n}",
         p: {
           fill: "{county} +{n}", cross: "{county} 跨營 +{n}", steal: "{county} 搶{target} {n} 顆", remove: "{county} 移除{target} {n} 顆", grey: "{county} 無色塊 +{n}",
@@ -161,7 +161,7 @@ export default {
         media: "廣告成功：放 1 顆自己的媒體，或移除對手的 1 顆。", issue: "議題：剩 {cp} CP。",
         local: "在 {county} 放 1 顆方塊。",
         fxPlace: "放置方塊（還要 {left} 顆）。", fxRemove: "移除{who}的方塊（還要 {left} 顆）。", fxMedia: "放媒體（還要 {left} 顆）。",
-        fxMediaRemove: "移除{who}的媒體（還要 {left} 顆）。", fxConvert: "把無色塊轉成綠營游離塊（還要 {left} 塊）。", fxTvbs: "選一位加 1 動能。",
+        fxMediaRemove: "移除{who}的媒體（還要 {left} 顆）。", fxConvert: "把無色塊轉成綠營游離塊（還要 {left} 塊）。", fxTvbs: "選一位加 1 動能。", fxIssue: "選一個議題，放 {n} 顆{who}的方塊。", fxIssueRemove: "選一個議題，移除{who}的方塊（最多 {n} 顆）。",
         swap: "你是議題總領先者：可以交換相鄰兩槽的議題。", reward: "你領先第二槽的議題：選 1 動能，或抽 1 張背書。",
         destDebate: "政見發表會", destElection: "投票日",
         save: "選 {n} 張，面朝下留給{dest}。", saveAll: "手牌不多於 {n} 張，全部留給{dest}。", saveRest: "其他的牌進棄牌堆。", saveNone: "還沒選牌", saveGo: "確認留牌",
@@ -176,6 +176,7 @@ export default {
         move: "移到 {county}（{cost} CP）", fill: "{county} · 填 1 塊", cross: "{county} · 跨營填 1 塊", steal: "{county} · 搶{who} 1 顆（{kind}）",
         done: "結束行動", ad: "投放廣告（1 CP）", check: " · 檢定約 {p}%", noCheck: " · 免檢定",
         mediaPlace: "全國媒體 · 放 1 顆自己的", mediaRemove: "全國媒體 · 移除{who} 1 顆",
+        anyIssue: "{issue} · 放 {n} 顆", anyIssueRemove: "{issue} · 移除{who} {n} 顆",
         issuePlace: "{issue} · 放 1 顆（{cost} CP）", issueRemove: "{issue} · 移除{who} 1 顆（{cost} CP）",
         swap: "交換第 {a}、{b} 槽", noswap: "不交換", rewardMom: "+1 動能", rewardEndorse: "抽 1 張背書",
         save: "留下：{cards}", reveal: "翻開「{card}」→ {issue}", canvass: "催票：{card}（{county}）",
