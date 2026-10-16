@@ -23,8 +23,9 @@
 //     opponent's candidate stands → that candidate, the one with the higher luck if two stand there; anything else (other
 //     fills, election-day canvassing) → none, p = luck. 省府舊部's luck 50 for 連 holds when 連 is the opponent too.
 //   - luck stays within 20–80.
-//   - the seven 「袋中 +N」 cards give their owner +10 luck instead (張榮發挺扁、張俊雄邱義仁 陳; 百萬連署、張昭雄的醫界 宋;
-//     地方派系樁腳、黨員大會、經濟內閣 連), their other effects as before.
+//   - the eight 「袋中 +N」 cards give their owner +10 luck instead (張榮發挺扁、張俊雄邱義仁 陳; 百萬連署、張昭雄的醫界、軍公教警 宋;
+//     地方派系樁腳、黨員大會、經濟內閣 連), their other effects as before. 軍公教警 (「袋中 +1 宋方塊」) was missing from the
+//     draft and from this file at first: found when the owner asked for the list, by reading every card text for 袋.
 //   - 省府舊部: for the rest of that turn 連's checks use luck 50.
 //   - 楊吉雄爆料 removes 4 of 宋's cubes from the board (連 picks), 說法反覆 2; nothing goes anywhere else.
 //   - 連's candidate card: 4 CP.
@@ -41,7 +42,7 @@ const V7 = { rules: "v0.7" };
 const READY = (() => { try { return E.createGame(1, V7).rules === "v0.7"; } catch { return false; } })();
 const c7 = (name, fn) => check(name, () => (READY ? fn() : 'TODO: 引擎還沒有 v0.7（createGame(seed, { rules: "v0.7" }) 的 st.rules 不是 "v0.7"，#55）'));
 const LUCK0 = [50, 50, 60];
-const PLUS10 = { chang_yung_fa: CHEN, chang_chiu: CHEN, million_signatures: SOONG, chang_doctors: SOONG, local_factions: LIEN, party_congress: LIEN, econ_cabinet: LIEN };
+const PLUS10 = { chang_yung_fa: CHEN, chang_chiu: CHEN, million_signatures: SOONG, chang_doctors: SOONG, military_civil: SOONG, local_factions: LIEN, party_congress: LIEN, econ_cabinet: LIEN };
 const owned = (st, p) => st.counties.reduce((s, c) => s + c.blocks.filter((b) => b.o === p).length, 0);
 
 // Whole games with random legal moves; each(before, move, after).
@@ -131,7 +132,7 @@ c7("有特定對手的檢定看兩人的運氣（我 ÷（我 + 對手））：�
 });
 
 section("v0.7 牌");
-c7("七張原本「袋中 +N」的牌：打出後牌主運氣 +10（其他效果照舊）；連在 80 時打出黨員大會仍是 80", () => {
+c7("八張原本「袋中 +N」的牌：打出後牌主運氣 +10（其他效果照舊）；連在 80 時打出黨員大會仍是 80", () => {
   const bad = [];
   for (const [id, owner] of Object.entries(PLUS10)) {
     const st = playDecision(owner); const before = st.luck.slice();
