@@ -73,6 +73,9 @@
 - `git fetch origin && git rebase origin/main` **緊貼著 push 做**,然後 `git push origin HEAD:<分支>`。**不 push main。**
 - 這五行留在 issue 上(`gh issue comment <n> --body-file …`)。「我沒驗到」那一欄最值錢——它決定 orchestrator 親手驗什麼。
 - 你證偽自己的探針時發現 harness 有同樣的洞 → **回報,不要改 tests/**。
+- **看畫面用自己起的 headless Chrome**(CDP,`tools/` 裡的寫法或自己的探針)。**不要用 owner 的 Chrome**(claude-in-chrome 擴充、owner 開著的瀏覽器):那裡有 owner 登入的帳號,不是工具。(2026-10-15,#48 的 FE 用了。)
+- 截圖與暫存檔放在自己的 worktree(未追蹤)或系統暫存資料夾,**不要放到 repo 外的 `C:/Users/sheep/code/` 底下**。(#41 的 FE 放過。)
+- **已知的儀器問題**:在某些 agent 的環境裡,wrangler dev 開房間時 ws 回 500,`candtap38` 的房間那條會紅(base 也紅);改 `public/` 會讓 wrangler 重載後掛掉。遇到時照實報,改了檔就重起伺服器。orchestrator 在合併後的樹上會自己跑房間那幾條。
 
 ## 驗證與 land(orchestrator)
 
