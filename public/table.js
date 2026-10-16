@@ -134,6 +134,8 @@ function electionLuck(luck, mom, leads) {
   const base = Math.min(LUCK_ELECTION_MAX, luck + LUCK_PER_MOM * mom);
   return leads != null ? Math.min(LUCK_LEAD_MAX, base + LUCK_PER_LEAD * leads) : base;
 }
+// What a board shows: the luck itself (on election day the canvassing luck is in the record and the prompt), 50 for 連 in 省府舊部's turn.
+const boardLuck = (v, seat) => (seat === 2 && (v.active || []).includes("provincial_staff") ? LUCK_PROVINCIAL : v.luck[seat]);
 export function luckNow(v, seat) {
   if (v.phase === "election" && v.election) return electionLuck(v.luck[seat], v.election.mom[seat], v.election.leads ? v.election.leads[seat] : null);
   if (seat === 2 && (v.active || []).includes("provincial_staff")) return LUCK_PROVINCIAL;
@@ -538,7 +540,7 @@ function playersHTML(v, x, o = {}) {
       `<span class="pl-v">${votes}</span><span class="pl-mm">${esc(L.mom)} ${dots}</span></span></button></div>` +
       `<div class="pl-d"><span class="pl-h">${esc(fill(L.hand, { n: inHand(p), k: kept(p) }))}</span>` +
       (isV07(v)
-        ? `<button type="button" class="pl-bag pl-luck helpable${o.help === "luck" ? " on" : ""}" data-help="luck" aria-expanded="${o.help === "luck"}" aria-label="${esc(x.tr("hdr.luck") + " · " + x.tr("hdr.tap"))}">${esc(fill(L.luck, { n: luckNow(v, p) }))}</button>`
+        ? `<button type="button" class="pl-bag pl-luck helpable${o.help === "luck" ? " on" : ""}" data-help="luck" aria-expanded="${o.help === "luck"}" aria-label="${esc(x.tr("hdr.luck") + " · " + x.tr("hdr.tap"))}">${esc(fill(L.luck, { n: boardLuck(v, p) }))}</button>`
         : `<button type="button" class="pl-bag helpable${o.help === "bag" ? " on" : ""}" data-help="bag" aria-expanded="${o.help === "bag"}" aria-label="${esc(x.tr("hdr.bag") + " · " + x.tr("hdr.tap"))}">${esc(fill(L.bag, { n: v.bag[p] }))}</button>`) +
       `<button type="button" class="pl-m helpable${o.help === "mom" ? " on" : ""}" data-help="mom" aria-expanded="${o.help === "mom"}" aria-label="${esc(x.tr("hdr.momL") + " " + mom + " · " + x.tr("hdr.tap"))}">${esc(L.mom)} <b>${mom}</b></button></div></article>`;
   }).join("");
