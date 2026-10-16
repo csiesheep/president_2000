@@ -191,7 +191,8 @@ export function act(session, m) {
 const UNDO_MAX = 8;
 
 export function canUndo(session) {
-  return !session.tut && !!(session.undo && session.undo.length);
+  // Undo is only for your own action: once a bot is to move the action is over (#48).
+  return !session.tut && !!(session.undo && session.undo.length) && !botsToMove(session).length;
 }
 
 export function undo(session) {
@@ -221,7 +222,7 @@ export function screen(session, lang, opts = {}) {
   const changed = [...changedCounties(rec), ...changedCounties((session.mine && session.mine.lines) || [], true)];
   const html = tableHTML(v, d.choices, lang, {
     feed: session.feed, wait: botsToMove(session), advisor: { on: !!session.advisor, why: d.why },
-    undo: session.tut ? null : canUndo(session) ? "on" : session.drew ? "off" : null,
+    undo: session.tut || botsToMove(session).length ? null : canUndo(session) ? "on" : session.drew ? "off" : null,
     recent: recentLines(rec, v, x), result: resultBlock(session.mine, x), changed, ...opts, turnCard: session.tut ? false : opts.turnCard,
   });
   return session.tut ? decorate(html, session, lang, opts) : html;
