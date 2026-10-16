@@ -119,13 +119,10 @@ const ACTION_TURNS = [1, 2, 3, 4, 5, 7, 8];
 const ISSUE_CUBE = 0.12;   // an issue cube becomes a bag cube on election day
 const MEDIA_CUBE = 0.15;   // likewise a media cube
 // v0.5 (#49): the 議題總領先者 (most issue cubes over the three cards) takes the media leader's +1 momentum and
-// swap, so the lead is valued like v0.4's media lead (mediaVec): (MOMV + LEAD_SWAP) at this turn's end, times
-// LEAD_HOLD for every opponent play still to come this turn (each can take the lead back with one cheap cube),
-// and LEAD_PERSIST of it for each later action turn; LEAD_THIN of that when the lead is one cube. Issue cubes
-// decay (each issue's leader loses one every turn), so unlike media the lead does not carry over: LEAD_PERSIST 0.
-// LEAD_WEIGHT scales it the way ADS_WEIGHT scaled the ads estimate. Tuned in #49 (one seat changed against two
-// at these values, 1200 games a run); the numbers are in #49's handover.
-const LEAD_SWAP = 0.4, LEAD_PERSIST = 0, LEAD_THIN = 0.7, LEAD_WEIGHT = 1, LEAD_HOLD = 1;
+// swap, yet the bots do not value that lead at all. Measured in #49 (操盤手 ×3, one seat changed against two, 1200
+// to 9600 games a run): valuing it like v0.4's media lead, even only for this turn's end, made every seat win less
+// (陳 −3.8, 宋 −3.0, 連 −1.1 points), because issue cubes decay every turn and one cheap cube takes the lead back.
+// orchestrator 裁決 #49: each seat plays its best measured setting. The issue slots (SV) still count as in v0.4.
 // Soft strategic-vote flow by |宋 − 連| in the county (design sim's SOFT), a
 // sharper one for 操盤手 in turns 7–8, and the rule itself on election day.
 const SOFT = [0, 0.35, 0.8, 1, 1];
@@ -156,7 +153,7 @@ function see(st) {
   const seat = st.seat;
   return {
     seat,
-    turn: st.turn, phase: st.phase, step: st.step, idx: st.idx, initiative: st.initiative,
+    turn: st.turn, phase: st.phase, step: st.step, initiative: st.initiative,
     counties: st.counties.map((c) => {
       const v = [0, 0, 0], ty = [{ G: 0, B: 0, N: 0 }, { G: 0, B: 0, N: 0 }, { G: 0, B: 0, N: 0 }], e = { G: 0, B: 0, N: 0 };
       for (const b of c.blocks) { if (b.o >= 0) { v[b.o]++; ty[b.o][b.t]++; } else e[b.t]++; }
@@ -342,23 +339,6 @@ class Bot {
       V[l] += SV[s] * (i.cubes[l] - second >= 2 ? 1 : 0.75);
     });
     for (const i of issues) for (let q = 0; q < 3; q++) V[q] += i.cubes[q] * ISSUE_CUBE;
-    if (this.v.v05) add3(V, this.leadVec(issues));
-    return V;
-  }
-  // v0.5 (#49): the value of being the 議題總領先者 (see LEAD_* above); a tie is nobody.
-  leadVec(issues) {
-    const V = [0, 0, 0];
-    const tot = [0, 1, 2].map((q) => issues.reduce((s, i) => s + i.cubes[q], 0));
-    const t = this.v.turn;
-    const now = ACTION_TURNS.includes(t) && this.v.phase === "action" ? 1 : 0;
-    const later = ACTION_TURNS.filter((x) => x > t).length;
-    const l = leaderOf(tot);
-    if (l >= 0 && now + later > 0) {
-      const second = Math.max(...tot.filter((_, q) => q !== l));
-      // opponent plays left in this action phase after the one being decided (a skipped seat is ignored)
-      const opp = now ? Math.max(0, (2 - this.v.idx) + 2 * (HAND.play - 1 - this.v.step)) : 0;
-      V[l] += LEAD_WEIGHT * (MOMV + LEAD_SWAP) * (now * Math.pow(LEAD_HOLD, opp) + LEAD_PERSIST * later) * (tot[l] - second >= 2 ? 1 : LEAD_THIN);
-    }
     return V;
   }
   issueChange(changes, q = this.p) {
