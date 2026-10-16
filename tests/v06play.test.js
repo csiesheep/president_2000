@@ -33,7 +33,9 @@ const LANGS = ["zh-Hant", "en"];
 const ISSUE_ZH = { cross: "兩岸", clean: "清廉", econ: "經濟民生" };
 const FORBID = { "zh-Hant": /封鎖|地方大老|主動權|進位|議題交換|交換相鄰|第一段棄保|第一次棄保/, en: /initiative|local boss|\bboss(es)?\b|rounds? up|\bswap/i };
 const GONE = (m) => m.type === "order" || m.type === "swap" || m.type === "noswap" || m.type === "reward" || (m.type === "play" && m.block);
-const text = (html) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+// What a player reads or hears: the text, and the words in aria-label / title / alt (the panel's flag icon says
+// ui.solo.hdr.star, 「主動權」, only there).
+const text = (html) => (html.replace(/<[^>]+>/g, " ") + " " + [...html.matchAll(/\b(?:aria-label|title|alt)="([^"]*)"/g)].map((m) => m[1]).join(" ")).replace(/\s+/g, " ");
 const panels = (html) => [...html.matchAll(/class="pl-card[^"]*" data-seat="(\d)"/g)].map((m) => Number(m[1]));
 
 function walk(session, lang, seed, each) {
