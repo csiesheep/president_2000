@@ -17,7 +17,7 @@
 //   - three rows data-tc-votes="chen|soong|lien" with data-now = that seat's votes in this turn's log entry and,
 //     from turn 2 on, data-delta = data-now minus the previous turn entry's votes (no data-delta on turn 1).
 // Without { turnCard: true } nothing is drawn; a tutorial session never draws it.
-// Reports 尚未實作 until a screen has data-turncard.
+// Since #44 landed, no data-turncard is a failure (it reported 尚未實作 before).
 import test from "node:test";
 import assert from "node:assert/strict";
 import { R, section, check, ok, nonEmpty, summary } from "./harness.js";
@@ -67,7 +67,7 @@ function headline(log, turn) {
 }
 const gate = (fn) => () => {
   const ne = nonEmpty(POOL.length, "回合開始的局面"); if (ne !== true) return ne;
-  if (!POOL.some((p) => tags(S.screen(p.s, "zh-Hant", { turnCard: true }), "data-turncard").length)) return "TODO: 畫面還沒有 data-turncard（#44）";
+  if (!POOL.some((p) => tags(S.screen(p.s, "zh-Hant", { turnCard: true }), "data-turncard").length)) return "畫面又沒有 data-turncard 了（#44 已上線，這是退步，不是尚未實作）";
   return fn();
 };
 

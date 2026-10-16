@@ -6,7 +6,7 @@
 // Owner, 2026-10-15: 「每個縣市中 n塊 -> 改成 n0萬票」. A block is 10萬 votes (the candidate panels already say so).
 // Contract: the county box's title reads "<county> · <n>0萬票" — in English "<county> · <n/10, one decimal>M votes"
 // (10 blocks → 1.0M votes) — and the county's label on the map (its aria-label) carries the same words in place of
-// "<n> 塊". Phone and desktop boxes alike. Reports 尚未實作 until a box title says 萬票.
+// "<n> 塊". Phone and desktop boxes alike. Since #46 landed, a title in blocks is a failure.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { R, section, check, ok, summary } from "./harness.js";
@@ -21,7 +21,7 @@ const labels = (html) => [...html.matchAll(/data-county="(\d+)"[^<>]*?aria-label
 const gate = (fn) => () => {
   const t = title(S.screen(s, "zh-Hant", { county: 16, narrow: true }), 16);
   if (t === null) return "縣市框的標題找不到（工具）";
-  if (!/萬票/.test(t)) return "TODO: 縣市框的標題還是塊數（#46）";
+  if (!/萬票/.test(t)) return "縣市框的標題又寫回塊數了（#46 已上線，這是退步，不是尚未實作）";
   return fn();
 };
 
