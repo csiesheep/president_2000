@@ -20,6 +20,7 @@ import { COUNTIES, REGIONS, REGION_EDGES, START_COUNTY, START_MOMENTUM, START_ME
 import { EVENTS, localCards, HAND, CANDIDATE_CARDS, REST_CUBES } from "./cards.js";
 
 const CHEN = 0, SOONG = 1, LIEN = 2;
+const V05_START_ECON = 2; // v0.5 四.5 (#49): 連's opening cubes on 經濟民生, where v0.4 put them in the media box
 
 // mulberry32: the state carries the RNG so games replay from seed + actions.
 export function makeRng(seed) {
@@ -68,13 +69,22 @@ const CARD = Object.fromEntries(allCards().map((c) => [c.id, c]));
 // ------------------------------------------------------------------ setup
 
 const START_TURNS = [1, 2, 3, 4, 5, 7, 8];
+const RULES = ["v0.4", "v0.5"];
+// #49: is this a game of the v0.5 draft (ads and media folded into the issues)?
+const V05 = (st) => st.rules === "v0.5";
 
 // opts.startTurn (裁決 16): the same opening board, starting at that turn
 // (7 and 8 deal from the late deck; the saved piles are empty). An entry for
 // tests and M2, not a rule.
+//
+// opts.rules (#49): "v0.4" (the default, today's game) or "v0.5", the draft that folds the ads and the national
+// media into the issues. A v0.5 state says st.rules === "v0.5" and has no st.media; 連 opens with 2 on 經濟民生
+// (v0.5 四.5, 十三). A v0.4 state has no `rules` field at all, so it is byte for byte what it was before #49.
 export function createGame(seed, opts = {}) {
   const startTurn = opts.startTurn ?? 1;
   if (!START_TURNS.includes(startTurn)) throw new Error("createGame: startTurn must be one of " + START_TURNS.join("/"));
+  const rules = opts.rules ?? "v0.4";
+  if (!RULES.includes(rules)) throw new Error("createGame: rules must be one of " + RULES.join("/"));
   const rng = makeRng(seed);
   const counties = COUNTIES.map(([name, region, G, B, N, init]) => {
     const blocks = [];
@@ -129,6 +139,11 @@ export function createGame(seed, opts = {}) {
     log: [],
   };
   st.rng = rng.state;
+  if (rules === "v0.5") {
+    st.rules = "v0.5";
+    delete st.media; // v0.5 二、3.2: no media cubes, no national media box
+    issueCubes(st, "econ")[LIEN] = V05_START_ECON; // v0.5 四.5、十三: 連 opens with 2 on 經濟民生
+  }
   return beginTurn(st);
 }
 
@@ -230,6 +245,9 @@ const cubesIn = (st, k, p) => st.counties[k].blocks.filter((b) => b.o === p).len
 const boardVotes = (st) => [0, 1, 2].map((p) => st.counties.reduce((s, c) => s + c.blocks.filter((b) => b.o === p).length, 0));
 const regionOf = (k) => COUNTIES[k][1];
 const nationalMediaLeader = (st) => leader(st.media);
+// v0.5 3.4 (#49): the 議題總領先者 has the most cubes over the three issue cards together; a tie is nobody.
+const issueTotals = (st) => [0, 1, 2].map((p) => st.issues.reduce((s, i) => s + i.cubes[p], 0));
+const issueLeader = (st) => leader(issueTotals(st));
 // 裁決 5: every seat with ≥ 4 cubes in the county is a boss there.
 const bosses = (st, k) => [0, 1, 2].filter((p) => cubesIn(st, k, p) >= BOSS_THRESHOLD);
 const otherCamp = (seat) => (CAMP[seat] === "G" ? "B" : "G");
@@ -433,6 +451,25 @@ const PROGRAMS = {
   shifting_story: () => [removeFrom(LIEN, SOONG, 2, { pick: "free", toBag: true }), mom(LIEN, 1)],
 };
 
+// v0.5 (#49): the nine media cards, rewritten onto 「任一議題」. The seat resolving the card (`by`, here always the
+// card's owner) picks one issue and every cube goes there, with no check (orchestrator 細節 2–3, #49).
+// anyIssue(by, p, n): p +n there; with `target`, up to n of target's cubes come off, never below 0, and only
+// issues where target has some are offered (none: the step is skipped; 細節 4). These replace the v0.4 programs
+// (and 省府舊部's choice-free effect) in a v0.5 game only.
+const anyIssue = (by, p, n, o = {}) => ({ ...step("anyIssue", by, 1, { pick: "free", target: o.target }), p, n });
+const PROGRAMS_V05 = {
+  lo_propaganda: (by) => [anyIssue(by, CHEN, 2)],
+  hsieh_kaohsiung: (by) => [placeAt(CHEN, "高雄市", 2), anyIssue(by, CHEN, 1)],
+  advisory_group: (by) => [iss("clean", CHEN, 1), iss("econ", CHEN, 1), anyIssue(by, CHEN, 1)],
+  chang_yung_fa: (by) => [anyIssue(by, CHEN, 1), bag(CHEN, 2)],
+  provincial_staff: (by) => [anyIssue(by, SOONG, 1)], // its 本回合 part is st.active, as in v0.4
+  chang_doctors: (by) => [anyIssue(by, SOONG, 1), bag(SOONG, 2)],
+  expel_soong: (by) => [anyIssue(by, SOONG, 2, { target: SOONG }), mom(SOONG, 1)],
+  party_assets_ads: (by) => [anyIssue(by, LIEN, 2)],
+  massive_ads: (by) => [anyIssue(by, LIEN, 3)],
+};
+const programOf = (st, id) => (V05(st) && PROGRAMS_V05[id]) || PROGRAMS[id];
+
 // 棄連保扁、棄連保宋、黨內整合: in one county, the target −1 (checked, Q5
 // default) and then the player +1 (§8.1). With no target cube anywhere the
 // −1 does nothing and the +1 goes to any county.
@@ -445,6 +482,13 @@ function stepMoves(st, s) {
   const out = [];
   const open = (key) => !(s.pick === "distinct" && s.used.includes(key)) && (!s.pool || s.pool.includes(key));
   if (s.fromBag && st.bag[s.seat] <= 0) return out;
+  if (s.op === "anyIssue") {
+    for (const i of st.issues) {
+      if (s.target < 0) out.push({ type: "issue", issue: i.name });
+      else if (i.cubes[s.target] > 0) out.push({ type: "issue", issue: i.name, target: s.target });
+    }
+    return out;
+  }
   if (s.op === "place" || s.op === "remove" || s.op === "convert") {
     for (let k = 0; k < COUNTIES.length; k++) {
       if (!open(k)) continue;
@@ -466,7 +510,7 @@ function stepMoves(st, s) {
 // (st.pending.stage "effect"); `after` says how the play goes on when the
 // program is done: "kind" (外力 / 必觸發: the CP action) or "finish".
 function startProgram(st, id, by, after) {
-  st.pending.fx = { card: id, by, after, queue: PROGRAMS[id](by, st) };
+  st.pending.fx = { card: id, by, after, queue: programOf(st, id)(by, st) };
   st.pending.stage = "effect";
   return runProgram(st);
 }
@@ -520,6 +564,9 @@ function applyEffect(st, seat, m) {
     st.counties[key].blocks.find((b) => b.o < 0 && b.t === "N").t = "G";
   } else if (s.op === "tvbs") {
     addMom(st, m.seat, 1);
+  } else if (s.op === "anyIssue") {
+    key = m.issue;
+    if (s.target < 0) addIssue(st, m.issue, s.p, s.n); else addIssue(st, m.issue, s.target, -s.n);
   }
   st.log.push({ t: "fx", card: pd.fx.card, seat, move: m });
   s.left--; s.picked++;
@@ -557,8 +604,8 @@ function ownEventAllowed(st, seat, c) {
 // a choice (pending stage "effect"); the play then goes on with `after`.
 function resolveEffect(st, id, by, after) {
   st.flags.played[id] = true;
-  if (EFFECTS[id]) { EFFECTS[id](st); st.log.push({ t: "effect", card: id, by }); return false; }
-  if (PROGRAMS[id]) { st.log.push({ t: "effect", card: id, by }); return startProgram(st, id, by, after); }
+  if (EFFECTS[id] && !(V05(st) && PROGRAMS_V05[id])) { EFFECTS[id](st); st.log.push({ t: "effect", card: id, by }); return false; }
+  if (programOf(st, id)) { st.log.push({ t: "effect", card: id, by }); return startProgram(st, id, by, after); }
   st.log.push({ t: "effect", card: id, by, unimplemented: true });
   return false;
 }
@@ -601,7 +648,7 @@ export function legalMoves(st, seat) {
     case "trigger": return [{ type: "trigger" }, { type: "pass" }];
     case "effect": return effectMoves(st);
     case "local": return localMoves(st, seat, CARD[pd.card]);
-    case "kind": return ["campaign", "ads", "issue"].map((kind) => ({ type: "action", kind }));
+    case "kind": return (V05(st) ? ["campaign", "issue"] : ["campaign", "ads", "issue"]).map((kind) => ({ type: "action", kind })); // v0.5 七: no 7.2
     case "campaign": return campaignMoves(st, seat, pd);
     case "ads": return [{ type: "ad" }, { type: "done" }];
     case "media": return mediaMoves(st, seat);
@@ -934,9 +981,10 @@ function startMomentum(st) {
   st.log.push({ t: "momentum", step: "decay", mom: st.mom.slice() });
   // (2) v0.4 (#34, owner "2b + B"): the media leader gains 1 momentum, after the halving, so that
   // point is halved only at the next turn's end (orchestrator 裁決, #34); a tie is nobody.
-  const nat = nationalMediaLeader(st);
-  if (nat >= 0) { st.mom[nat] += 1; st.log.push({ t: "momentum", step: "media", seat: nat, mom: st.mom.slice() }); }
-  // (3) the media leader may swap two adjacent slots
+  // v0.5 5.3 (#49): the 議題總領先者 takes both steps, at the same moment, logged step "lead".
+  const nat = V05(st) ? issueLeader(st) : nationalMediaLeader(st);
+  if (nat >= 0) { st.mom[nat] += 1; st.log.push({ t: "momentum", step: V05(st) ? "lead" : "media", seat: nat, mom: st.mom.slice() }); }
+  // (3) the media leader (v0.5: the 議題總領先者) may swap two adjacent slots
   if (nat >= 0) { st.mstep = "swap"; st.pending = { stage: "swap", seat: nat }; return; }
   momentumRewards(st);
 }
@@ -1216,9 +1264,10 @@ function startElection(st) {
   st.phase = "election"; st.step = 0; st.idx = 0; st.actor = -1; st.pending = null; st.mstep = null;
   st.saved = [false, false, false];
   const mom = st.mom.slice();
-  const add = [0, 1, 2].map((p) => st.media[p] + st.issues.reduce((s, i) => s + i.cubes[p], 0) + 2 * st.mom[p]);
+  // v0.5 十二 1 (#49): no media to convert; the issue cubes and momentum ×2 as in v0.4.
+  const add = [0, 1, 2].map((p) => (V05(st) ? 0 : st.media[p]) + st.issues.reduce((s, i) => s + i.cubes[p], 0) + 2 * st.mom[p]);
   for (let p = 0; p < 3; p++) st.bag[p] += add[p];
-  st.media = [0, 0, 0];
+  if (!V05(st)) st.media = [0, 0, 0];
   for (const i of st.issues) i.cubes = [0, 0, 0];
   st.mom = [0, 0, 0];
   st.log.push({ t: "convert", bag: add, mom });
