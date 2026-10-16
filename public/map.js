@@ -379,8 +379,8 @@ export function taiwanMap(view, lang, opts = {}) {
     return `<li data-region="${r}" data-endorse="${endorse}"><i class="sw" style="background:${TINT[r]}"></i><b>${esc(name)}</b>${parts ? `<span>${esc(parts)}</span>` : ""}</li>`;
   }).join("");
   // The national media box, all three always shown, 陳 宋 連 (#34): "全國媒體 陳 0 · 宋 0 · 連 2".
-  const med = v.media;
-  const media = `<p class="ct tw-media" data-media-national="${med.join(",")}"><b>${esc(M.national)}</b> ${esc([0, 1, 2].map((p) => `${cand(d, p).short} ${med[p]}`).join(" · "))}</p>`;
+  const med = v.media; // v0.5 (#49) has no media: no box
+  const media = !Array.isArray(med) ? "" : `<p class="ct tw-media" data-media-national="${med.join(",")}"><b>${esc(M.national)}</b> ${esc([0, 1, 2].map((p) => `${cand(d, p).short} ${med[p]}`).join(" · "))}</p>`;
   const holders = REGIONS.some((_, r) => v.endorse[r] >= 0);
   const key = holders ? `<p class="ct tw-endkey" data-endorse-legend><i class="tw-stampkey" aria-hidden="true">${esc(M.stamp)}</i>${esc(M.endorseKey)}</p>` : "";
   const sq = (cls) => `<i class="lb ${cls}"></i>`;

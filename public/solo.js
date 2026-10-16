@@ -15,7 +15,7 @@ const FEED_MAX = 60;
 
 export function newSolo({ seat, level, seed }) {
   const s = seed >>> 0;
-  const st = E.createGame(s);
+  const st = E.createGame(s, { rules: "v0.5" }); // #53: new games are played on rulebook v0.5; a v0.4 save (no st.rules) keeps its own rules
   const session = { v: 1, seat, level, seed: s, rng: (s ^ 0x9e3779b9) >>> 0, st, feed: [], logSeen: 0, rec: [], mine: null };
   const first = fromLog(st, 0);
   return { ...session, feed: first, rec: first, logSeen: st.log.length };
@@ -39,7 +39,11 @@ function describe(b, seat, m, a) {
       return [{ k: m.type, seat, county: m.county, target: m.target, ok: cnt(a, m.county, m.target) < cnt(b, m.county, m.target) }];
     case "ad": return [{ k: "ad", seat, ok: !!(a.pending && a.pending.stage === "media") }];
     case "media": return [{ k: "media", seat, target: m.target ?? null }]; // v0.4 (#34): the national box
-    case "issue": return [{ k: "issue", seat, issue: m.issue, target: m.target ?? null }];
+    case "issue": { // a card's 「任一議題」 (v0.5) may move more than one cube: one entry per cube
+      const i = b.issues.findIndex((x) => x.name === m.issue), p = m.target ?? seat;
+      const n = Math.max(1, Math.abs(a.issues[i].cubes[p] - b.issues[i].cubes[p]));
+      return Array.from({ length: n }, () => ({ k: "issue", seat, issue: m.issue, target: m.target ?? null }));
+    }
     case "swap": return [{ k: "swap", seat }];
     case "reward": return m.pick === "mom" ? [{ k: "reward", seat, pick: "mom" }] : [];
     case "save": return [{ k: "save", seat, n: m.cards.length }];
@@ -91,6 +95,9 @@ export function settleEntries(momBefore, issues, slice) {
   // v0.4 (#34): the media leader's +1 right after the halving
   const bonus = slice.find((e) => e.t === "momentum" && e.step === "media");
   if (bonus) out.push({ k: "mediaBonus", seat: bonus.seat });
+  // v0.5 (#49): the issue leader's +1 (logged step "lead") takes its place
+  const lead = slice.find((e) => e.t === "momentum" && e.step === "lead");
+  if (lead) out.push({ k: "leadBonus", seat: lead.seat });
   const done = slice.find((e) => e.t === "momentum" && e.step === "done");
   if (done && issues) {
     const iss = issues.map((i) => ({ name: i.name, cubes: i.cubes }));

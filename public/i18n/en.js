@@ -29,7 +29,7 @@ export default {
     cpCount: "{cp} CP ×{n}",
     cpUnit: "CP",
     restCubes: "Rest cubes {n}",
-    stubIssue: "Issue", stubCanvass: "Election day",
+    stubIssue: "Debate", stubCanvass: "Election day",
     // The advisor (#18): the switch above the table, the star on its pick, the line before its reason
     advisor: { label: "Advisor", on: "On", off: "Off", prefix: "Advisor:", starLabel: "Advisor's pick", note: "Marks the move your strategist would make, using only what you can see." },
     // The tutorial (#27): one fixed game; the words in the bubble. {...} are filled by tutorial.js from the values on screen.
@@ -98,14 +98,14 @@ export default {
         speed: "Rivals' speed", slow: "Slow", normal: "Normal", fast: "Fast", step: "Step", stepNote: "Step: the rivals stop after each move until you tap Next.", sound: "Sound", volume: "Volume", next: "Next" },
       hdr: {
         ph: { action: "Action {n}/4", order: "Order", momentum: "Momentum", save: "Set aside", debate: "Forum", election: "Election day", end: "The count" },
-        turn: "Turn {n}", endDate: "18 March", initiative: "Initiative: {who}", star: "Initiative", mom: "Momentum", bag: "Bag", feed: "Record", momL: "Momentum", slotsL: "Issue slots", tap: "Tap for an explanation",
+        turn: "Turn {n}", endDate: "18 March", initiative: "Initiative: {who}", star: "Initiative", mom: "Momentum", bag: "Bag", feed: "Record", momL: "Momentum", slotsL: "Issue slots", issueTotal: "Issue totals", leadIs: "Issue leader: {who}", leadNone: "Issue leader: nobody (tied)", tap: "Tap for an explanation",
         yourTurn: "Your move", busy: "{who} is acting…", waitHint: "The bots are acting. You can look through your hand meanwhile.",
         slot: { 1: "Slot 1", 2: "Slot 2", 3: "Slot 3" },
         phase: { action: "Action phase {n} / 4", order: "Pick your place in the order", momentum: "Momentum phase", save: "Set aside", debate: "The Policy Forum", election: "Election day · canvassing", end: "The count" },
       },
       map: {
         title: "The regions", here: "{who} is here", endorse: "Endorsed by", media: "Media", national: "National media", blocks: "{m}M votes", empty: "empty {n}", boss: "{who}, local boss",
-        stamp: "★", endorseKey: "Stamp colour = who holds the region's endorsement", endorsedBy: "{region} endorsed by {who}",
+        stamp: "E", endorseKey: "Stamp colour = who holds the region's endorsement", endorsedBy: "{region} endorsed by {who}",
         endorseNote: "{county} · {region} is endorsed by {who}: non-voter blocks empty here: {free}, half of them on election day (rounded down) → {here}. Whole region: {who} +{all}.",
         legendEmpty: "empty swing blocks", legendGrey: "non-voter blocks", changed: "changed just now",
         you: "You", board: "Map of Taiwan", hint: "Tap a county to see its blocks and act there.", popNone: "Nothing to do in this county right now.", popGrey: "non-voter {n}", popClose: "Close", islands: "Outer islands", legendPawn: "round marker: where a candidate stands", legendCubes: "Chen, Soong, Lien cubes", popMove: "Move here · {left} CP left",
@@ -128,7 +128,7 @@ export default {
       r: {
         turn: "Turn {n} begins · initiative: {who} · you are dealt up to {cards} {cards#card|cards}", turnNoDeal: "Turn {n} begins · initiative: {who}",
         turnDebate: "Turn {n}: the Policy Forum begins", turnElection: "Turn {n}: election day begins",
-        decay: "End of turn · momentum halved: {text}", mediaBonus: "Media lead: {who} +1 momentum", slot1: "Slot 1, {issue}: {who} leads: +1 momentum and an endorsement", slot3: "Slot 3, {issue}: {who} leads: +1 momentum",
+        decay: "End of turn · momentum halved: {text}", mediaBonus: "Media lead: {who} +1 momentum", leadBonus: "Issue leader: {who} +1 momentum", slot1: "Slot 1, {issue}: {who} leads: +1 momentum and an endorsement", slot3: "Slot 3, {issue}: {who} leads: +1 momentum",
         issueDecay: "The leader of each issue slot loses 1 cube", momNow: "Momentum now: {text}", group: "{head}: {what}", times: "×{n}",
         p: {
           fill: "{county} +{n}", cross: "{county} cross-camp +{n}", steal: "{county}: took {n} {target}", remove: "{county}: removed {n} {target}", grey: "{county} non-voter +{n}",
@@ -162,7 +162,7 @@ export default {
         media: "The ad worked: place 1 of your media cubes, or remove 1 of an opponent's.", issue: "Issue: {cp} CP left.",
         local: "Place 1 cube in {county}.",
         fxPlace: "Place cubes ({left} to go).", fxRemove: "Remove {who} cubes ({left} to go).", fxMedia: "Place media ({left} to go).",
-        fxMediaRemove: "Remove {who} media ({left} to go).", fxConvert: "Turn non-voter blocks into green swing blocks ({left} to go).", fxTvbs: "Pick one player to gain 1 momentum.",
+        fxMediaRemove: "Remove {who} media ({left} to go).", fxConvert: "Turn non-voter blocks into green swing blocks ({left} to go).", fxTvbs: "Pick one player to gain 1 momentum.", fxIssue: "Pick an issue: put {n} {who} {n#cube|cubes} on it.", fxIssueRemove: "Pick an issue: remove up to {n} {who} {n#cube|cubes} from it.",
         swap: "You are the overall issue leader: you may swap two adjacent issue slots.", reward: "You lead the issue in slot 2: take 1 momentum, or draw 1 endorsement.",
         destDebate: "Policy Forum", destElection: "election day",
         save: "Pick {n} to set aside face down for the {dest}.", saveAll: "You hold {n} or fewer, so all of them go to the {dest}.", saveRest: "The rest go to the discard pile.", saveNone: "No card picked yet", saveGo: "Confirm",
@@ -177,6 +177,7 @@ export default {
         move: "Move to {county} ({cost} CP)", fill: "{county} · fill 1 block", cross: "{county} · cross-camp fill 1 block", steal: "{county} · take 1 {who} cube ({kind})",
         done: "End the action", ad: "Run an ad (1 CP)", check: " · check about {p}%", noCheck: " · no check",
         mediaPlace: "National media · place 1 of your cubes", mediaRemove: "National media · remove 1 {who} cube",
+        anyIssue: "{issue} · place {n} {n#cube|cubes}", anyIssueRemove: "{issue} · remove {n} {who} {n#cube|cubes}",
         issuePlace: "{issue} · place 1 cube ({cost} CP)", issueRemove: "{issue} · remove 1 {who} cube ({cost} CP)",
         swap: "Swap slots {a} and {b}", noswap: "No swap", rewardMom: "+1 momentum", rewardEndorse: "Draw 1 endorsement",
         save: "Keep: {cards}", reveal: "Turn over {card} → {issue}", canvass: "Canvass: {card} ({county})",

@@ -810,3 +810,9 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
 .pop-end { margin: 0; display: flex; align-items: flex-start; gap: 7px; font-size: 12.5px; line-height: 1.45; font-weight: 700; color: var(--m-ink); }
 .pop-end i { flex: none; width: 18px; height: 18px; border-radius: 50%; background: var(--c); color: #fff; font: 900 11px/18px "Noto Serif TC", serif; text-align: center; font-style: normal; }
 @media (prefers-reduced-motion: reduce) { .rp-card, .rp-stamp { transition-property: opacity !important; } .t-now li.rp-flash { animation: none; } }
+
+/* #53: the issue leader (v0.5) under the three slots: each candidate's total over the three issues, who leads. */
+.t-lead { grid-column: 1 / -1; margin: 0; font-size: 12px; line-height: 1.4; color: #e4d6b8; }
+.t-lead b { font-weight: 800; margin-right: 2px; }
+.t-lead .n.on { color: #ffd34d; font-weight: 800; }
+.t-lead em { font-style: normal; font-weight: 700; margin-left: 4px; white-space: nowrap; }
