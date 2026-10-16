@@ -255,7 +255,7 @@ export default {
       "A game for three players. Each plays one of the three leading candidates in Taiwan's 2000 presidential election: Chen Shui-bian (DPP), James Soong (independent) and Lien Chan (KMT).",
       "The game lasts 9 turns, from November 1999 to election day on 18 March 2000, about two weeks per turn. Turn 6 is the televised Policy Forum and turn 9 is election day, and each has its own procedure. Every other turn follows the same routine.",
       "How to win: after election day is counted, whoever has the most cubes on the board is elected. Each cube stands for 100,000 votes.",
-      "Ties are broken in this order: the number of counties led, then the momentum left before the election-day conversion.",
+      "Ties are broken in this order: the number of counties led, then the momentum left before the election-day conversion, and if still tied, the election-day canvassing order (whoever comes earlier wins).",
       { list: [
         "Deal-and-order phase: everyone draws cards, and the turn's order is set by votes, fewest first.",
         "Action phases (four of them): in each, all three players play one card, either as an event or for campaign points (CP).",
@@ -414,7 +414,7 @@ export default {
       "It happens once, on election day, and it moves all the swing blocks.",
     ] },
     { id: "election", title: "Turn 9: Election Day", body: [
-      "This turn there is no deal and there are no action phases. The six steps are, in order:",
+      "This turn there is no deal and there are no action phases. The seven steps are, in order:",
       { list: [
         "Conversion: this happens automatically at the start. All the cubes on the issue cards go into the bag; each remaining momentum marker is turned into 2 of its owner's cubes put into the bag, which sets momentum to zero. Momentum before the conversion is recorded and used to break a tie in the count.",
         "Canvassing order: after the conversion, line the players up by votes, fewest first, as before (momentum is all zero by now, so a tie goes by seat order Chen, Soong, Lien).",
@@ -423,7 +423,7 @@ export default {
         "Strategic-voting count: it moves all the swing blocks (see the Strategic Voting section).",
         "Endorsements: in each region holding an endorsement marker, the marker's owner turns half (rounded down) of the still-empty non-voter blocks in each county of that region into his own cubes. This comes after the strategic-voting count.",
       ] },
-      "The count: each cube is worth 100,000 votes, and the most cubes wins. Ties are broken by the number of counties led, then the momentum before the conversion.",
+      "The count: each cube is worth 100,000 votes, and the most cubes wins. Ties are broken by the number of counties led, then the momentum before the conversion, and if still tied, the election-day canvassing order (whoever comes earlier wins).",
     ] },
     { id: "candidates", title: "The Candidates", body: [
       "The three candidates are not alike:",
