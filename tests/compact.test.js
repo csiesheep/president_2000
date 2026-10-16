@@ -380,8 +380,11 @@ check("票數：候選人板寫盤上方塊換成的票，中文 n 接 0萬票�
   return ok(true, `${n} 塊候選人板的票數都對（含 0 顆）`);
 }));
 
-check("動能、手牌、袋子還在：每塊候選人板有 動能/Momentum 與動能數，手牌 · 已留、袋中的字跟現在一樣", panelGate(() => {
-  let n = 0;
+// v0.7 (#60) has no bag: its panels show the luck instead (「運氣 N%」 / "Luck N%"; 連 may show 50 in a turn of 省府舊部),
+// the wording tests/v07play.test.js asks for. A game saved on v0.6 or before still shows the bag.
+const luckOn = (lang, n) => (lang === "en" ? `Luck ${n}%` : `運氣 ${n}%`);
+check("動能、手牌、袋子（v0.7：運氣）還在：每塊候選人板有 動能/Momentum 與動能數，手牌 · 已留、袋中的字跟現在一樣（v0.7 是運氣 N%）", panelGate(() => {
+  let n = 0, nBag = 0, nLuck = 0;
   for (const p of POOL.filter((x, i) => i % 3 === 0)) {
     const html = tableHTML(p.v, p.ch, p.lang, {});
     const L = (p.lang === "en" ? en : zh).ui.look.board;
@@ -391,13 +394,21 @@ check("動能、手牌、袋子還在：每塊候選人板有 動能/Momentum �
       if (!new RegExp(`${L.mom}\\s*${p.v.mom[s]}(\\D|$)`).test(hay)) return `${p.where}：${SEAT[s]} 板上找不到「${L.mom} ${p.v.mom[s]}」`;
       const inHand = Array.isArray(p.v.hands[s]) ? p.v.hands[s].length : p.v.hands[s];
       const keptA = p.v.turn <= 5 ? p.v.savedDebate[s] : p.v.savedElection[s], kept = Array.isArray(keptA) ? keptA.length : keptA;
-      const hand = L.hand.replace("{n}", inHand).replace("{k}", kept), bag = L.bag.replace("{n}", p.v.bag[s]);
+      const hand = L.hand.replace("{n}", inHand).replace("{k}", kept);
       if (!hay.includes(hand)) return `${p.where}：${SEAT[s]} 板上找不到「${hand}」`;
-      if (!hay.includes(bag)) return `${p.where}：${SEAT[s]} 板上找不到「${bag}」`;
+      if (p.v.bag) {
+        const bag = L.bag.replace("{n}", p.v.bag[s]);
+        if (!hay.includes(bag)) return `${p.where}：${SEAT[s]} 板上找不到「${bag}」`;
+        nBag++;
+      } else {
+        const want = luckOn(p.lang, p.v.luck[s]), alt = s === 2 && (p.v.active || []).includes("provincial_staff") ? luckOn(p.lang, 50) : null;
+        if (!hay.includes(want) && !(alt && hay.includes(alt))) return `${p.where}：${SEAT[s]} 板上找不到「${want}」（v0.7）`;
+        nLuck++;
+      }
       n++;
     }
   }
-  return ok(true, `${n} 塊候選人板都有動能、手牌、袋子`);
+  return ok(true, `${n} 塊候選人板都有動能、手牌，以及袋子（${nBag}）或運氣（${nLuck}）`);
 }));
 
 test("compact", () => {

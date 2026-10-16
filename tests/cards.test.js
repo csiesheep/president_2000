@@ -84,7 +84,9 @@ check("大張牌面：選一張手牌時的牌面（data-face）有 data-camp，
 section("37 候選人牌：陣營色");
 
 const SEAT_KEYS = ["chen", "soong", "lien"];
-const CAND_CP = { chen: 5, soong: 5, lien: 3 }; // rulebook §6.3 table: 陳 5 CP, 宋 5 CP, 連 3 CP (and 2 rest)
+// rulebook §6.3 table: 陳 5 CP, 宋 5 CP, 連 3 CP (and 2 rest); rulebook v0.7 (#60): 連 4 CP, no rest cubes.
+const CAND_CP = { chen: 5, soong: 5, lien: 3 };
+const candCp = (key, st) => (key === "lien" && st.rules === "v0.7" ? 4 : CAND_CP[key]);
 const candEl = (html) => { const i = html.search(/<button[^<>]*class="[^"]*\bcandc\b/); if (i < 0) return null; return html.slice(i, html.indexOf("</button>", i) + 9); };
 // Each seat at its first decision, before and after it uses the candidate card.
 const CAND = SEAT_KEYS.map((key, seat) => {
@@ -98,12 +100,12 @@ const candGate = (fn) => () => {
   return fn();
 };
 
-check("候選人牌：三個座位都有 data-cand 與 data-camp（該座位）、data-cp（陳 5、宋 5、連 3），圖是 art/candidates/<座位>.webp", candGate(() => {
+check("候選人牌：三個座位都有 data-cand 與 data-camp（該座位）、data-cp（陳 5、宋 5、連 3；v0.7 連 4），圖是 art/candidates/<座位>.webp", candGate(() => {
   for (const c of CAND) {
     const el = candEl(S.screen(c.s, "zh-Hant")), open = el.slice(0, el.indexOf(">") + 1);
     if (attr(open, "data-cand") !== c.key || attr(open, "data-camp") !== c.key) return `${c.key}：候選人牌是 data-cand「${attr(open, "data-cand")}」data-camp「${attr(open, "data-camp")}」`;
     const cp = tags(el, "data-cp")[0];
-    if (!cp || Number(cp.v) !== CAND_CP[c.key]) return `${c.key}：候選人牌的 data-cp 是「${cp && cp.v}」，應為 ${CAND_CP[c.key]}`;
+    if (!cp || Number(cp.v) !== candCp(c.key, c.s.st)) return `${c.key}：候選人牌的 data-cp 是「${cp && cp.v}」，應為 ${candCp(c.key, c.s.st)}（${c.s.st.rules}）`;
     if (!new RegExp(`<img[^<>]*\\ssrc="[^"]*art/candidates/${c.key}\\.webp"`).test(el)) return `${c.key}：候選人牌裡沒有 art/candidates/${c.key}.webp 的圖`;
   }
   return ok(true, "陳、宋、連三張候選人牌的陣營、CP 與圖都對");

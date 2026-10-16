@@ -186,7 +186,7 @@ export function invariants(st) {
     if (bl.some((x) => ![-1, 0, 1, 2].includes(x.o))) return `${name} 有不合法的擁有者`;
   }
   const nat = (x) => Number.isInteger(x) && x >= 0;
-  for (const [what, arr] of [["動能", st.mom], ["袋子", st.bag], ["休息區", st.rest], ["媒體", st.media.flat()], ["議題", st.issues.flatMap((i) => i.cubes)]]) {
+  for (const [what, arr] of [["動能", st.mom], ["袋子", st.bag || []], ["休息區", st.rest || []], ["媒體", st.media.flat()], ["議題", st.issues.flatMap((i) => i.cubes)]]) {
     if (!arr.every(nat)) return `${what} 出現負數或非整數：${JSON.stringify(arr)}`;
   }
   if (!st.pos.every((p) => Number.isInteger(p) && p >= 0 && p < B.COUNTIES.length)) return "候選人位置不合法：" + st.pos.join();
