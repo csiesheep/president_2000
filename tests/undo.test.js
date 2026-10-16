@@ -8,10 +8,12 @@
 // Contract (public/solo.js):
 //   - S.canUndo(session) → boolean; S.undo(session) → the session as it was before the human's last move;
 //   - after S.act(s, m): canUndo is true exactly when that move drew nothing random — the engine's st.rng is unchanged
-//     — and then S.undo gives back s: the same st, the same bot rng, the same choices;
+//     — and it is still the human's turn (once the computer is to move the action is over: orchestrator's ruling, #48);
+//     then S.undo gives back s: the same st, the same bot rng, the same choices;
 //   - a run of such moves undoes one at a time, back to where the run began;
 //   - once a bot has moved (S.stepBot), or on a fresh game, canUndo is false;
-//   - S.screen shows a button data-undo, enabled, exactly when canUndo; never in the tutorial.
+//   - S.screen shows a button data-undo, enabled, exactly when canUndo; never in the tutorial; and no undo button at
+//     all (not even the greyed one) once the computer is to move (#48).
 // Since #43 landed, a solo.js without S.canUndo is a failure (it reported 尚未實作 before).
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -68,12 +70,12 @@ function walkTutorial(visit) {
 
 section("43 悔一步");
 
-check("走一步之後：沒抽到亂數（st.rng 沒變）才能悔；悔回去是同一個局面、同一個電腦亂數、同樣的選項", gate(() => {
+check("走一步之後：沒抽到亂數（st.rng 沒變）、而且還沒輪到電腦，才能悔；悔回去是同一個局面、同一個電腦亂數、同樣的選項", gate(() => {
   let yes = 0, no = 0;
   for (const p of POOL) {
-    const s1 = S.act(p.s, p.m), drew = s1.st.rng !== p.s.st.rng;
-    if (S.canUndo(s1) === drew) return `${p.where}：${drew ? "抽過亂數" : "沒抽亂數"}，canUndo 卻是 ${S.canUndo(s1)}`;
-    if (drew) { no++; continue; }
+    const s1 = S.act(p.s, p.m), drew = s1.st.rng !== p.s.st.rng, bots = S.botsToMove(s1).length > 0;
+    if (S.canUndo(s1) !== (!drew && !bots)) return `${p.where}：${drew ? "抽過亂數" : "沒抽亂數"}、${bots ? "輪到電腦" : "還是你"}，canUndo 卻是 ${S.canUndo(s1)}`;
+    if (drew || bots) { no++; continue; }
     const u = S.undo(s1);
     if (!same(u.st, p.s.st)) return `${p.where}：悔回去的局面跟原來不一樣`;
     if (u.rng !== p.s.rng) return `${p.where}：悔回去之後電腦的亂數變了`;
@@ -92,6 +94,7 @@ check("連走幾步都沒抽亂數：一次悔一步，可以一路悔回第一�
     const c2 = S.choices(s1, "zh-Hant").find((c) => S.act(s1, c.move).st.rng === s1.st.rng);
     if (!c2 || S.botsToMove(s1).length) continue;
     const s2 = S.act(s1, c2.move);
+    if (S.botsToMove(s2).length) continue; // the second move ended the action: nothing to undo then (#48)
     if (!S.canUndo(s2)) return `${p.where} → ${c2.label}：兩步都沒抽亂數，第二步卻不能悔`;
     const u1 = S.undo(s2);
     if (!same(u1.st, s1.st)) return `${p.where} → ${c2.label}：悔一次沒有回到第一步之後`;
@@ -125,6 +128,18 @@ check("畫面：能悔時有一顆可以按的 data-undo，不能悔時沒有可
   }
   const r = nonEmpty(on, "畫面上能悔"); if (r !== true) return r;
   return ok(true, `${on} 個畫面有按鈕，${off} 個沒有`);
+}));
+
+check("電腦要走的時候（你的行動結束、輪到電腦），畫面上沒有悔一步，灰的也沒有（#48：開場卡讓電腦多等 1.5 秒之後，灰按鈕看得見了）", gate(() => {
+  let n = 0;
+  for (const p of POOL) {
+    const s1 = S.act(p.s, p.m); if (!S.botsToMove(s1).length) continue;
+    const btn = undoBtn(S.screen(s1, "zh-Hant"));
+    if (btn) return `${p.where}：輪到電腦了，畫面上還有 ${btn}`;
+    n++;
+  }
+  const r = nonEmpty(n, "走完之後輪到電腦的畫面"); if (r !== true) return r;
+  return ok(true, `${n} 個輪到電腦的畫面都沒有悔一步`);
 }));
 
 check("教學裡沒有悔一步（照玩家的走法走完教學）", gate(() => {
