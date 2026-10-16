@@ -120,14 +120,11 @@ button.btn:hover, a.btn:hover { background: var(--paper2); }
 .card .band .r { text-align: right; font-weight: 700; }
 .card .flag { font: 900 11px var(--serif); font-style: normal; background: rgba(20, 14, 8, .38); color: var(--ct); padding: 1px 7px; border-radius: 9px; margin-right: 6px; display: inline-block; }
 .card .cp { position: absolute; left: 14px; top: 8px; color: var(--ct); font: 900 30px/1 var(--serif); }
-.card .iss { position: absolute; left: 14px; top: 44px; font: 700 11px var(--sans); color: var(--ct); background: rgba(20, 14, 8, .38); padding: 0 7px; border-radius: 9px; }
-.card .ttl { margin-top: 26px !important; }
 .card .ttl { margin: 10px 14px 0; font: 900 20px/1.25 var(--serif); }
 .card .txt { margin: 8px 14px 12px !important; font-size: 13px !important; line-height: 1.6 !important; color: var(--ct) !important; }
-.card .foot { margin: auto 14px 0; padding: 8px 0 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; color: var(--ct); }
-.card .dots { display: flex; gap: 3px; flex: none; }
-.card .dot { width: 9px; height: 9px; border-radius: 2px; background: var(--ct); }
-.card .dot.e { background: rgba(20, 14, 8, .35); }
+.card .foot { margin: auto 14px 0; padding: 6px 0 10px; font-size: 11px; font-weight: 700; color: var(--ct); }
+.card .foot + .stub { margin-top: 0; }
+.card .stub { margin-top: auto; }
 .rulespage .credit { margin-top: 12px; }
 @media (min-width: 700px) { .rules h1 .name { font-size: 40px; } .rules p, .rules ul { font-size: 15px; } .rules table { font-size: 14px; } }
 
@@ -296,13 +293,11 @@ button.btn.menub { width: 40px; height: 40px; padding: 0; justify-content: cente
 .cp-tab { position: absolute; left: 0; top: 0; z-index: 2; background: var(--cc); border-radius: 12px 0 12px 0; padding: 6px 11px 7px 10px; display: flex; flex-direction: column; align-items: center; line-height: 1; color: var(--ct); }
 .cp-tab b { font: 900 26px/1 var(--serif); }
 .cp-tab small { font: 700 9px/1 var(--sans); letter-spacing: .08em; margin-top: 2px; }
-.iss-pill { position: absolute; right: 8px; top: 8px; z-index: 2; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 10px; background: rgba(20, 14, 8, .6); color: var(--ct); }
 .pc-body { position: relative; z-index: 1; margin-top: -26px; padding: 0 14px 12px; display: flex; flex-direction: column; gap: 5px; }
 .pc-k { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: .04em; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 .pc-k .flag, .hm em { font: 900 11px/1.4 var(--serif); font-style: normal; background: rgba(20, 14, 8, .38); padding: 0 7px; border-radius: 9px; letter-spacing: 1px; }
 .pcard .ttl { margin: 0; font: 900 21px/1.2 var(--serif); }
 .pcard .txt { margin: 0; font-size: 13px; line-height: 1.6; }
-.pcard .foot { display: flex; justify-content: space-between; gap: 8px; padding-top: 2px; font-size: 11px; font-weight: 700; }
 
 /* The hand: a fan along the bottom edge. Each card tilts a little more than the one before it; the red stamp
    sits top right and the name at the bottom, and the overlap is small so neither is hidden. */
@@ -332,7 +327,35 @@ button.btn.menub { width: 40px; height: 40px; padding: 0; justify-content: cente
 .hc .hm em { font-size: 10px; padding: 0 5px; }
 .hc .hn { font: 900 14px/1.2 var(--serif); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hc .ht { font-size: 10.5px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.hc .hf { display: none; }
+/* The stub (#51): a strip of paper at the foot of a card, below a perforation (a dashed edge, a half-circle bite at each end). Row one is
+   the issue (newspaper icon, its name, the rest cubes at the right end), row two the election-day canvass (ballot-box icon, the county).
+   Its own colours: it is paper on the card, not the camp's colour; the bites show the camp colour behind. */
+.stub { position: relative; display: block; flex: none; background-color: #f3ead6; background-image: repeating-linear-gradient(90deg, rgba(43, 33, 24, .45) 0 6px, transparent 6px 10px); background-size: 100% var(--tear, 2px); background-repeat: no-repeat; padding-top: var(--tear, 2px); color: #2b2118; text-align: left; font-family: var(--sans); clip-path: inset(-8px 0 0 0); }
+.stub::before, .stub::after { content: ""; position: absolute; top: -8px; width: 14px; height: 14px; border-radius: 50%; background: var(--cc); }
+.stub::before { left: -7px; } .stub::after { right: -7px; }
+.st-row { display: flex; align-items: center; gap: 6px; padding: 0 12px; white-space: nowrap; }
+.st-issue { height: 30px; background: repeating-linear-gradient(90deg, rgba(43, 33, 24, .45) 0 1px, transparent 1px 3px) bottom / 100% 1px no-repeat; } .st-county { height: 33px; }
+.st-row svg { width: 16px; height: 16px; flex: none; }
+.st-row small { flex: none; min-width: 52px; font: 700 9px/1 var(--sans); color: #6b5a45; }
+.st-row b { font: 900 14px/1.1 var(--serif); }
+.st-county b { font-size: 17px; }
+.st-issue.st-none svg, .st-issue.st-none small, .st-issue.st-none b { opacity: .42; }
+.st-rest { margin-left: auto; display: flex; gap: 3px; flex: none; }
+.st-rest i { width: 7px; height: 7px; border-radius: 1.5px; background: var(--cc); }
+/* In the hand the card is small: the same stub, scaled down. */
+.hc:not(.candc) { --sh: 34px; }
+.hc .stub { position: absolute; left: 0; right: 0; bottom: 0; --tear: 1px; border-radius: 0 0 10px 10px; }
+.hc .st-row { gap: 3px; padding: 0 5px; }
+.hc .st-issue { height: 16px; } .hc .st-county { height: 17px; }
+.hc .st-row svg { width: 11px; height: 11px; }
+.hc .st-row small { min-width: 0; font-size: 7px; }
+.hc .st-row b { font-size: 9.5px; }
+.hc .st-county b { font-size: 10.5px; }
+.hc .st-rest { gap: 2px; } .hc .st-rest i { width: 5px; height: 5px; border-radius: 1px; }
+.hc:not(.candc) .ha { height: 36%; }
+.hc:not(.candc) .ha::after { height: 30px; }
+.hc:not(.candc) .hb { top: 28%; bottom: calc(var(--sh) + 2px); }
+.hc:not(.candc) .hb > * { flex: none; }
 .hc.sel { transform: translateY(-14px) rotate(0deg); filter: brightness(1.14) saturate(1.1); box-shadow: 0 14px 22px rgba(0, 0, 0, .6); z-index: 8; }
 .hc.dis { opacity: .5; filter: saturate(.6); }
 .hc.sel.dis { opacity: .88; }
@@ -558,6 +581,16 @@ html { scroll-padding-bottom: 190px; }
   @media (hover: hover) { .t-hand .hs { padding-top: 126px; margin-top: -104px; } }
   .hc { width: 158px; height: 244px; margin-left: -22px; border-radius: 12px; }
   .hc .ha { height: 52%; border-radius: 12px 12px 0 0; }
+  .hc:not(.candc) { --sh: 50px; }
+  .hc .stub { border-radius: 0 0 12px 12px; --tear: 2px; }
+  .hc .st-row { gap: 4px; padding: 0 8px; }
+  .hc .st-issue { height: 23px; } .hc .st-county { height: 26px; }
+  .hc .st-row svg { width: 13px; height: 13px; }
+  .hc .st-row small { font-size: 8px; }
+  .hc .st-row b { font-size: 11px; } .hc .st-county b { font-size: 12.5px; }
+  .hc .st-rest i { width: 6px; height: 6px; }
+  .hc:not(.candc) .ha { height: 38%; border-radius: 12px 12px 0 0; }
+  .hc:not(.candc) .hb { top: 33%; }
   .hc .cp-tab { padding: 6px 11px 7px 10px; border-radius: 12px 0 12px 0; }
   .hc .cp-tab b { font-size: 26px; } .hc .cp-tab small { font-size: 9px; }
   .hc .hb { left: 10px; right: 10px; top: 44%; bottom: 9px; gap: 3px; }
@@ -565,7 +598,6 @@ html { scroll-padding-bottom: 190px; }
   .candc .cc-k { font-size: 11px; } .candc .cc-n { font-size: 18px; }
   .hc .hn { font-size: 18px; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   .hc .ht { font-size: 12px; line-height: 1.45; -webkit-line-clamp: 3; }
-  .hc .hf { display: flex; justify-content: space-between; align-items: center; margin-top: auto; gap: 6px; font-size: 10.5px; font-weight: 700; }
   .hc.sel { transform: translateY(-44px) rotate(0deg); }
   @media (hover: hover) { .hc:hover:not(:disabled), .hc:focus-visible { transform: rotate(0deg); translate: 0 -104px; scale: 1.04; } }
   html { scroll-padding-bottom: 150px; }
@@ -609,7 +641,6 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
   .t-act .pc-art img { object-position: center 40%; }
   .t-act .pcard .ttl { font-size: 19px; margin-top: 0; }
   .t-act .pcard .txt { font-size: 12.5px; line-height: 1.5; }
-  .t-act .pcard .foot { padding-top: 0; }
   .t-act .pc-body { padding: 0 12px 8px; gap: 3px; }
   .t-act .sheet { gap: 6px; }
 }

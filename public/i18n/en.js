@@ -29,6 +29,7 @@ export default {
     cpCount: "{cp} CP ×{n}",
     cpUnit: "CP",
     restCubes: "Rest cubes {n}",
+    stubIssue: "Issue", stubCanvass: "Election day",
     // The advisor (#18): the switch above the table, the star on its pick, the line before its reason
     advisor: { label: "Advisor", on: "On", off: "Off", prefix: "Advisor:", starLabel: "Advisor's pick", note: "Marks the move your strategist would make, using only what you can see." },
     // The tutorial (#27): one fixed game; the words in the bubble. {...} are filled by tutorial.js from the values on screen.

@@ -4,6 +4,7 @@
 import en from "./i18n/en.js";
 import zh from "./i18n/zh-Hant.js";
 import { EVENTS, localCards, REST_CUBES } from "./shared/cards.js";
+import { stubHTML } from "./stub.js";
 
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const fill = (s, vars) => s.replace(/\{(\w+)\}/g, (_, k) => vars[k]);
@@ -23,9 +24,6 @@ function block(b) {
 const SECTION_ORDER = ["chen", "soong", "lien", "ext"];
 const BAND = { chen: "chen", soong: "soong", lien: "lien", ext: "ext", local: "local" };
 
-function dots(n, max = 2) {
-  return Array.from({ length: max }, (_, i) => `<span class="dot${i < n ? "" : " e"}"></span>`).join("");
-}
 
 function eventCard(e, lang) {
   const t = L(lang), u = t.ui;
@@ -34,14 +32,12 @@ function eventCard(e, lang) {
   const issue = u.issues[e.icon];
   const rest = REST_CUBES[e.cp] ?? 0;
   const flags = [e.must ? `<em class="flag">${esc(u.must)}</em>` : "", e.cond ? `<em class="flag alt">${esc(u.conditional)}</em>` : ""].join("");
-  return `<article class="card ${BAND[e.owner]}${e.must ? " must" : ""}" data-camp="${BAND[e.owner]}">` +
+  return `<article class="card ${BAND[e.owner]}${e.must ? " must" : ""}" data-camp="${BAND[e.owner]}" data-face="${esc(e.id)}">` +
     `<div class="band"><span>${esc(u.owner[e.owner])}</span><span class="r">${flags}${esc(u.kind.event)} · ${esc(u.deck[e.deck])}</span></div>` +
     `<div class="cp" aria-label="${e.cp} ${esc(u.cpUnit)}">${e.cp}</div>` +
-    `<div class="iss" title="${esc(issue.name)}" aria-label="${esc(issue.name)}">${esc(issue.short)}</div>` +
     `<h4 class="ttl">${esc(name)}</h4>` +
     `<p class="txt">${esc(body)}</p>` +
-    `<div class="foot"><span>${esc(t.terms.canvass)} ${esc(lang === "en" ? t.counties[e.county] : e.county)}</span>` +
-    `<span class="dots" aria-label="${esc(fill(u.restCubes, { n: rest }))}">${dots(rest)}</span></div></article>`;
+    stubHTML({ issue: issue.name, noIssue: u.noIssue, issueLabel: u.stubIssue, canvassLabel: u.stubCanvass, county: lang === "en" ? t.counties[e.county] : e.county, rest, restLabel: fill(u.restCubes, { n: rest }) }) + `</article>`;
 }
 
 function localFace(deck, county, cards, lang) {
@@ -52,13 +48,13 @@ function localFace(deck, county, cards, lang) {
   for (const c of cards) byCp.set(c.cp, (byCp.get(c.cp) ?? 0) + 1);
   const cps = [...byCp].sort((a, b) => a[0] - b[0]);
   const detail = fill(u.localCount, { n: cards.length }) + " · " + cps.map(([cp, n]) => fill(u.cpCount, { cp, n })).join(lang === "en" ? ", " : "、");
-  return `<article class="card local" data-camp="local">` +
+  return `<article class="card local" data-camp="local" data-local="${esc(county)}">` +
     `<div class="band"><span>${esc(u.owner.local)}</span><span class="r">${esc(u.deck[deck])}</span></div>` +
     `<div class="cp" aria-label="${cps.map(([cp]) => cp).join("/")} ${esc(u.cpUnit)}">${cps.map(([cp]) => cp).join("/")}</div>` +
-    `<div class="iss none" title="${esc(u.noIssue)}" aria-label="${esc(u.noIssue)}">—</div>` +
     `<h4 class="ttl">${esc(label)}</h4>` +
     `<p class="txt">${esc(body)}</p>` +
-    `<div class="foot"><span>${esc(t.terms.canvass)} ${esc(lang === "en" ? t.counties[county] : county)}</span><span>${esc(detail)}</span></div></article>`;
+    `<p class="foot">${esc(detail)}</p>` +
+    stubHTML({ issue: null, noIssue: u.noIssue, issueLabel: u.stubIssue, canvassLabel: u.stubCanvass, county: lang === "en" ? t.counties[county] : county }) + `</article>`;
 }
 
 function allCards(lang) {
