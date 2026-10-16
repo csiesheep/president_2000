@@ -132,7 +132,11 @@ c60("選項上的「檢定約 N%」是引擎實際用的成功率（含對手的
       const e = after.st.log.slice(before).find((x) => x.t === "check" && x.seat === s.seat);
       if (none) { if (e) throw new Error(`seed ${seed} 第 ${s.st.turn} 回合：「${c.label}」，引擎卻檢定了（${e.p}%）`); free++; continue; }
       if (!e) throw new Error(`seed ${seed} 第 ${s.st.turn} 回合：「${c.label}」，引擎沒有檢定`);
-      if (Math.abs(+m[1] - e.p) > 0.5) throw new Error(`seed ${seed} 第 ${s.st.turn} 回合：「${c.label}」，引擎的成功率是 ${e.p}%（運氣 ${e.luck}、對手 ${e.vs}）`);
+      // The exact chance, from the lucks (the log's p is rounded to one decimal: 45.45 is logged 45.5, and rounding that
+      // again shows 46 — the first delivery of #60 did). The label must be the exact chance rounded once.
+      const theirs = e.vs < 0 ? null : e.vs === 2 && (s.st.active || []).includes("provincial_staff") ? 50 : s.st.luck[e.vs];
+      const exact = theirs == null ? e.luck : (100 * e.luck) / (e.luck + theirs);
+      if (+m[1] !== Math.round(exact)) throw new Error(`seed ${seed} 第 ${s.st.turn} 回合：「${c.label}」，實際成功率 ${exact.toFixed(2)}%（運氣 ${e.luck}、對手 ${e.vs}${theirs == null ? "" : ` 運氣 ${theirs}`}），應寫 ${Math.round(exact)}%`);
       n++; if (e.vs >= 0) vs++;
     }
   });
@@ -149,7 +153,10 @@ c60("自己檢定之後，結果那一行寫出用的成功率「N%」，不寫�
     const e = after.st.log.slice(before).filter((x) => x.t === "check" && x.seat === s.seat).pop();
     if (!e) return;
     const line = S.lastResult(after, "zh-Hant") || "";
-    if (!line.includes(`${Math.round(e.p)}%`) || /抽到/.test(line)) bad = `第 ${s.st.turn} 回合「${c.label}」：結果寫「${line}」（成功率 ${e.p}%）`;
+    // The exact chance from the lucks, rounded once (the log's p is already rounded to one decimal).
+    const theirs = e.vs < 0 ? null : e.vs === 2 && (s.st.active || []).includes("provincial_staff") ? 50 : s.st.luck[e.vs];
+    const shown = Math.round(theirs == null ? e.luck : (100 * e.luck) / (e.luck + theirs));
+    if (!line.includes(`${shown}%`) || /抽到/.test(line)) bad = `第 ${s.st.turn} 回合「${c.label}」：結果寫「${line}」（成功率 ${shown}%，紀錄的 p ${e.p}）`;
     n++;
     return c;
   });
