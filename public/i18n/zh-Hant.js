@@ -62,7 +62,7 @@ export default {
     // 方向 C（#26）：首頁的盒蓋、玩家板、候選人牌
     look: {
       home: { meta: "3 人 · 9 回合", sub: "宋楚瑜、連戰、陳水扁。把方塊放上 24 個縣市，搶到投票日。", play: "單人開打", playSub: "對三種難度的 AI", host: "開房", hostSub: "傳代碼給朋友", join: "加入", joinSub: "輸入 4 碼代碼", boxTitle: "盒子裡有什麼", box: "70 張事件牌 · 24 個縣市的地方牌 · 三個運氣標記 · 24 個縣市的棋盤 · 三個議題槽。打法跟實體桌遊一樣：出牌、放方塊、擲骰子檢定。", rules: "翻開規則書" },
-      board: { label: "玩家板", cubes: "{n} 顆在盤上", mom: "動能", hand: "手牌 {n} · 已留 {k}", bag: "袋中 {n}", votes: "0萬票", votesNone: "票" },
+      board: { label: "玩家板", cubes: "{n} 顆在盤上", mom: "動能", hand: "手牌 {n} · 已留 {k}", bag: "袋中 {n}", luck: "運氣 {n}%", votes: "0萬票", votesNone: "票" },
       card: { seal: "整局一次", used: "已用" },
     },
     solo: {
@@ -98,7 +98,7 @@ export default {
         speed: "對手速度", slow: "慢", normal: "正常", fast: "快", step: "逐步", stepNote: "逐步：對手每走一步就停下，按「下一步」再繼續。", sound: "音效", volume: "音量", next: "下一步" },
       hdr: {
         ph: { action: "行動 {n}/4", order: "選順位", momentum: "動能階段", save: "留牌", debate: "政見發表會", election: "投票日", end: "開票結果" },
-        turn: "第 {n} 回合", endDate: "3 月 18 日", initiative: "主動權 {who}", order: "{who}先走", first: "第一個行動", star: "主動權", mom: "動能", bag: "袋子", feed: "紀錄", momL: "動能", slotsL: "議題槽", issueTotal: "議題總數", leadIs: "議題總領先者：{who}", leadNone: "議題總領先者：沒有（平手）", tap: "點一下看說明",
+        turn: "第 {n} 回合", endDate: "3 月 18 日", initiative: "主動權 {who}", order: "{who}先走", first: "第一個行動", star: "主動權", mom: "動能", bag: "袋子", luck: "運氣", feed: "紀錄", momL: "動能", slotsL: "議題槽", issueTotal: "議題總數", leadIs: "議題總領先者：{who}", leadNone: "議題總領先者：沒有（平手）", tap: "點一下看說明",
         yourTurn: "輪到你", busy: "{who} 行動中…", waitHint: "對手行動中。你可以先翻看手牌。",
         slot: { 1: "第一槽", 2: "第二槽", 3: "第三槽" },
         phase: { action: "行動階段 {n} / 4", order: "選行動順位", momentum: "動能階段", save: "留牌", debate: "公辦政見發表會", election: "投票日 · 催票", end: "開票結果" },
@@ -121,6 +121,7 @@ export default {
       help: {
         mom: "動能：你的氣勢。每回合結束先減半（捨去），再給議題總領先者 +1，最後依議題領先加分；可以花動能來觸發對手拿去當 CP 的你的牌，投票日還能換成方塊。",
         bag: "袋子：支持檢定從這裡抽一顆方塊，抽到自己的顏色就成功；抽到別人的就失敗，那顆回到它的主人手上。數字是袋裡各色的方塊數。",
+        luck: "運氣：支持檢定的成功率（%）。有特定對手時，成功率是你的運氣 ÷（你的運氣 + 對手的運氣）。投票日催票的運氣，還要加上動能和領先的議題。",
         slot: "議題槽：回合結算時，第一槽的領先者 +1 動能並抽背書，第二槽的領先者抽背書，第三槽的領先者 +1 動能；之後每槽的領先者少 1 顆方塊。",
         close: "收起說明",
       },
@@ -141,6 +142,7 @@ export default {
       res: {
         ok: "檢定成功：{what}", okPlain: "檢定成功", did: "你剛剛：{what}", label: "你的上一步",
         fail: "檢定失敗：{where}，抽到{drew}，這顆回到{drew}手上", failNoWhere: "檢定失敗：抽到{drew}，這顆回到{drew}手上",
+        okLuck: "檢定成功（成功率 {p}%）：{what}", okPlainLuck: "檢定成功（成功率 {p}%）", failLuck: "檢定失敗（成功率 {p}%）：{where}", failNoWhereLuck: "檢定失敗（成功率 {p}%）",
       },
       replay: { hit: "命中", miss: "沒中" },
       undo: { btn: "↶ 悔一步", done: "已退回上一步", locked: "抽過檢定，不能悔" },
@@ -202,6 +204,7 @@ export default {
         save: "{who}留了 {n} 張牌", pick: "{who}選好了牌",
         reveal: "翻牌：{who}「{card}」→ {issue}", dead: "翻牌：{who}「{card}」→ {issue}（已結算，沒有效果）", settle: "「{issue}」結算：{who}贏，放 {n} 顆",
         canvass: "{who}催票：{county}", convert: "投票日：議題、動能都換成袋中的方塊",
+        convertLuck: "投票日：動能換成催票運氣：{text}", convertLuckLead: "投票日：動能和領先的議題換成催票運氣：{text}",
         strategic: "棄保：游離票流向 {text}", strategicHalf: "第一次棄保（一半）：{text}", strategicNone: "棄保：沒有游離票流動", endorse: "背書：無色塊 {text}", result: "開票完畢",
       },
       end: {

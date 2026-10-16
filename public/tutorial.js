@@ -8,7 +8,7 @@
 import * as E from "./shared/engine.js";
 import { SEATS, COUNTIES, REGIONS } from "./shared/board.js";
 import * as Solo from "./solo.js";
-import { bind, esc } from "./table.js";
+import { bind, esc, checkRate } from "./table.js";
 
 // Chosen so the opening is clean: this seed gives the human the initiative (so the order step can be taught),
 // a 3 CP card of their own in hand (sweep_black_gold, so nothing for an opponent to trigger), an empty light green
@@ -36,7 +36,7 @@ const free = (c, m) => !E.apply(c.st, c.seat, m).log.slice(c.st.log.length).some
 const homeOf = (c) => c.st.pos[c.seat];
 const mv = (m) => `data-move="${esc(key(m))}"`;
 const sum = (a) => a[0] + a[1] + a[2];
-const bagOf = (c) => ({ mine: c.st.bag[c.seat], total: sum(c.st.bag), rate: sum(c.st.bag) ? Math.round((100 * c.st.bag[c.seat]) / sum(c.st.bag)) : 0 });
+const bagOf = (c, m) => c.st.rules === "v0.7" ? { rate: m ? Math.round(checkRate(c.v, c.seat, m)) : 0 } : ({ mine: c.st.bag[c.seat], total: sum(c.st.bag), rate: sum(c.st.bag) ? Math.round((100 * c.st.bag[c.seat]) / sum(c.st.bag)) : 0 });
 const cpLeft = (c, spent = 0) => Math.max(0, (c.pd && typeof c.pd.cp === "number" ? c.pd.cp : 0) - spent);
 
 // The fill the tutorial teaches: a free one, in the home county when it can.
@@ -66,12 +66,12 @@ const base = (c, x) => ({
 
 const STEPS = [
   { id: "welcome", kind: "next", plan: (c) => ({ target: null, vars: (x) => base(c, x) }) },
-  { id: "board", kind: "next", plan: (c) => ({ target: `data-seat="${c.seat}"`, vars: (x) => ({ ...base(c, x), onboard: c.v.counties.reduce((n, k) => n + k.blocks.filter((b) => b.o === c.seat).length, 0), mom: c.v.mom[c.seat], hand: c.v.hands[c.seat].length, bag: c.st.bag[c.seat] }) }) },
+  { id: "board", kind: "next", plan: (c) => ({ target: `data-seat="${c.seat}"`, vars: (x) => ({ ...base(c, x), onboard: c.v.counties.reduce((n, k) => n + k.blocks.filter((b) => b.o === c.seat).length, 0), mom: c.v.mom[c.seat], hand: c.v.hands[c.seat].length, ...(c.st.bag ? { bag: c.st.bag[c.seat] } : {}) }) }) },
   { id: "map", kind: "county", plan: (c) => ({ county: homeOf(c), target: `data-county="${homeOf(c)}"`, vars: (x) => base(c, x) }) },
   { id: "blocks", kind: "next", plan: (c) => ({ target: `data-county="${homeOf(c)}"`, vars: (x) => ({ ...base(c, x), blocks: c.v.counties[homeOf(c)].blocks.length }) }) },
   { id: "order", kind: "move", plan: (c) => {
     const m = c.st.phase === "order" ? c.legal.find((q) => q.type === "order" && q.pos === 0) : null;
-    if (c.st.rules === "v0.6") return { kind: "next", target: `data-seat="${c.seat}"`, vars: (x) => base(c, x) }; // v0.6 (#57): no order to pick; read who goes first
+    if (c.st.rules === "v0.6" || c.st.rules === "v0.7") return { kind: "next", target: `data-seat="${c.seat}"`, vars: (x) => base(c, x) }; // v0.6 (#57): no order to pick; read who goes first
     return { moves: m ? [m] : [], target: m ? mv(m) : null, vars: (x) => base(c, x) };
   } },
   { id: "play", kind: "move", plan: (c) => {
@@ -96,7 +96,7 @@ const STEPS = [
   } },
   { id: "cross", kind: "move", plan: (c) => {
     const m = c.pd && c.pd.stage === "campaign" ? crossMove(c, homeOf(c)) : null;
-    return { moves: m ? [m] : [], target: m ? mv(m) : null, vars: (x) => ({ ...base(c, x), county: m ? nameOf(x, m.county) : "", ...bagOf(c) }) };
+    return { moves: m ? [m] : [], target: m ? mv(m) : null, vars: (x) => ({ ...base(c, x), county: m ? nameOf(x, m.county) : "", ...bagOf(c, m) }) };
   } },
   { id: "result", kind: "next", plan: (c) => {
     const checks = (c.s.mine && c.s.mine.checks) || [], last = checks[checks.length - 1];

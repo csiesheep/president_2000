@@ -3,7 +3,7 @@
 // Every visible string comes from i18n/ or shared/cards.js.
 import en from "./i18n/en.js";
 import zh from "./i18n/zh-Hant.js";
-import { EVENTS, localCards, REST_CUBES } from "./shared/cards.js";
+import { EVENTS, localCards } from "./shared/cards.js";
 import { stubHTML } from "./stub.js";
 
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -30,14 +30,13 @@ function eventCard(e, lang) {
   const name = lang === "en" ? en.cards[e.id].name : e.name;
   const body = lang === "en" ? en.cards[e.id].text : e.text;
   const issue = u.issues[e.icon];
-  const rest = REST_CUBES[e.cp] ?? 0;
   const flags = [e.must ? `<em class="flag">${esc(u.must)}</em>` : "", e.cond ? `<em class="flag alt">${esc(u.conditional)}</em>` : ""].join("");
   return `<article class="card ${BAND[e.owner]}${e.must ? " must" : ""}" data-camp="${BAND[e.owner]}" data-face="${esc(e.id)}">` +
     `<div class="band"><span>${esc(u.owner[e.owner])}</span><span class="r">${flags}${esc(u.kind.event)} · ${esc(u.deck[e.deck])}</span></div>` +
     `<div class="cp" aria-label="${e.cp} ${esc(u.cpUnit)}">${e.cp}</div>` +
     `<h4 class="ttl">${esc(name)}</h4>` +
     `<p class="txt">${esc(body)}</p>` +
-    stubHTML({ issue: issue.name, noIssue: u.noIssue, issueLabel: u.stubIssue, canvassLabel: u.stubCanvass, county: lang === "en" ? t.counties[e.county] : e.county, rest, restLabel: fill(u.restCubes, { n: rest }) }) + `</article>`;
+    stubHTML({ issue: issue.name, noIssue: u.noIssue, issueLabel: u.stubIssue, canvassLabel: u.stubCanvass, county: lang === "en" ? t.counties[e.county] : e.county }) + `</article>`;
 }
 
 function localFace(deck, county, cards, lang) {

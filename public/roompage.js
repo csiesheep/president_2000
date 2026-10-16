@@ -88,7 +88,7 @@ export function mount({ T, lang, qs, store, $ }) {
   };
   // The rivals' moves shown big (#47): the server runs the computer in one go, so the cards and stamps come from the log entries
   // a state adds. The map is already the last picture; the stamps sit beside the card. A decision the player makes skips the rest.
-  const rep = Replay.createReplay({ labels: { hit: T.ui.solo.replay.hit, miss: T.ui.solo.replay.miss, next: T.ui.solo.menu.next }, lang, onIdle: () => draw(), ready: () => !card });
+  const rep = Replay.createReplay({ labels: { hit: T.ui.solo.replay.hit, miss: T.ui.solo.replay.miss, next: T.ui.solo.menu.next }, lang, rules: () => client && client.state && client.state.view && client.state.view.rules, onIdle: () => draw(), ready: () => !card });
   // The sounds of a state (#42): plays, cubes put on / taken off (read off the two views), hit / miss. The turn sound is the turn card's.
   const hearState = (before, view, from) => {
     const beats = Replay.beatsOf(view.log, from, view.seat), names = (before ? Sound.soundsOf(before, view) : []).filter((n) => n !== "turn");
