@@ -209,12 +209,25 @@ function pawns(v, k, d, right, top, m) {
   return { svg: s, pics };
 }
 
+// ---- the endorsement stamp (#50): a round 「背」 seal in the holder's colour on a paper's bottom-right corner, half of it
+// outside the paper (the top-right corner is the candidates'). Its box is 15.2 across, centred 5 right of and 5 below the corner.
+const ST = { d: 15.2, off: 5 };
+const stampZone = (right, bottom) => ({ x: right + ST.off - ST.d / 2, y: bottom + ST.off - ST.d / 2, w: ST.d, h: ST.d });
+const holderOf = (v, k) => (v.endorse ? v.endorse[COUNTIES[k][1]] : -1);
+function stamp(h, right, bottom, d) {
+  const cx = f1(right + ST.off), cy = f1(bottom + ST.off);
+  return `<g data-endorse-stamp="${h}" aria-hidden="true"><circle cx="${cx}" cy="${cy}" r="${ST.d / 2}" fill="${SEAT_COL[h]}" stroke="${PAPER}" stroke-width="1.5"/>` +
+    `<text x="${cx}" y="${f1(cy + 3.3)}" text-anchor="middle" font-size="9" font-weight="900" fill="#fff" font-family="'Noto Serif TC', serif">${esc(d.ui.solo.map.stamp)}</text></g>`;
+}
+
 function labelOf(v, k, d, lang) {
   const tr = (p, vars) => fill(p, vars);
   const M = d.ui.solo.map, blocks = v.counties[k].blocks;
   const own = SHOW_ORDER.map((p) => [p, blocks.filter((b) => b.o === p).length]).filter(([, n]) => n > 0).map(([p, n]) => `${cand(d, p).short} ${n}`);
   const here = [0, 1, 2].filter((p) => v.pos[p] === k).map((p) => tr(M.here, { who: cand(d, p).name }));
-  return [nameOf(d, lang, k), tr(M.blocks, { n: blocks.length, m: (blocks.length / 10).toFixed(1) }), ...own, ...here].join(" · ");
+  const h = holderOf(v, k), r = COUNTIES[k][1];
+  const endorsed = h >= 0 ? [tr(M.endorsedBy, { region: lang === "en" ? d.regions[REGIONS[r]] : REGIONS[r], who: cand(d, h).short })] : [];
+  return [nameOf(d, lang, k), tr(M.blocks, { n: blocks.length, m: (blocks.length / 10).toFixed(1) }), ...own, ...here, ...endorsed].join(" · ");
 }
 
 // The county's wrapper: one focusable element carrying the flags. `inner` is its paper and its candidates.
@@ -234,6 +247,8 @@ function paper(v, k, d, lang, o, mode, s, m, pics) {
   sl.forEach((kind, i) => { t += slotRect(kind, k, x0 + 4 + (i % c) * (sz + gap), y0 + font + 4 + Math.floor(i / c) * (sz + gap), sz); });
   const pw = pawns(v, k, d, x0 + s.w, y0, m);
   t += pw.svg; pics.push(pw.pics);
+  const h = holderOf(v, k);
+  if (h >= 0) t += stamp(h, x0 + s.w, y0 + s.h, d);
   t += `<rect class="tw-ring" x="${f1(x0 - 2)}" y="${f1(y0 - 2)}" width="${f1(s.w + 4)}" height="${f1(s.h + 4)}" rx="4" fill="none"/>`;
   return county(v, k, d, lang, o, t);
 }
@@ -255,12 +270,14 @@ function paperSize(k, mode, d) {
 function relax(items, W, H, yw) {
 
   const bounds = (a) => { // where the centre may be so that the paper and its candidates stay inside the board
-    const lo = Math.min(-a.w / 2, a.w / 2 - 49 - yw), hi = Math.max(a.w / 2, a.w / 2 + 13.4);
-    return { x0: 2 - lo, x1: W - 2 - hi, y0: 2 + a.h / 2 + 14.2, y1: H - 2 - Math.max(a.h / 2, 15.8 - a.h / 2) };
+    const se = ST.off + ST.d / 2;
+    const lo = Math.min(-a.w / 2, a.w / 2 - 49 - yw), hi = Math.max(a.w / 2, a.w / 2 + 13.4, a.w / 2 + se);
+    return { x0: 2 - lo, x1: W - 2 - hi, y0: 2 + a.h / 2 + 14.2, y1: H - 2 - Math.max(a.h / 2 + se, 15.8 - a.h / 2) };
   };
   const clamp = (a) => { const b = bounds(a); a.x = Math.max(b.x0, Math.min(b.x1, a.x)); a.y = Math.max(b.y0, Math.min(b.y1, a.y)); };
   const paperOf = (a) => ({ x: a.x - a.w / 2, y: a.y - a.h / 2, w: a.w, h: a.h });
   const zoneOfItem = (a) => zoneOf(a.x + a.w / 2, a.y - a.h / 2, yw);
+  const stampOfItem = (a) => stampZone(a.x + a.w / 2, a.y + a.h / 2);
   const push = (ra, a, rb, b, pad) => {
     const ox = (ra.w + rb.w) / 2 + pad - Math.abs(rb.x + rb.w / 2 - ra.x - ra.w / 2), oy = (ra.h + rb.h) / 2 + pad - Math.abs(rb.y + rb.h / 2 - ra.y - ra.h / 2);
     if (ox <= 0 || oy <= 0) return false;
@@ -277,6 +294,11 @@ function relax(items, W, H, yw) {
       if (push(paperOf(a), a, paperOf(b), b, 3)) moved = true;
       if (push(zoneOfItem(a), a, paperOf(b), b, 2)) moved = true;
       if (push(zoneOfItem(b), b, paperOf(a), a, 2)) moved = true;
+      // the stamp (worst case: every county has one) keeps off every other paper and every other candidate zone
+      if (push(stampOfItem(a), a, paperOf(b), b, 2)) moved = true;
+      if (push(stampOfItem(b), b, paperOf(a), a, 2)) moved = true;
+      if (push(stampOfItem(a), a, zoneOfItem(b), b, 1)) moved = true;
+      if (push(stampOfItem(b), b, zoneOfItem(a), a, 1)) moved = true;
     }
     const pull = it < 1600 ? 0.03 : 0;
     for (const a of items) { if (a.pin) continue; a.x += (a.tx - a.x) * pull; a.y += (a.ty - a.y) * pull; clamp(a); }
@@ -359,8 +381,10 @@ export function taiwanMap(view, lang, opts = {}) {
   // The national media box, all three always shown, 陳 宋 連 (#34): "全國媒體 陳 0 · 宋 0 · 連 2".
   const med = v.media;
   const media = `<p class="ct tw-media" data-media-national="${med.join(",")}"><b>${esc(M.national)}</b> ${esc([0, 1, 2].map((p) => `${cand(d, p).short} ${med[p]}`).join(" · "))}</p>`;
+  const holders = REGIONS.some((_, r) => v.endorse[r] >= 0);
+  const key = holders ? `<p class="ct tw-endkey" data-endorse-legend><i class="tw-stampkey" aria-hidden="true">${esc(M.stamp)}</i>${esc(M.endorseKey)}</p>` : "";
   const sq = (cls) => `<i class="lb ${cls}"></i>`;
   const legend = `<p class="legend tw-leg"><span>${sq("chen")}${sq("soong")}${sq("lien")} ${esc(M.legendCubes)}</span><span>${sq("green")}${sq("blue")} ${esc(M.legendEmpty)}</span><span>${sq("grey")} ${esc(M.legendGrey)}</span><span><i class="lb pw"></i>${esc(M.legendPawn)}</span></p>`;
   return `<section class="t-map" aria-label="${esc(M.board)}"><h3 class="t-h">${esc(M.board)}</h3><p class="ct tw-hint">${esc(M.hint)}</p>` +
-    `<div class="tw-box">${svg}${pics.join("")}${o.overlay || ""}</div><ul class="tw-reg">${keyList}</ul>${media}${legend}</section>`;
+    `<div class="tw-box">${svg}${pics.join("")}${o.overlay || ""}</div>${key}<ul class="tw-reg">${keyList}</ul>${media}${legend}</section>`;
 }
