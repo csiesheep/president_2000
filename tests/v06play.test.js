@@ -13,6 +13,7 @@
 //     has words;
 //   - a v0.6 game shows none of what v0.6 took out (Chinese 封鎖, 地方大老, 主動權, 進位, 議題交換, 第一次棄保; English
 //     initiative, local boss, round up, swap), and never offers an order, swap or slot-2 reward choice;
+//   - a choice that says 「免檢定」 makes no support check and one that says 「檢定約 N%」 makes one (v0.6 has no 地方大老);
 //   - the candidates' panels at the top (.pl-card[data-seat]) stand in this turn's order (st.order: votes, fewest first);
 //   - when the issue cards are reordered (the log's { t: "momentum", step: "shuffle", issues }), the "just now" lines
 //     (S.recent) on the human's next screen say so, every time: one line naming the three issues in their new order.
@@ -77,6 +78,27 @@ c57("整局 v0.6 的畫面沒有 v0.6 拿掉的規則（中英）；沒有選順
   }
   const r = nonEmpty(screens, "v0.6 的畫面"); if (r !== true) return r;
   return ok(true, `${screens} 個畫面（中英各兩局）`);
+});
+// The table guesses from the view whether a placement checks (table.js checkKind / fillNeedsCheck) and writes it on the
+// choice: 「 · 免檢定」 or 「 · 檢定約 N%」. On v0.5 an opponent's 地方大老 (4 cubes) makes a same-camp fill check; v0.6 4a has
+// no 地方大老, only an opponent's candidate standing there does. Each such choice is made once, on a copy, without the bots
+// moving after it: the engine's log says whether the human was checked.
+c57("選項上寫的「免檢定／檢定約」跟引擎一致：寫免檢定的不檢定，寫檢定約的會檢定（v0.6 沒有地方大老）", () => {
+  let n = 0, free = 0;
+  for (const seed of [67, 68]) {
+    walk(S.newSolo({ seat: seed % 3, level: 2, seed }), "zh-Hant", seed + 7, (s, ch) => {
+      for (const c of ch) {
+        const says = / · 免檢定$/.test(c.label) ? "none" : / · 檢定約 \d+%$/.test(c.label) ? "check" : null;
+        if (!says) continue;
+        const before = s.st.log.length, after = S.act(s, c.move);
+        const did = after.st.log.slice(before).some((e) => e.t === "check" && e.seat === s.seat) ? "check" : "none";
+        if (did !== says) throw new Error(`seed ${seed} 第 ${s.st.turn} 回合：「${c.label}」，引擎${did === "check" ? "檢定了" : "沒有檢定"}`);
+        n++; if (says === "none") free++;
+      }
+    });
+  }
+  const r = nonEmpty(n, "寫了檢定字樣的選項"); if (r !== true) return r;
+  return ok(true, `${n} 個選項（${free} 個免檢定）都跟引擎一致`);
 });
 c57("上方候選人板照這一回合的順序排（票少的在前）", () => {
   let n = 0;

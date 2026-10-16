@@ -152,6 +152,20 @@ check("沒有封鎖、地方大老、主動權、進位、議題交換、第一�
   return left.length ? `還有 ${left.length} 處：${left.slice(0, 6).join("；")}${left.length > 6 ? "…" : ""}` : ok(true, "中英字串都沒有 v0.6 拿掉的規則");
 }));
 
+// Slot 2 as a choice (v0.5): 「第二槽…或／自選／選獎勵」, "slot 2 … or / picks a reward / their choice". The words of the
+// v0.5 reward choice itself (its prompt, its two options, its lines and table talk: every key named *reward*) are only
+// shown by a v0.5 save. On main before #56: the tutorial's issue step, ui.solo.help.slot, the rules page (both languages).
+const SLOT2_CHOICE = { zh: /(第\s*(2|二)\s*槽)[^。；]{0,16}(或|自選|選獎勵|二選一)/, en: /(slot 2|second slot)[^.;]{0,60}(\bor\b|\bpicks?\b|choose|choice)/i };
+check("第二槽不再二選一：中英所有字串都沒寫第二槽是「動能或背書」（v0.5 的 reward 選項本身除外）", gate6(() => {
+  const left = [];
+  for (const [lang, d] of LANGS) for (const [k, v] of flat(d)) {
+    if (/reward/i.test(k.split(".").pop()) || V05_ONLY.has(k)) continue;
+    const m = v.match(SLOT2_CHOICE[lang]);
+    if (m) left.push(`${lang} ${k}：「${v.slice(Math.max(0, m.index - 6), m.index + m[0].length + 8)}」`);
+  }
+  return left.length ? `還有 ${left.length} 處：${left.join("；")}` : ok(true, "中英字串的第二槽都只給背書");
+}));
+
 check("規則頁講 v0.6：順序照票數由少到多、議題槽隨機重排、第二槽給背書（不二選一）（中英）", gate6(() => {
   const z = all(zh), e = all(en);
   if (!/票數[^。]{0,30}由少到多|由少到多[^。]{0,30}票數/.test(z)) return "zh 規則頁沒寫出行動順序照票數由少到多";
