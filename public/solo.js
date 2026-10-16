@@ -8,7 +8,7 @@
 import * as E from "./shared/engine.js";
 import { chooseMove, advise } from "./shared/bots.js";
 import { COUNTIES } from "./shared/board.js";
-import { tableHTML, labelMove, orderChoices, recentLines, resultLine, resultBlock, changedCounties, bind } from "./table.js";
+import { exactP, tableHTML, labelMove, orderChoices, recentLines, resultLine, resultBlock, changedCounties, bind } from "./table.js";
 import { decorate } from "./tutorial.js"; // the tutorial (#27) is a layer on this controller; it only acts while session.tut is set
 
 const FEED_MAX = 60;
@@ -133,7 +133,7 @@ function move(session, seat, m, why) {
   const after = [...settle, ...logged];
   const rec = reset ? after : (session.rec || []).concat(human ? after : entries).slice(-FEED_MAX);
   const mine = human
-    ? { checks: slice.filter((e) => e.t === "check" && e.seat === seat).map((e) => ({ ok: e.ok, drew: e.drew, p: e.p })), lines: lines.filter((l) => l.k !== "say") }
+    ? { checks: slice.filter((e) => e.t === "check" && e.seat === seat).map((e) => ({ ok: e.ok, drew: e.drew, p: exactP(a, e) })), lines: lines.filter((l) => l.k !== "say") }
     : session.mine || null;
   return { ...session, st: a, feed, rec, mine, logSeen: a.log.length };
 }

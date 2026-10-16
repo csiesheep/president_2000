@@ -16,7 +16,7 @@
 // and sentMove the move this page just sent (set by sent(), so a failed check can say where).
 import * as E from "./shared/engine.js";
 import { SEATS } from "./shared/board.js";
-import { tableHTML, labelMove, esc, bind, sayLine, orderChoices, recentLines, resultBlock, changedCounties } from "./table.js";
+import { exactP, tableHTML, labelMove, esc, bind, sayLine, orderChoices, recentLines, resultBlock, changedCounties } from "./table.js";
 import { fromLog, settleEntries } from "./solo.js";
 import { advise } from "./shared/bots.js";
 import en from "./i18n/en.js";
@@ -138,7 +138,7 @@ function nextFeed(client, view) {
 function justNow(client, next, view) {
   if (next.fresh) return { rec: next.added, mine: null };
   const me = view.seat, slice = next.slice || [];
-  const checks = slice.filter((e) => e.t === "check" && e.seat === me).map((e) => ({ ok: e.ok, drew: e.drew, p: e.p }));
+  const checks = slice.filter((e) => e.t === "check" && e.seat === me).map((e) => ({ ok: e.ok, drew: e.drew, p: exactP(view, e) }));
   const own = next.added.filter((e) => e.seat === me && !["turn", "slot", "endorseOne", "mediaBonus", "leadBonus"].includes(e.k));
   const declined = client.sentMove && client.sentMove.type === "pass";
   if ((!client.sentMove || declined) && !checks.length && !own.length) return { rec: (client.rec || []).concat(next.added).slice(-FEED_MAX), mine: client.mine };

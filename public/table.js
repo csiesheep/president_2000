@@ -152,10 +152,12 @@ export function checkRate(v, seat, m) {
     for (let q = 0; q < 3; q++) if (q !== seat && v.pos[q] === m.county && (vs < 0 || luckNow(v, q) > luckNow(v, vs))) vs = q;
   }
   const mine = luckNow(v, seat), p = vs == null || vs < 0 ? mine : (100 * mine) / (mine + luckNow(v, vs));
-  return Math.round(p * 10) / 10;
+  return p; // exact: the words round it once (the engine logs it rounded to one decimal, which must not be rounded again)
 }
 // The percent the words show: the bag's share (v0.6 and before) or the chance above, rounded.
 const rateOf = (v, seat, m) => (isV07(v) ? Math.round(checkRate(v, seat, m)) : bagRate(v, seat));
+// The exact chance of a logged check e (the log's p is rounded to one decimal): the luck and the opponent's luck in view v.
+export const exactP = (v, e) => (e.p == null || !v || !v.luck ? e.p : e.vs == null || e.vs < 0 ? e.luck : (100 * e.luck) / (e.luck + luckNow(v, e.vs)));
 // 連's candidate card: 4 CP in v0.7 (細節 6), 3 before.
 const candCp = (v, seat) => (isV07(v) && seat === 2 ? 4 : CANDIDATE_CARDS[SEATS[seat]].cp);
 
