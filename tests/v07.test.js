@@ -68,8 +68,18 @@ function playDecision(seat, seed = 7) {
   }
   throw new Error(`200 步內沒輪到 seat ${seat} 出牌`);
 }
+// A must-trigger card (楊吉雄爆料, cards.js must: true) played as an event first takes its CP action and resolves when
+// that action ends (#5 ruling 1): the pending stops at stage "kind" with no fx yet. The BE found this (#55, comment
+// 6218427496): the loop only walked an fx, so the 爆料 row counted 0 removals on every engine, v0.6 too. The CP action is
+// ended at once here (a campaign with nothing done) so that it moves no cube of its own; then the fx is walked.
 const playEvent = (st, seat, id) => { D.giveCard(st, seat, id); let s = D.act(st, seat, { type: "play", card: id, mode: "event" });
-  for (let n = 0; n < 40 && s.pending && s.pending.fx && E.mustAct(s).length; n++) { const q = E.mustAct(s)[0]; s = E.apply(s, q, E.legalMoves(s, q)[0]); }
+  for (let n = 0; n < 60 && s.pending && E.mustAct(s).length; n++) {
+    const q = E.mustAct(s)[0], ms = E.legalMoves(s, q);
+    if (s.pending.fx) { s = E.apply(s, q, ms[0]); continue; }
+    if (q !== seat) break;
+    const m = ms.find((x) => x.type === "done") || ms.find((x) => x.type === "action" && x.kind === "campaign");
+    if (!m) break; s = E.apply(s, q, m);
+  }
   return s; };
 
 section("v0.7 開局");
@@ -84,24 +94,28 @@ c7("createGame(seed, { rules: \"v0.7\" })：st.rules v0.7、st.fill candidate、
 });
 
 section("v0.7 檢定");
-c7("檢定照成功率：整局隨機走 8 局，每筆檢定寫出運氣、對手、成功率；同一個成功率（取整數）的檢定，成功的比例貼近它（≥ 300 筆的，差距 ≤ 8 個百分點）；運氣始終在 20–80", () => {
+// Grouped by the chance used, in tens (p 54.5 → 50, 58 → 60): the BE found that 8 games give about 680 checks and that no
+// whole-number p reached 300 (#55, comments 6218427496, 6218907846), so the row could never pass. Now 24 games, groups of
+// at least 150 checks, each within 3 standard errors (+1 point) of the mean chance in it; and at least one such group at
+// p ≥ 58 or ≤ 42, where a flat 50 % engine is told apart (the BE's falsification: 50.4 % against 61.2 %).
+c7("檢定照成功率：整局隨機走 24 局，每筆檢定寫出運氣、對手、成功率；依成功率每 10 個百分點一組（≥ 150 筆的組），成功的比例在平均成功率的 3 個標準誤（+1）以內，而且有一組離 50 夠遠（≥ 58 或 ≤ 42）；運氣始終在 20–80", () => {
   const by = {}; let n = 0, missing = 0;
-  fuzz([5501, 5502, 5503, 5504, 5505, 5506, 5507, 5508], (a, m, b) => {
+  fuzz(Array.from({ length: 24 }, (_, i) => 5501 + i), (a, m, b) => {
     if (b.luck.some((x) => x < 20 || x > 80)) throw new Error(`第 ${b.turn} 回合運氣 ${b.luck.join("/")} 超出 20–80`);
     if (b.bag !== undefined) throw new Error("v0.7 出現了袋子");
     for (const e of b.log.slice(a.log.length)) if (e.t === "check") {
       if (typeof e.luck !== "number" || typeof e.vs !== "number" || typeof e.p !== "number") { missing++; continue; }
-      (by[Math.round(e.p)] ??= [0, 0])[e.ok ? 0 : 1]++; n++;
+      const g = (by[10 * Math.round(e.p / 10)] ??= { y: 0, n: 0, p: 0 }); g.n++; g.p += e.p; if (e.ok) g.y++; n++;
     }
   });
   if (missing) return `${missing} 筆檢定的紀錄沒寫 luck、vs、p`;
   let r = nonEmpty(n, "檢定"); if (r !== true) return r;
-  const rows = Object.entries(by).map(([l, [y, f]]) => ({ l: +l, n: y + f, rate: (100 * y) / (y + f) }));
-  const big = rows.filter((x) => x.n >= 300);
-  r = nonEmpty(big.length, "有 300 筆以上的成功率"); if (r !== true) return r;
-  const off = big.find((x) => Math.abs(x.rate - x.l) > 8);
-  if (off) return `成功率 ${off.l}%：${off.n} 筆成功 ${off.rate.toFixed(1)}%（應在 ${off.l}±8）`;
-  return ok(true, `${n} 筆檢定；${big.map((x) => `成功率 ${x.l}%：${x.n} 筆 ${x.rate.toFixed(1)}%`).join("、")}`);
+  const rows = Object.entries(by).map(([k, g]) => { const mp = g.p / g.n, rate = (100 * g.y) / g.n, se = 100 * Math.sqrt((mp / 100) * (1 - mp / 100) / g.n); return { k: +k, n: g.n, mp, rate, tol: 3 * se + 1 }; });
+  const big = rows.filter((x) => x.n >= 150);
+  r = nonEmpty(big.filter((x) => x.mp >= 58 || x.mp <= 42).length, "離 50 夠遠（≥ 58 或 ≤ 42）、150 筆以上的成功率組"); if (r !== true) return r;
+  const off = big.find((x) => Math.abs(x.rate - x.mp) > x.tol);
+  if (off) return `成功率 ${off.k} 那組：${off.n} 筆，平均成功率 ${off.mp.toFixed(1)}%，實際成功 ${off.rate.toFixed(1)}%（差 ${Math.abs(off.rate - off.mp).toFixed(1)}，容許 ${off.tol.toFixed(1)}）`;
+  return ok(true, `${n} 筆檢定；${big.map((x) => `${x.k} 組 ${x.n} 筆：平均 ${x.mp.toFixed(1)}%、實際 ${x.rate.toFixed(1)}%`).join("、")}`);
 });
 // Who the particular opponent is, worked out here from the state before the move (the contract above), and the chance
 // that follows: luck when there is none, 100 × luck ÷ (luck + theirs) when there is.
