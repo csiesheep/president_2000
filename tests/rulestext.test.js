@@ -20,6 +20,14 @@
 // reordered at random, and that slot 2 gives an endorsement. Those checks report 尚未實作 until the Chinese rules page
 // says 由少到多. The v0.5 check about the issue leader no longer asks for the swap (v0.6 has none).
 // The v0.5 checks report 尚未實作 until the Chinese rules page says 議題總領先者.
+// Then v0.7, 「丙 + v0.7」 (2026-10-16, #59): luck instead of the bag and the rest cubes. No string speaks of the bag or the
+// rest cubes (Chinese 袋 / 休息方塊 / 休息區 / 補袋; English bag(s), rest cube(s), rest area) except the ones only a game
+// saved on v0.6 or before shows (V06_ONLY); the twelve rewritten cards read as in the rulebook v0.7 (§十四), word for word in
+// Chinese (CARD_TEXT_V07), the nine luck cards say "luck" in English; the rules page has luck 50/50/60, 我 ÷（我 + 對手）,
+// 20%–80%, and the canvassing luck with 領先的議題 and 95%; the candidates' table has 連's 4 CP and a starting-luck row;
+// 連's blurb speaks of his 60 % luck. Those report 尚未實作 until the Chinese rules page says 運氣. Three of the nine v0.5
+// cards change again on v0.7 (張榮發挺扁, 省府舊部, 張昭雄的醫界): once the v0.7 gate is open the v0.5 row reads them from
+// CARD_TEXT_V07.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
@@ -44,6 +52,21 @@ const V04_ONLY = new Set([
   "ui.solo.f.mediaPlace", "ui.solo.f.mediaRemove", "terms.media", "talk.advertise", "talk.ad_roll", "talk.ads_done", "talk.media_lead",
   "talk.media_cut", "talk.effect_media",
 ]);
+// The twelve cards, rulebook v0.7 §十四 (copied by hand from the vault's rulebook).
+const CARD_TEXT_V07 = {
+  chang_yung_fa: "任一議題陳 +1；陳運氣 +10%",
+  chang_chiu: "陳運氣 +10%；陳動能 +1",
+  million_signatures: "宋運氣 +10%；宋動能 +1",
+  provincial_staff: "本回合連的運氣當作 50%；任一議題宋 +1",
+  lee_authorized: "僅在「楊吉雄爆料」出過後可當事件出：宋在任 2 個縣市各 +1 免檢定；清廉議題宋 +1",
+  chang_doctors: "任一議題宋 +1；宋運氣 +10%",
+  military_civil: "宋在任 2 個縣市各 +1 需檢定；宋運氣 +10%",
+  yang_exposes: "宋移除 4 顆盤上方塊（連選）；宋失去清廉議題全部方塊；宋動能歸零",
+  shifting_story: "僅在「李登輝授意說」出過後可當事件出：宋移除 2 顆盤上方塊（連選）；連動能 +1",
+  local_factions: "連運氣 +10%",
+  party_congress: "連運氣 +10%；連動能 +1",
+  econ_cabinet: "經濟議題連 +1；連運氣 +10%",
+};
 const NAMES = /黨產廣告|Party-Assets Ads|Massive Ad Buy/g;
 const FORBID = { zh: /廣告|媒體/, en: /\bads?\b|advert|\bmedia\b/i };
 // The nine cards, rulebook v0.5 §十四 (copied by hand from the vault's rulebook).
@@ -111,7 +134,8 @@ check("九張改寫的牌：中文牌文照規則書 v0.5 §十四一字不差�
   for (const [id, want] of Object.entries(CARD_TEXT)) {
     const c = EVENTS.find((e) => e.id === id);
     if (!c) { bad.push(`${id} 不在牌庫`); continue; }
-    if (c.text !== want) bad.push(`${id}：「${c.text}」（${want}）`);
+    const w = /運氣/.test(all(zh)) && CARD_TEXT_V07[id] ? CARD_TEXT_V07[id] : want;
+    if (c.text !== w) bad.push(`${id}：「${c.text}」（${w}）`);
     const t = get(en, `cards.${id}.text`) || "";
     if (!/issue/i.test(t)) bad.push(`${id} 英文：「${t}」沒寫 issue`);
   }
@@ -175,6 +199,55 @@ check("規則頁講 v0.6：順序照票數由少到多、議題槽隨機重排�
   if (!/fewest/i.test(e)) return "en 規則頁沒寫出 fewest votes first";
   if (!/random/i.test(e)) return "en 規則頁沒寫出議題槽隨機（random）";
   return ok(true, "中英都有票數由少到多、隨機重排、第二槽背書");
+}));
+
+section("59 規則與文字 v0.7");
+
+// Strings only a game saved on v0.6 or before shows: the bag on the candidate panel, its help, the rest cubes on the card's
+// stub, the conversion line, and the glossary word.
+const V06_ONLY = new Set(["ui.solo.hdr.bag", "ui.solo.help.bag", "ui.restCubes", "ui.solo.f.convert", "ui.look.board.bag", "terms.rest"]);
+const FORBID7 = { zh: /袋|休息方塊|休息區|補袋/, en: /bags?|rest[- ]cubes?|rest area/i };
+const LUCK_CARDS = ["chang_yung_fa", "chang_chiu", "million_signatures", "provincial_staff", "chang_doctors", "military_civil", "local_factions", "party_congress", "econ_cabinet"];
+const gate7 = (fn) => () => (/運氣/.test(all(zh)) ? fn() : "TODO: 規則頁還是 v0.6（沒有「運氣」，#59）");
+
+check("沒有袋子也沒有休息方塊：中英所有字串、所有中文牌文（只有 v0.6 以前的舊局才會用到的那些除外）", gate7(() => {
+  const left = [];
+  for (const [lang, d] of LANGS) for (const [k, v] of flat(d)) {
+    if (V06_ONLY.has(k)) continue;
+    const m = v.match(FORBID7[lang]);
+    if (m) left.push(`${lang} ${k}：「${v.slice(Math.max(0, m.index - 12), m.index + 14)}」`);
+  }
+  for (const c of EVENTS) { const m = (c.text || "").match(FORBID7.zh); if (m) left.push(`cards.js ${c.id}：「${c.text}」`); }
+  return left.length ? `還有 ${left.length} 處：${left.slice(0, 6).join("；")}${left.length > 6 ? "…" : ""}` : ok(true, "中英字串與牌文都沒有袋子、休息方塊");
+}));
+check("十二張改寫的牌：中文牌文照規則書 v0.7 §十四一字不差；九張運氣牌的英文寫 luck", gate7(() => {
+  const bad = [];
+  for (const [id, want] of Object.entries(CARD_TEXT_V07)) {
+    const c = EVENTS.find((e) => e.id === id);
+    if (!c) { bad.push(`${id} 不在牌庫`); continue; }
+    if (c.text !== want) bad.push(`${id}：「${c.text}」（${want}）`);
+  }
+  for (const id of LUCK_CARDS) { const t = get(en, `cards.${id}.text`) || ""; if (!/luck/i.test(t)) bad.push(`${id} 英文：「${t}」沒寫 luck`); }
+  return bad.length ? bad.join("；") : ok(true, "十二張中文牌文都對，九張運氣牌的英文都寫 luck");
+}));
+check("規則頁講 v0.7：運氣 陳 50%、宋 50%、連 60%；我 ÷（我 + 對手）；20%–80%；催票運氣算領先的議題、最多 95%（中英）", gate7(() => {
+  const z = all(zh), e = all(en);
+  if (!/陳 ?50%[^。]{0,8}宋 ?50%[^。]{0,8}連 ?60%/.test(z)) return "zh 規則頁沒寫出開局運氣 陳 50%、宋 50%、連 60%";
+  if (!/÷/.test(z) || !/對手的運氣/.test(z)) return "zh 規則頁沒寫出有特定對手時的成功率（我 ÷（我 + 對手））";
+  if (!/20%[^。]{0,4}80%/.test(z)) return "zh 規則頁沒寫出運氣 20%–80%";
+  if (!/催票運氣/.test(z) || !/領先的議題/.test(z) || !/95%/.test(z)) return "zh 規則頁沒寫出催票運氣（領先的議題、最多 95%）";
+  if (!/luck/i.test(e) || !/÷|divided by/i.test(e) || !/95 ?%/.test(e)) return "en 規則頁沒寫出 luck、÷（divided by）或 95%";
+  return ok(true, "中英都有開局運氣、對手的運氣、上下限、催票運氣與 95%");
+}));
+check("候選人表：連的候選人牌 4 CP，有一列起始運氣；連的簡介講 60% 的運氣（中英）", gate7(() => {
+  const z = all(zh), e = all(en);
+  if (!/起始運氣/.test(z) || !/startw* luck/i.test(e)) return "候選人表沒有起始運氣那一列（中：起始運氣；英：starting luck）";
+  const rows = (d) => flat(d.rules, "rules").filter(([k]) => /table.rows/.test(k)).map(([, v]) => v);
+  if (!rows(zh).some((v) => /^4 CP/.test(v)) || !rows(en).some((v) => /^4 CP/.test(v))) return "候選人表裡沒有一格以 4 CP 開頭（連的候選人牌）";
+  const zb = get(zh, "ui.solo.cand.lien.blurb") || "", eb = get(en, "ui.solo.cand.lien.blurb") || "";
+  if (!/運氣/.test(zb) || !/60%/.test(zb)) return `zh 連的簡介沒講 60% 的運氣：「${zb}」`;
+  if (!/luck/i.test(eb) || !/60 ?%/.test(eb)) return `en 連的簡介沒講 60% luck：「${eb}」`;
+  return ok(true, "候選人表有 4 CP 與起始運氣；連的簡介講 60%");
 }));
 
 test("rulestext", () => {
