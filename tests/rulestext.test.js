@@ -162,7 +162,7 @@ const V05_ONLY = new Set([
   "talk.swap_issue", "ui.solo.f.strategicHalf", "ui.solo.hdr.initiative", "ui.solo.hdr.star", "ui.solo.tc.initiative",
   "ui.solo.r.turn", "ui.solo.r.turnNoDeal", "ui.solo.f.turn",
 ]);
-const FORBID6 = { zh: /封鎖|地方大老|主動權|進位|議題交換|交換相鄰|第一段棄保|第一次棄保/, en: /initiative|local boss|boss(es)?|rounds? up|swap/i };
+const FORBID6 = { zh: /封鎖|地方大老|主動權|進位|議題交換|交換相鄰|第一段棄保|第一次棄保/, en: /initiative|local boss|\bboss(es)?\b|rounds? up|\bswap/i };
 const gate6 = (fn) => () => (/由少到多/.test(all(zh)) ? fn() : "TODO: 規則頁還是 v0.5（沒有「由少到多」，#56）");
 section("56 規則與文字 v0.6");
 
@@ -206,7 +206,7 @@ section("59 規則與文字 v0.7");
 // Strings only a game saved on v0.6 or before shows: the bag on the candidate panel, its help, the rest cubes on the card's
 // stub, the conversion line, and the glossary word.
 const V06_ONLY = new Set(["ui.solo.hdr.bag", "ui.solo.help.bag", "ui.restCubes", "ui.solo.f.convert", "ui.look.board.bag", "terms.rest"]);
-const FORBID7 = { zh: /袋|休息方塊|休息區|補袋/, en: /bags?|rest[- ]cubes?|rest area/i };
+const FORBID7 = { zh: /袋|休息方塊|休息區|補袋/, en: /\bbags?\b|rest[- ]cubes?|rest area/i };
 const LUCK_CARDS = ["chang_yung_fa", "chang_chiu", "million_signatures", "provincial_staff", "chang_doctors", "military_civil", "local_factions", "party_congress", "econ_cabinet"];
 const gate7 = (fn) => () => (/運氣/.test(all(zh)) ? fn() : "TODO: 規則頁還是 v0.6（沒有「運氣」，#59）");
 
@@ -241,8 +241,8 @@ check("規則頁講 v0.7：運氣 陳 50%、宋 50%、連 60%；我 ÷（我 + �
 }));
 check("候選人表：連的候選人牌 4 CP，有一列起始運氣；連的簡介講 60% 的運氣（中英）", gate7(() => {
   const z = all(zh), e = all(en);
-  if (!/起始運氣/.test(z) || !/startw* luck/i.test(e)) return "候選人表沒有起始運氣那一列（中：起始運氣；英：starting luck）";
-  const rows = (d) => flat(d.rules, "rules").filter(([k]) => /table.rows/.test(k)).map(([, v]) => v);
+  if (!/起始運氣/.test(z) || !/start\w* luck/i.test(e)) return "候選人表沒有起始運氣那一列（中：起始運氣；英：starting luck）";
+  const rows = (d) => flat(d.rules, "rules").filter(([k]) => /table\.rows/.test(k)).map(([, v]) => v);
   if (!rows(zh).some((v) => /^4 CP/.test(v)) || !rows(en).some((v) => /^4 CP/.test(v))) return "候選人表裡沒有一格以 4 CP 開頭（連的候選人牌）";
   const zb = get(zh, "ui.solo.cand.lien.blurb") || "", eb = get(en, "ui.solo.cand.lien.blurb") || "";
   if (!/運氣/.test(zb) || !/60%/.test(zb)) return `zh 連的簡介沒講 60% 的運氣：「${zb}」`;
