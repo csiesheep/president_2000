@@ -15,6 +15,13 @@
 //     undefined). Everything of v0.6 holds unless changed here.
 //   - a support check succeeds with the checking seat's luck as the chance; its log entry says which luck it used:
 //     { t: "check", seat, ok, luck }. A failure does nothing else.
+//   - then the owner, the same day: 「如果沒有特定對手，成功率就是運氣值，有特定對手，就要考慮其的運氣，歸一化成成功率」. A check
+//     against a particular opponent succeeds with chance 我 ÷ (我 + 對手) (orchestrator's reading of 歸一化: 50 vs 50 → 50 %,
+//     60 vs 50 → 54.5 %); the log entry also says who (vs: the seat, or -1) and the chance used (p, percent; rounding to a
+//     whole number allowed): { t: "check", seat, ok, luck, vs, p }. Who the particular opponent is (orchestrator, can be
+//     overruled): a steal or a removal → the owner of that cube (m.target); a fill (same camp or cross) in a county where an
+//     opponent's candidate stands → that candidate, the one with the higher luck if two stand there; anything else (other
+//     fills, election-day canvassing) → none, p = luck. 省府舊部's luck 50 for 連 holds when 連 is the opponent too.
 //   - luck stays within 20–80.
 //   - the seven 「袋中 +N」 cards give their owner +10 luck instead (張榮發挺扁、張俊雄邱義仁 陳; 百萬連署、張昭雄的醫界 宋;
 //     地方派系樁腳、黨員大會、經濟內閣 連), their other effects as before.
@@ -76,21 +83,51 @@ c7("createGame(seed, { rules: \"v0.7\" })：st.rules v0.7、st.fill candidate、
 });
 
 section("v0.7 檢定");
-c7("檢定照運氣：整局隨機走 8 局，每筆檢定寫出用的運氣；同一個運氣值的檢定，成功的比例貼近它（檢定 ≥ 300 筆的運氣值，差距 ≤ 8 個百分點）；運氣始終在 20–80", () => {
+c7("檢定照成功率：整局隨機走 8 局，每筆檢定寫出運氣、對手、成功率；同一個成功率（取整數）的檢定，成功的比例貼近它（≥ 300 筆的，差距 ≤ 8 個百分點）；運氣始終在 20–80", () => {
   const by = {}; let n = 0, missing = 0;
   fuzz([5501, 5502, 5503, 5504, 5505, 5506, 5507, 5508], (a, m, b) => {
     if (b.luck.some((x) => x < 20 || x > 80)) throw new Error(`第 ${b.turn} 回合運氣 ${b.luck.join("/")} 超出 20–80`);
     if (b.bag !== undefined) throw new Error("v0.7 出現了袋子");
-    for (const e of b.log.slice(a.log.length)) if (e.t === "check") { if (typeof e.luck !== "number") { missing++; continue; } (by[e.luck] ??= [0, 0])[e.ok ? 0 : 1]++; n++; }
+    for (const e of b.log.slice(a.log.length)) if (e.t === "check") {
+      if (typeof e.luck !== "number" || typeof e.vs !== "number" || typeof e.p !== "number") { missing++; continue; }
+      (by[Math.round(e.p)] ??= [0, 0])[e.ok ? 0 : 1]++; n++;
+    }
   });
-  if (missing) return `${missing} 筆檢定的紀錄沒寫 luck`;
+  if (missing) return `${missing} 筆檢定的紀錄沒寫 luck、vs、p`;
   let r = nonEmpty(n, "檢定"); if (r !== true) return r;
   const rows = Object.entries(by).map(([l, [y, f]]) => ({ l: +l, n: y + f, rate: (100 * y) / (y + f) }));
   const big = rows.filter((x) => x.n >= 300);
-  r = nonEmpty(big.length, "有 300 筆以上的運氣值"); if (r !== true) return r;
+  r = nonEmpty(big.length, "有 300 筆以上的成功率"); if (r !== true) return r;
   const off = big.find((x) => Math.abs(x.rate - x.l) > 8);
-  if (off) return `運氣 ${off.l}：${off.n} 筆成功 ${off.rate.toFixed(1)}%（應在 ${off.l}±8）`;
-  return ok(true, `${n} 筆檢定；${big.map((x) => `運氣 ${x.l}：${x.n} 筆 ${x.rate.toFixed(1)}%`).join("、")}`);
+  if (off) return `成功率 ${off.l}%：${off.n} 筆成功 ${off.rate.toFixed(1)}%（應在 ${off.l}±8）`;
+  return ok(true, `${n} 筆檢定；${big.map((x) => `成功率 ${x.l}%：${x.n} 筆 ${x.rate.toFixed(1)}%`).join("、")}`);
+});
+// Who the particular opponent is, worked out here from the state before the move (the contract above), and the chance
+// that follows: luck when there is none, 100 × luck ÷ (luck + theirs) when there is.
+const effLuck = (st, p) => (p === LIEN && st.active.includes("provincial_staff") ? 50 : st.luck[p]);
+c7("有特定對手的檢定看兩人的運氣（我 ÷（我 + 對手））：搶、移除看方塊的主人；填塊時縣市裡站著對手候選人就看他（兩人都在看運氣高的）；其他填塊與投票日催票沒有對手，成功率就是運氣", () => {
+  const n = { vs: 0, none: 0, election: 0 }; let bad = null;
+  fuzz([5521, 5522, 5523, 5524, 5525, 5526], (a, m, b) => {
+    if (bad) return;
+    for (const e of b.log.slice(a.log.length)) if (e.t === "check") {
+      let want = null;
+      if (a.phase === "election") want = [-1];
+      else if (m.type === "steal" || m.type === "remove") want = [m.target];
+      else if (m.type === "fill" || m.type === "cross") {
+        const there = [0, 1, 2].filter((q) => q !== e.seat && a.pos[q] === m.county);
+        const top = Math.max(...there.map((q) => effLuck(a, q)));
+        want = there.length ? there.filter((q) => effLuck(a, q) === top) : [-1];
+      }
+      if (!want) continue; // a check inside some other move: not classified here
+      if (!want.includes(e.vs)) { bad = `第 ${a.turn} 回合 ${JSON.stringify(m)}：檢定的對手是 ${e.vs}（應為 ${want.join(" 或 ")}）`; return; }
+      const p = e.vs < 0 ? e.luck : (100 * e.luck) / (e.luck + effLuck(a, e.vs));
+      if (Math.abs(e.p - p) > 0.5) { bad = `第 ${a.turn} 回合 ${JSON.stringify(m)}：運氣 ${e.luck}、對手 ${e.vs}${e.vs < 0 ? "" : `（運氣 ${effLuck(a, e.vs)}）`}，成功率寫 ${e.p}（應為 ${p.toFixed(1)}）`; return; }
+      if (a.phase === "election") n.election++; else if (e.vs < 0) n.none++; else n.vs++;
+    }
+  });
+  if (bad) return bad;
+  for (const [k, what] of [["vs", "有特定對手的檢定"], ["none", "行動階段沒有對手的檢定"], ["election", "投票日的檢定"]]) { const r = nonEmpty(n[k], what); if (r !== true) return r; }
+  return ok(true, `有對手 ${n.vs} 筆、行動階段沒有對手 ${n.none} 筆、投票日 ${n.election} 筆，對手與成功率都對`);
 });
 
 section("v0.7 牌");
@@ -139,6 +176,7 @@ c7("投票日催票：每次檢定用 運氣 + 10 × 轉換前的動能，最多
     for (const e of b.log.slice(a.log.length)) if (e.t === "check" && b.phase === "election") {
       const want = Math.min(80, b.luck[e.seat] + 10 * b.election.mom[e.seat]);
       if (e.luck !== want && !bad) bad = `seat ${e.seat}：運氣 ${b.luck[e.seat]}、轉換前動能 ${b.election.mom[e.seat]}，催票檢定用了 ${e.luck}（應為 ${want}）`;
+      if ((e.vs !== -1 || e.p !== e.luck) && !bad) bad = `seat ${e.seat}：催票沒有特定對手，紀錄卻是 vs ${e.vs}、p ${e.p}（應為 -1、${e.luck}）`;
       n++;
     }
   });

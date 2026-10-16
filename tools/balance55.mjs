@@ -8,8 +8,8 @@
 //   - #55's acceptance (they set the exit code):
 //       · v0.6 is untouched: its numbers equal what this tool measured on main before #55;
 //       · every v0.7 game ends and is a v0.7 game; no bag, no rest cubes, luck within 20–80 all game long;
-//       · every v0.7 check carries the luck it used, and checks succeed as often as their luck says (overall, within
-//         3 points).
+//       · every v0.7 check carries the chance it used (p: the luck, or against a particular opponent 我 ÷ (我 + 對手)),
+//         and checks succeed as often as that chance says (overall, within 3 points).
 //   - the owner's reading (printed, never counted): the bands (every candidate wins 25–42 %, the average margin ≤ 6,
 //     turnout 80–92 %) and how often each candidate's checks succeed — the owner asked for about 50 %, not 33 %.
 // Then the two side by side.
@@ -38,7 +38,7 @@ function run(opts) {
         st = E.apply(st, seat, m);
         for (const e of st.log.slice(L0)) if (e.t === "check") {
           t.checks++; t.tried[e.seat]++; if (e.ok) t.won[e.seat]++;
-          if (opts.rules === "v0.7") { if (typeof e.luck === "number") t.expect += e.luck / 100; else t.noLuck++; }
+          if (opts.rules === "v0.7") { if (typeof e.p === "number") t.expect += e.p / 100; else t.noLuck++; } // p: the chance used (the luck, or 我 ÷ (我 + 對手))
         }
         if (opts.rules === "v0.7" && t.bad.length < 3) {
           if (st.bag !== undefined || st.rest !== undefined) t.bad.push(`seed ${seed}: bag or rest cubes`);
@@ -69,7 +69,7 @@ rule(N !== 600 || (a.ended === N && a6 === V06_MAIN), N === 600 ? `v0.6 untouche
 rule(b.ended === N && b.rules === N && !b.errors.length, `v0.7: ${b.ended} of ${N} games ended, ${b.rules} were v0.7${b.errors.length ? "; errors: " + b.errors.join(" | ") : ""}`);
 rule(b.rules === N && b.ended > 0 && !b.bad.length, `v0.7: no bag, no rest cubes, luck within 20–80 all game long${b.bad.length ? " — " + b.bad.join(", ") : ""}`);
 const real = b.checks ? (100 * b.total) / b.checks : 0, want = b.checks - b.noLuck ? (100 * b.expect) / (b.checks - b.noLuck) : 0;
-rule(b.rules === N && b.checks > 0 && !b.noLuck && Math.abs(real - want) <= 3, `v0.7: checks succeed as their luck says — ${real.toFixed(1)} % succeeded, the luck used averages ${want.toFixed(1)} % (within 3)${b.noLuck ? `; ${b.noLuck} checks without luck` : ""}`);
+rule(b.rules === N && b.checks > 0 && !b.noLuck && Math.abs(real - want) <= 3, `v0.7: checks succeed as their chance says — ${real.toFixed(1)} % succeeded, the chance used averages ${want.toFixed(1)} % (within 3)${b.noLuck ? `; ${b.noLuck} checks without p` : ""}`);
 if (b.rules === N) {
   for (let p = 0; p < 3; p++) band.push(`${b.winN[p] >= 25 && b.winN[p] <= 42 ? "帶內" : "帶外"} v0.7 ${NAMES[p]} wins ${b.winN[p].toFixed(1)} % (25–42; v0.6 ${a.winN[p].toFixed(1)} %)`);
   band.push(`${Number(b.margin) <= 6 ? "帶內" : "帶外"} v0.7 average margin ${b.margin} blocks (≤ 6; v0.6 ${a.margin})`);
