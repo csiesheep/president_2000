@@ -927,10 +927,10 @@ export function firstSayings(entries) {
   return keep;
 }
 
-function feedHTML(v, x, o) {
+function feedHTML(v, x, o, lines = []) {
   const all = o.feed || [], keep = firstSayings(all);
   const feed = all.map((e, i) => ({ e, i })).slice(-30).reverse();
-  if (!feed.length && !o.chat) return "";
+  if (!feed.length && !o.chat && !lines.length) return "";
   const rows = feed.map(({ e, i }) => {
     const line = e.k === "say" ? "" : feedLine(e, v, x);
     const say = keep.has(i) ? sayLine(e.why, line ? null : e.seat, x) : "";
@@ -939,8 +939,10 @@ function feedHTML(v, x, o) {
   }).join("");
   // #66: the record is opened from the top row's button (o.feedOpen); at the count it stays open, as before.
   const open = v.phase === "end" || !!o.feedOpen;
+  // #66: what the rivals did since the human last decided (the grouped lines) leads the drawer, under its own small heading; then the whole record.
+  const now = lines.length ? `<div class="fd-now"><h4>${esc(x.tr("now.title"))}</h4><ul>${lines.map((l) => `<li class="${l.seat != null ? "s" + l.seat : "sys"}">${esc(l.text)}</li>`).join("")}</ul></div>` : "";
   return `<section class="t-feed" id="feed" data-open="${open ? "1" : "0"}"><div class="fd-h"><h3 class="t-h">${esc(x.tr("hdr.feed"))}</h3>` +
-    (v.phase === "end" ? "" : `<button type="button" class="fd-x" data-feed-toggle>${esc(x.tr("hdr.feedClose"))}</button>`) + `</div><ol>${rows}</ol>${o.chat || ""}</section>`;
+    (v.phase === "end" ? "" : `<button type="button" class="fd-x" data-feed-toggle>${esc(x.tr("hdr.feedClose"))}</button>`) + `</div>${now}<ol>${rows}</ol>${o.chat || ""}</section>`;
 }
 
 // ---------------------------------------------------------------- the count
@@ -1157,16 +1159,14 @@ export function tableHTML(view, choices, lang, opts = {}) {
   const riv = rivalsOf(o.rec, v), lines = recentLines(o.rec || [], v, x);
   const said = lines.filter((l) => l.seat != null && l.seat !== v.seat).pop() || lines[lines.length - 1];
   const toast = riv.length ? `<p class="t-toast s${said && said.seat != null ? said.seat : riv[riv.length - 1].seat}" data-act-toast>${esc(said ? said.text : feedLine(riv[riv.length - 1], v, x) || x.tr("hdr.feed"))}</p>` : "";
-  // What happened since the human last decided, every line, for a screen reader (the eye gets the toast, the chips and the halos).
-  const spoken = lines.length ? `<ul class="sr" aria-label="${esc(x.tr("now.title"))}">${lines.map((l) => `<li>${esc(l.text)}</li>`).join("")}</ul>` : "";
   const notes = toast + resultHTML(o, x) + (choices.length ? adviceLine(x, o) : "");
-  const floats = spoken + (notes ? `<div class="t-notes">${notes}</div>` : "") + leadHTML(v, x) + (o.undo ? `<div class="t-undo">${undoHTML(o, x)}</div>` : "");
+  const floats = (notes ? `<div class="t-notes">${notes}</div>` : "") + leadHTML(v, x) + (o.undo ? `<div class="t-undo">${undoHTML(o, x)}</div>` : "");
   const mapNow = taiwanMap(v, lang, { changed, selected: o.county, narrow: o.narrow, acts: acts.counties, floats, overlay: o.county != null ? popHTML(v, choices, x, o.county, o.narrow) : "", cover: v.phase === "debate" ? debateHTML(v, x) : "" });
   const sh = sheetFor(v, choices, x, o), up = !!(o.sel && sourceCards(v).includes(o.sel)) || !!o.raise;
   const sheet = sh ? `<section class="t-act mine" id="act" data-sheet${sh.card ? ` data-card="${esc(sh.card)}"` : ""}>${sh.html}</section>` : "";
   const next = !choices.length && o.botnext ? `<div class="t-bn"><button type="button" class="opt" data-botnext="1">${esc(o.botnext)}</button></div>` : ""; // step by step (#42)
   return `<div class="tbl${up ? " hand-up" : ""}" data-phase="${esc(v.phase)}">${headerHTML(v, choices, x, o)}<div class="col cl">${playersHTML(v, x, o)}</div>` +
     `<div class="col cc">${trackHTML(v, x, o, acts.issues)}${mapNow}</div>` +
-    `<div class="col cr">${feedHTML(v, x, o)}${sheet}</div>` +
+    `<div class="col cr">${feedHTML(v, x, o, lines)}${sheet}</div>` +
     `${handHTML(v, choices, x, o)}${next}${o.turnCard ? turnCardHTML(v, x, o) : ""}</div>`;
 }
