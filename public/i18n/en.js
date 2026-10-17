@@ -63,7 +63,7 @@ export default {
     // Direction C (#26): the box lid on the home page, the player boards, the candidate card
     look: {
       home: { meta: "3 players · 9 turns", sub: "Soong, Lien, Chen. Put your blocks on 24 counties and get to election day.", play: "Play solo", playSub: "Against three levels of AI", host: "Host a room", hostSub: "Send the code to friends", join: "Join", joinSub: "Enter the 4-character code", boxTitle: "What's in the box", box: "70 event cards · a local card for each of 24 counties · luck markers · a board of 24 counties · three issue slots. It plays like the tabletop game: play a card, place blocks, roll the dice for support checks.", rules: "Open the rulebook" },
-      board: { label: "Player boards", cubes: "{n} on the board", mom: "Momentum", hand: "Hand {n} · kept {k}", bag: "Bag {n}", luck: "Luck {n}%", votes: "M votes", votesNone: " votes" },
+      board: { label: "Player boards", cubes: "{n} on the board", mom: "Momentum", hand: "Hand {n} · kept {k}", bag: "Bag {n}", luck: "Luck {n}%", luckW: "Luck", canvassW: "Canvass", votes: "M votes", votesNone: " votes" },
       card: { seal: "Once a game", used: "Used" },
     },
     solo: {

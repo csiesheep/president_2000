@@ -530,16 +530,23 @@ function playersHTML(v, x, o = {}) {
   const onBoard = (p) => v.counties.reduce((s, c) => s + c.blocks.filter((b) => b.o === p).length, 0);
   const first = (p) => (isV06(v) ? v.order[0] === p : v.initiative === p) && v.phase !== "end";
   const flag = x.tr(isV06(v) ? "hdr.first" : "hdr.star");
+  const v7 = isV07(v);
   const boards = orderOf(v).map((p) => {
     const mom = v.mom[p], n = onBoard(p);
     const big = n ? (x.lang === "en" ? (n / 10).toFixed(1) : String(n)) : "0";
     const votes = `<b>${big}</b><small>${esc(n ? L.votes : L.votesNone)}</small>`;
     const dots = mom ? `<span class="dots" aria-hidden="true">${"<i></i>".repeat(Math.min(mom, 12))}</span>` : `<b class="m0">0</b>`;
+    // v0.7 (#61): the luck is the third line on the right, always drawn; on election day it is the canvassing luck (「催票」),
+    // in a turn of 省府舊部 連's 50 is red.
+    const lk = (q) => {
+      const elect = v.phase === "election" && v.election, prov = !elect && q === 2 && (v.active || []).includes("provincial_staff");
+      return `<span class="pl-lk${prov ? " prov" : ""}${elect ? " elect" : ""}"><small>${esc(elect ? L.canvassW : L.luckW)}</small> <b>${luckNow(v, q)}%</b></span>`;
+    };
     return `<article class="pl s${p}${p === v.seat ? " me" : ""}${first(p) ? " first" : ""}">` +
-      `<div class="pl-card" data-seat="${p}"><button type="button" class="pl-tap" data-detail="${p}" aria-expanded="false" aria-label="${esc(`${x.full(p)} · ${fill(L.cubes, { n })} · ${L.mom} ${mom}`)}">` +
+      `<div class="pl-card" data-seat="${p}"${v7 ? ` data-luck="${luckNow(v, p)}"` : ""}><button type="button" class="pl-tap" data-detail="${p}" aria-expanded="false" aria-label="${esc(`${x.full(p)} · ${fill(L.cubes, { n })} · ${L.mom} ${mom}`)}">` +
       `<span class="pl-pic"><img src="art/candidates/${SEATS[p]}.webp" alt="${esc(x.full(p))}" width="480" height="640" loading="lazy" decoding="async"></span><b class="no">${NO[p]}</b>` +
       `<span class="pl-t"><span class="pl-n">${first(p) ? `<i class="flag-i" role="img" aria-label="${esc(flag)}" title="${esc(flag)}">⚑</i>` : ""}${esc(x.lang === "en" ? x.short(p) : x.full(p))}</span>` +
-      `<span class="pl-v">${votes}</span><span class="pl-mm">${esc(L.mom)} ${dots}</span></span></button></div>` +
+      `<span class="pl-v">${votes}</span><span class="pl-mm">${esc(L.mom)} ${dots}</span>${v7 ? lk(p) : ""}</span></button></div>` +
       `<div class="pl-d"><span class="pl-h">${esc(fill(L.hand, { n: inHand(p), k: kept(p) }))}</span>` +
       (isV07(v)
         ? `<button type="button" class="pl-bag pl-luck helpable${o.help === "luck" ? " on" : ""}" data-help="luck" aria-expanded="${o.help === "luck"}" aria-label="${esc(x.tr("hdr.luck") + " · " + x.tr("hdr.tap"))}">${esc(fill(L.luck, { n: boardLuck(v, p) }))}</button>`
