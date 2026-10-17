@@ -21,7 +21,7 @@
 //     "far" after; the debate (6) and election day (9) named on the card;
 //   - the special turns keep their words: turn 1 the start of the race, turn 6 the debate and its three issues, turn 9
 //     the four steps of election day and the dark card (#44).
-// Before #64 lands no card has a masthead: every row reports 尚未實作.
+// Since #64 landed (b931579), a card without a masthead is a failure (it reported 尚未實作 before).
 import test from "node:test";
 import assert from "node:assert/strict";
 import { R, section, check, ok, nonEmpty, summary } from "./harness.js";
@@ -87,7 +87,7 @@ const entryOf = (p) => p.s.st.log.filter((e) => e.t === "turn" && e.turn === p.s
 const gate = (fn) => () => {
   const ne = nonEmpty(POOL.length, "回合開始的局面"); if (ne !== true) return ne;
   if (!POOL.some((p) => tags(S.screen(p.s, "zh-Hant", { turnCard: true }), "data-turncard").length)) return "畫面沒有 data-turncard（#44 已上線，這是退步）";
-  if (!POOL.some((p) => tags(card(p, "zh-Hant") || "", "data-masthead").length)) return "TODO: 開場卡還沒有報頭（data-masthead）——#64 還沒做";
+  if (!POOL.some((p) => tags(card(p, "zh-Hant") || "", "data-masthead").length)) return "開場卡沒有報頭（data-masthead）了（#64 已上線，這是退步，不是尚未實作）";
   return fn();
 };
 

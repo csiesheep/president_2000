@@ -21,7 +21,7 @@
 //     text (public/shared/cards.js) and no
 //     "slot 1" / "first slot"… in any English one (the help, the record, the rules page, the tutorial, the advisor), and
 //     the help for the slots names 頭條、二條、三條 (in English, the three words on the track).
-// Before #65 lands no slot carries data-hl-slot: every row reports 尚未實作.
+// Since #65 landed (b931579), a track without data-hl-slot is a failure (it reported 尚未實作 before).
 import test from "node:test";
 import assert from "node:assert/strict";
 import { R, section, check, ok, nonEmpty, summary } from "./harness.js";
@@ -74,7 +74,7 @@ const kind = (c) => { const max = Math.max(...c); if (max === 0) return { k: "no
 
 const gate = (fn) => () => {
   const ne = nonEmpty(POOL.length, "畫著議題軌道的牌桌"); if (ne !== true) return ne;
-  if (!POOL.some((p) => tags(S.screen(p.s, "zh-Hant"), "data-hl-slot").length)) return "TODO: 議題欄還沒有報紙頭條（data-hl-slot）——#65 還沒做";
+  if (!POOL.some((p) => tags(S.screen(p.s, "zh-Hant"), "data-hl-slot").length)) return "議題欄沒有報紙頭條（data-hl-slot）了（#65 已上線，這是退步，不是尚未實作）";
   return fn();
 };
 
