@@ -44,7 +44,7 @@ export default {
         map: "地圖上的圓標是你的候選人，現在在{county}。點一下{county}，看看它的票塊。",
         blocks: "{county}有 {blocks} 個票塊，每塊最多放一顆方塊。彩色小方塊是已經放下的票（綠陳、橘宋、藍連），淡綠、淡藍是還沒決定的游離塊，灰色是沒出門投票的人，不能用 CP 放。",
         order: "每回合開始，依票數（盤上自己的方塊）由少到多排出行動順序，票少的先出牌；票數平手，動能少的先。這是第一個行動階段的順序，之後每個階段起手的人輪轉一位。讀完按下一步。",
-        play: "點手牌「{card}」，再選「{card}：拿 {cp} CP 做行動」。CP 是這個行動可以花的點數，這張牌有 {cp} 點。",
+        play: "點手牌「{card}」，再選「拿 {cp} CP 做行動」。CP 是這個行動可以花的點數，這張牌有 {cp} 點。",
         kind: "「{card}」給你 {cp} CP。選「競選」：用 CP 把方塊放進縣市。（另一種是議題，之後再學。）",
         county2: "競選要先選縣市：棋子所在的區域（{region}）裡的縣市，每 1 CP 可以放一塊。點{county}。",
         fill: "選「填 1 塊」：在{county}的淡綠空塊放你的方塊，花 1 CP。這一塊不用檢定（對手的候選人不在這裡），放下就算數。你還剩 {left} CP。",
@@ -107,7 +107,7 @@ export default {
       },
       map: {
         title: "各區票勢", here: "{who}在此", endorse: "背書", media: "媒體", national: "全國媒體", blocks: "{n}0萬票", empty: "空 {n}", boss: "{who}是地方大老",
-        stamp: "背", endorseKey: "章的顏色 = 該區背書持有者", endorsedBy: "{region}由{who}背書",
+        stamp: "背", endorseKey: "章的顏色 = 該區背書持有者", endorseKeyShort: "章色 = 背書持有者", endorsedBy: "{region}由{who}背書",
         endorseNote: "{county} · {region}由{who}背書：這裡空著的無色塊 {free} 塊，投票日一半（捨去）→ {here}。全區合計{who} +{all} 塊。",
         legendEmpty: "空的游離塊", legendGrey: "沒投票的無色塊", changed: "剛剛有變動",
         you: "你", board: "台灣地圖", hint: "點縣市看票塊，在框裡下指令。", popNone: "這個縣市現在沒有可以做的事。", popWait: "對手行動中，等一下就輪到你。先看看他們在哪裡放了方塊。", popPick: "先點下面的手牌，選要用幾 CP，再回來這裡放方塊。", popHere: "這張牌這回合放不到這裡。可以放的縣市在地圖上亮著。", popHereAward: "這一步放不到這裡。可以放的縣市在地圖上亮著。", popGrey: "無色 {n}", popClose: "關閉", islands: "外島", legendPawn: "圓標是候選人所在的縣市", legendCubes: "陳宋連的方塊", popMove: "移到這裡 · 移動後剩 {left} CP",
@@ -148,15 +148,15 @@ export default {
         okLuck: "檢定成功（成功率 {p}%）：{what}", okPlainLuck: "檢定成功（成功率 {p}%）", failLuck: "檢定失敗（成功率 {p}%）：{where}", failNoWhereLuck: "檢定失敗（成功率 {p}%）",
       },
       replay: { hit: "命中", miss: "沒中" },
-      undo: { btn: "↶ 悔一步", done: "已退回上一步", locked: "抽過檢定，不能悔" },
-      hand: { title: "手牌 {n}", titleDebate: "政見發表會留牌 {n}", titleElection: "投票日留牌 {n}", kept: "已留 {n} 張（給{dest}）", none: "沒有牌", raise: "點一下拉起", lower: "點一下收起" },
+      undo: { btn: "↶ 悔一步", done: "已退回上一步", locked: "抽過檢定，不能悔", lockedNote: "這步抽過檢定 · 不能悔" },
+      hand: { title: "手牌 {n}", titleDebate: "政見發表會留牌 {n}", titleElection: "投票日留牌 {n}", kept: "已留 {n} 張（給{dest}）", none: "沒有牌", saveHint: "點牌面選要留的牌", raise: "點一下拉起", lower: "點一下收起" },
       card: { local: "地方牌", cand: "候選人牌" },
       p: {
         candConfirm: "候選人牌整局只能用一次。現在就用嗎？", candYes: "確定使用", candNo: "先不要",
         barCampaign: "競選", barCp: "剩 {cp} CP", barCanvass: "催票成功：{county}。", barCanvassLeft: "選一件事（這張還剩 {left} 次檢定）。", moveElse: "移到別處…",
         listCounties: "各縣市的選項", movesOpen: "移到別的縣市…", movesShut: "收起移動", moveHint: "要移動的話，得在放第一塊之前。", eg: "空綠 {n}", eb: "空藍 {n}",
         c: {
-          fill: "填 1 塊", cross: "跨營填 1 塊", steal: "搶{who} 1 顆（{kind}）", grey: "填 1 塊無色塊", remove: "移除{who} 1 顆（{kind}）",
+          fill: "填 1 塊", cross: "跨營填 1 塊", steal: "搶{who} 1 顆", grey: "填 1 塊無色塊", remove: "移除{who} 1 顆",
           convert: "把 1 塊無色塊轉成綠營游離塊", move: "{county}\n移動後剩 {left} CP",
         },
         moveHead: "移動", back: "← 收起", notNow: "現在不能打這張牌。",
@@ -172,10 +172,20 @@ export default {
         fxMediaRemove: "移除{who}的媒體（還要 {left} 顆）。", fxConvert: "把無色塊轉成綠營游離塊（還要 {left} 塊）。", fxTvbs: "選一位加 1 動能。", fxIssue: "選一個議題，放 {n} 顆{who}的方塊。", fxIssueRemove: "選一個議題，移除{who}的方塊（最多 {n} 顆）。",
         swap: "你是議題總領先者：可以交換相鄰兩條議題。", reward: "你領先二條的議題：選 1 動能，或抽 1 張背書。",
         destDebate: "政見發表會", destElection: "投票日",
-        save: "選 {n} 張，面朝下留給{dest}。", saveAll: "手牌不多於 {n} 張，全部留給{dest}。", saveRest: "其他的牌進棄牌堆。", saveNone: "還沒選牌", saveGo: "確認留牌",
+        autoDebate: "只剩這一張留牌：面朝下打出，三人都選好才一起翻開。", autoElection: "只剩這一張留牌：在牌上的縣市催票，做 3 次檢定。", autoAction: "只剩這一張牌能打：選一種打法。",
+        save: "選 {n} 張，面朝下留給{dest}。", saveAll: "手牌不多於 {n} 張，全部留給{dest}。", saveRest: "其他的牌進棄牌堆。", saveNone: "還沒選牌", saveNoneHint: "還沒選牌 · 點下面的牌來選，再點一次取消", saveGo: "確認留牌",
         debate: "選一張留牌，面朝下。三人都選好才一起翻開。",
         award: "你贏了「{issue}」：免檢定放方塊，還要 {left} 顆。",
         canvass: "選一張留牌來催票：在牌上的縣市做 3 次檢定。", canvassPlace: "催票成功：{county}。選一件事（這張還剩 {left} 次檢定）。", canvassRate: "每次檢定約 {p}%。",
+      },
+      // #69: what is drawn on an option button: the action on the first line, the cost, the chance or the kind of block in a small line under it.
+      // (The labels in `o` stay as they are: the record and the tests read them.)
+      b: {
+        eventHead: "當事件打出", eventSub: "照牌面的效果", cpHead: "拿 {cp} CP 做行動", cpSub: "競選或議題",
+        triggerHead: "觸發", triggerSub: "花 1 動能", revealHead: "翻開，放到「{issue}」", canvassHead: "催票：{county}",
+        moveHead: "移到 {county}", moveSub: "{cost} CP",
+        issuePlace: "{issue} · 放 1 顆", issueRemove: "{issue} · 移除{who} 1 顆", issueCost: "{cost} CP",
+        kind: { campaign: "競選", campaignSub: "填塊或搶塊", issue: "議題 · 放方塊", issueSub: "第 1 顆 1 CP，之後每顆 2 CP" },
       },
       o: {
         order: "排第 {n} 個行動", orderElection: "第 {n} 個催票", candidate: "候選人牌：{cp} CP · 整局一次", playEvent: "{card}：當事件打出", playCp: "{card}：拿 {cp} CP 做行動", playBlock: "{card}：拿 CP，並花 2 動能封鎖",

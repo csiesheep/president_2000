@@ -295,6 +295,13 @@ button.btn.menub { width: 40px; height: 40px; padding: 0; justify-content: cente
 .opts.two { display: grid; grid-template-columns: 1fr 1fr; }
 .opts.two .opt { font-size: 13px; padding: 6px 8px; white-space: pre-line; line-height: 1.3; display: block; padding-top: 7px; padding-bottom: 7px; }
 .opts.two .opt::first-line { font-weight: 900; font-size: 14px; }
+/* #69: an option button is two lines: the action, then what it costs or risks small under it */
+.opt .ob { display: block; min-width: 0; }
+.opt .ob small { display: block; margin-top: 1px; font: 700 11.5px/1.3 var(--sans); opacity: .78; }
+.opts.two .opt .ob small { font-size: 11px; }
+.undo-off { display: inline-block; font: 400 12px/1.3 var(--sans); color: var(--mute); }
+.hh-hint.save { color: #fff; background: #b3261e; font-weight: 700; }
+.t-key { display: flex; align-items: center; justify-content: flex-end; gap: 5px; margin-top: 2px; white-space: nowrap; color: #e4d6b8; }
 .mvs { display: flex; flex-direction: column; gap: 6px; }
 .confirm { display: flex; flex-direction: column; gap: 8px; }
 .cg { border: 1px solid var(--edge); background: var(--paper2); border-radius: 4px; padding: 6px 8px 8px; display: flex; flex-direction: column; gap: 6px; }
@@ -1029,8 +1036,13 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
 .tbl:not(.end) .t-lead { position: absolute; right: 6px; bottom: 26px; z-index: 3; margin: 0; padding: 2px 6px; border-radius: 3px; background: rgba(43, 33, 24, .78); color: #e4d6b8; font-size: 9px; line-height: 1.35; white-space: nowrap; text-align: right; pointer-events: none; }
 .tbl:not(.end) .t-lead b { display: block; margin-right: 0; font-weight: 400; }
 .tbl:not(.end) .t-lead em { display: none; }
-.tbl:not(.end) .t-undo { position: absolute; left: 6px; bottom: 26px; z-index: 3; }
+.tbl:not(.end) .tw-box .t-undo { position: absolute; left: 6px; bottom: 26px; z-index: 3; }
 .tbl:not(.end) .t-undo .undo { position: static; max-width: 180px; min-height: 28px; padding: 2px 10px; font-size: 11px; background: var(--paper2); }
+/* #69: with a sheet on the page the undo button is the sheet's first line (a bar over the map's foot used to cover the one on the map) */
+.t-act > .t-undo { order: -1; align-self: flex-end; margin: -2px 0 -3px; }
+.tbl:not(.end) .t-act > .t-undo .undo { min-height: 28px; padding: 2px 10px; font-size: 12px; background: var(--paper2); }
+.tbl:not(.end) .t-act:has(.cgs) > .t-undo { grid-column: 1 / -1; grid-row: 9; }
+.tbl:not(.end) .t-undo .undo-off { padding: 2px 8px; border-radius: 3px; background: rgba(251, 246, 233, .92); font-size: 10px; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); }
 .tbl:not(.end) .tw-endkey { position: absolute; right: 6px; top: 6px; z-index: 3; margin: 0; padding: 2px 6px; border-radius: 3px; background: rgba(251, 246, 233, .94); font-size: 9px; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); pointer-events: none; }
 .tbl:not(.end) .tw-media { position: absolute; left: 6px; bottom: 44px; z-index: 3; margin: 0; padding: 2px 6px; border-radius: 3px; background: rgba(43, 33, 24, .78); color: #e4d6b8; font-size: 9px; pointer-events: none; }
 
@@ -1174,7 +1186,7 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
   .tbl:not(.end) .t-notes .advice { font-size: 12px; }
   .tbl:not(.end) .t-lead { right: 8px; bottom: 8px; font-size: 11px; padding: 3px 8px; }
   .tbl:not(.end) .t-lead em { display: inline; } .tbl:not(.end) .t-lead b { display: inline; }
-  .tbl:not(.end) .t-undo { left: 8px; bottom: 8px; }
+  .tbl:not(.end) .tw-box .t-undo { left: 8px; bottom: 8px; }
   .tbl:not(.end) .tw-endkey { right: 8px; top: 8px; font-size: 11px; }
   .act-chip { font-size: 12px; padding: 2px 8px; border-width: 2px; }
   .slot .act-chip { font-size: 10px; padding: 0 5px; border-width: 1px; }

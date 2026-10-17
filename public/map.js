@@ -391,7 +391,7 @@ export function taiwanMap(view, lang, opts = {}) {
   const med = v.media; // v0.5 (#49) has no media: no box
   const media = !Array.isArray(med) ? "" : `<p class="ct tw-media" data-media-national="${med.join(",")}"><b>${esc(M.national)}</b> ${esc([0, 1, 2].map((p) => `${cand(d, p).short} ${med[p]}`).join(" · "))}</p>`;
   const holders = REGIONS.some((_, r) => v.endorse[r] >= 0);
-  const key = holders ? `<p class="ct tw-endkey" data-endorse-legend><i class="tw-stampkey" aria-hidden="true">${esc(M.stamp)}</i>${esc(M.endorseKey)}</p>` : "";
+  const key = holders && !o.legendInLead ?`<p class="ct tw-endkey" data-endorse-legend><i class="tw-stampkey" aria-hidden="true">${esc(M.stamp)}</i>${esc(M.endorseKey)}</p>` : "";
   // The rivals' chips (#66): beside the paper, on its bottom-left edge (the top-right is the candidates', the bottom-right the endorsement
   // stamp's), kept inside the board. They sit in the page as HTML placed in % of the svg and take no taps.
   const pc = (n, of) => Math.round((n / of) * 100000) / 1000;

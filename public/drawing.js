@@ -160,7 +160,8 @@ export function bindCounty(root, api) {
 export function bindSeat(root, api) {
   root.addEventListener("click", (ev) => {
     const b = ev.target.closest("[data-detail]");
-    if (!b) return;
+    // #69: a tap anywhere but on the candidate boards (and the strip that opened) closes the strip again.
+    if (!b) { if (api.get() != null && !ev.target.closest(".pl")) { api.set(null); api.redraw(); } return; }
     const p = +b.dataset.detail;
     api.set(api.get() === p ? null : p);
     api.redraw();

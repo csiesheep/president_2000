@@ -217,24 +217,68 @@ export function labelMove(v, m, lang) {
   return tr("o.unknown");
 }
 
-// A placement's short words inside its county's block (the county is the block's heading), or null.
+// #69: an option button has the action on its first line and, small under it, what it costs or risks: [head, small]. The labels
+// (labelMove) stay as the record and the tests read them; this is what is drawn. The small line joins its parts with " · ".
+const joinS = (...a) => a.filter(Boolean).join(" · ");
+const tailOf = (suffix) => suffix.replace(/^ · /, ""); // suffixFor's " · check about 34%" without its leading dot
+
+// A placement's words inside its county's block (the county is the block's heading): [head, small], or null.
 function shortOpt(v, m, x) {
-  const tr = x.tr, suffix = suffixFor(v, m, x);
-  const kind = () => ({ who: x.short(m.target), kind: tr("o.block." + m.t) });
+  const tr = x.tr, sfx = tailOf(suffixFor(v, m, x));
+  const kind = () => tr("o.block." + m.t), who = () => ({ who: x.short(m.target) });
   switch (m.type) {
-    case "fill": return tr("p.c.fill") + suffix;
-    case "cross": return tr("p.c.cross") + suffix;
-    case "steal": return tr("p.c.steal", kind()) + suffix;
-    case "remove": return tr("p.c.remove", kind()) + suffix;
-    case "grey": return tr("p.c.grey");
-    case "convert": return tr("p.c.convert");
+    case "fill": return [tr("p.c.fill"), sfx];
+    case "cross": return [tr("p.c.cross"), sfx];
+    case "steal": return [tr("p.c.steal", who()), joinS(kind(), sfx)];
+    case "remove": return [tr("p.c.remove", who()), joinS(kind(), sfx)];
+    case "grey": return [tr("p.c.grey"), ""];
+    case "convert": return [tr("p.c.convert"), ""];
     case "move": {
       const left = v.pending && typeof v.pending.cp === "number" ? v.pending.cp - moveCost(v.seat, v.pos[v.seat], m.to) : null;
-      return left == null ? null : tr("p.c.move", { county: x.county(m.to), left });
+      return left == null ? null : tr("p.c.move", { county: x.county(m.to), left }).split("\n");
     }
   }
   return null;
 }
+
+// The words of any option button: [head, small]. A play says what it does (the card's face is right beside it, so no card name).
+function optWords(v, c, x) {
+  const m = c.move, tr = x.tr;
+  const sfx = tailOf(suffixFor(v, m, x));
+  let label = c.label;
+  switch (m.type) {
+    case "play":
+      if (m.mode === "event") return [tr("b.eventHead"), tr("b.eventSub")];
+      if (!m.block) return [tr("b.cpHead", { cp: CARD[m.card].cp }), tr("b.cpSub")];
+      label = label.replace(x.card(m.card), "").replace(/^[：:]\s*/, ""); // v0.4 only (blocking): the label without the card's name
+      break;
+    case "trigger": return [tr("b.triggerHead"), tr("b.triggerSub")];
+    case "reveal": return [tr("b.revealHead", { issue: x.issue(m.issue) }), ""];
+    case "canvass": return [tr("b.canvassHead", { county: x.county(COUNTIES.findIndex((k) => k[0] === v.cards[m.card].county)) }), ""];
+    case "candidate": return c.label.split(" · ");
+    case "action":
+      if (m.kind === "campaign" || m.kind === "issue") return [tr("b.kind." + m.kind), tr("b.kind." + m.kind + "Sub")];
+      break; // advertising (v0.4 only): by its label
+    case "move": return [tr("b.moveHead", { county: x.county(m.to) }), tr("b.moveSub", { cost: moveCost(v.seat, v.pos[v.seat], m.to) })];
+    case "issue": {
+      const fx = v.pending && v.pending.stage === "effect" && v.pending.fx && v.pending.fx.queue[0];
+      if (fx && fx.op === "anyIssue") break;
+      const cost = tr("b.issueCost", { cost: v.pending && v.pending.placed ? 2 : 1 });
+      return m.target == null ? [tr("b.issuePlace", { issue: x.issue(m.issue) }), cost] : [tr("b.issueRemove", { issue: x.issue(m.issue), who: x.short(m.target) }), cost];
+    }
+    case "fill": case "cross": case "steal": case "grey": case "remove": case "convert": {
+      const w = shortOpt(v, m, x);
+      if (w) return [x.county(m.county) + " · " + w[0], w[1]];
+      break;
+    }
+  }
+  // anything else: its label, with the words in a bracket moved to the small line (else what follows its first " · ")
+  const g = label.match(/^(.*?)\s*[（(]([^）)]*)[）)]\s*(.*)$/);
+  if (g) return [g[1] + (g[3] && !/^ · /.test(g[3]) ? " " + g[3] : ""), joinS(g[2], tailOf(g[3]))];
+  const cut = label.indexOf(" · ");
+  return cut > 0 ? [label.slice(0, cut), label.slice(cut + 3)] : [label, ""];
+}
+const two = (w) => `<span>${esc(w[0])}</span>` + (w[1] ? `<small>${esc(w[1])}</small>` : "");
 
 // ---------------------------------------------------------------- the order of the options
 
@@ -439,9 +483,11 @@ function candCard(v, ch, x) {
 
 // One option button. The candidate card is the one a new player must not hit by accident: it is drawn
 // quietly and asks again (data-confirm; the page keeps the question in its own state).
-const btn = (c, cls = "", x = null, label = null) => {
+// `w` = [head, small] (or a string) overrides the words; else optWords writes them from the move (#69).
+const btn = (v, c, cls = "", x = null, w = null) => {
   const adv = !!c.advised && x, cand = c.move.type === "candidate";
-  return `<button type="button" class="opt${cls ? " " + cls : ""}${cand ? " weak" : ""}${adv ? " adv" : ""}" data-move="${esc(JSON.stringify(c.move))}"${cand ? ` data-confirm="1"` : ""}>${adv ? starHTML(x) : ""}${esc(label || c.label)}</button>`;
+  const words = typeof w === "string" ? [w, ""] : w || optWords(v, c, x);
+  return `<button type="button" class="opt${cls ? " " + cls : ""}${cand ? " weak" : ""}${adv ? " adv" : ""}" data-move="${esc(JSON.stringify(c.move))}"${cand ? ` data-confirm="1"` : ""}>${adv ? starHTML(x) : ""}<span class="ob">${two(words)}</span></button>`;
 };
 
 // ---------------------------------------------------------------- the board
@@ -473,13 +519,14 @@ function popHTML(v, ch, x, k, narrow) {
     const m = c.move;
     if (m.type === "move") {
       const left = v.pending && typeof v.pending.cp === "number" ? v.pending.cp - moveCost(v.seat, v.pos[v.seat], m.to) : null;
-      return left == null ? c.label : tr("map.popMove", { left });
+      if (left == null) return optWords(v, c, x);
+      const [head, ...tail] = tr("map.popMove", { left }).split(" · ");
+      return [head, tail.join(" · ")];
     }
-    return shortOpt(v, m, x) || c.label;
+    return shortOpt(v, m, x) || optWords(v, c, x);
   };
-  // "Fill 1 block · no check": the action on top, what it costs or risks smaller under it.
-  const words = (s) => { const [head, ...tail] = s.split(" · "); return `<span>${esc(head)}</span>` + (tail.length ? `<small>${esc(tail.join(" · "))}</small>` : ""); };
-  const opt = ({ c, i, f }) => `<button type="button" class="opt pop-opt${f ? " go" : ""}${c.advised ? " adv" : ""}" data-move="${esc(JSON.stringify(c.move))}" data-choice="${i}" data-pop="${k}">${c.advised ? starHTML(x) : ""}${words(label(c))}</button>`;
+  // "Fill 1 block" with "no check" small under it: the action on top, what it costs or risks smaller under it.
+  const opt = ({ c, i, f }) => `<button type="button" class="opt pop-opt${f ? " go" : ""}${c.advised ? " adv" : ""}" data-move="${esc(JSON.stringify(c.move))}" data-choice="${i}" data-pop="${k}">${c.advised ? starHTML(x) : ""}${two(label(c))}</button>`;
   const at = popPlace(k, narrow, x.lang);
   // #50: who holds this county's region, and what election day gives them here and in the whole region
   const h = v.endorse[REGION_OF[k]];
@@ -626,11 +673,13 @@ function trackHTML(v, x, o = {}, acts = {}) {
 
 // v0.5 (#49): the issue leader (the most cubes over the three issues together, a tie is nobody) takes the media's place on the
 // table; the total of each candidate and who leads. #66: a small float at the map's foot.
+// #69: the endorsement key is the last line of these totals (it used to float over 台北市): the stamp and "stamp colour = holder".
+const endorseKey = (v, x) => (v.endorse.some((h) => h >= 0) ? `<span class="t-key" data-endorse-legend><i class="tw-stampkey" aria-hidden="true">${esc(x.tr("map.stamp"))}</i>${esc(x.tr("map.endorseKeyShort"))}</span>` : "");
 function leadHTML(v, x) {
   if (!hasLead(v)) return "";
   const { tot, who } = issueTotals(v);
   return `<p class="t-lead" data-issue-lead="${who}"><b>${esc(x.tr("hdr.issueTotal"))}</b> ${[0, 1, 2].map((p) => `<span class="n${p === who ? " on" : ""}">${esc(x.short(p))} ${tot[p]}</span>`).join(" · ")}` +
-    ` <em>${esc(who >= 0 ? x.tr("hdr.leadIs", { who: x.short(who) }) : x.tr("hdr.leadNone"))}</em></p>`;
+    ` <em>${esc(who >= 0 ? x.tr("hdr.leadIs", { who: x.short(who) }) : x.tr("hdr.leadNone"))}</em>${endorseKey(v, x)}</p>`;
 }
 
 // ---------------------------------------------------------------- the action panel
@@ -644,7 +693,7 @@ function countyBlock(v, k, items, x) {
   const here = [0, 1, 2].filter((p) => v.pos[p] === k).map((p) => `<span class="s${p}">⚑${esc(x.short(p))}</span>`).join("");
   return `<section class="cg"><h4 class="cg-h"><b class="cg-n">${esc(x.county(k))}</b><span class="cg-o">${own}</span>` +
     `<span class="cg-e"><i class="b eG"></i>${esc(tr("p.eg", { n: eg }))}<i class="b eB"></i>${esc(tr("p.eb", { n: eb }))}</span>${here ? `<span class="cg-p">${here}</span>` : ""}</h4>` +
-    `<div class="opts">${items.map((c) => btn(c, "", x, shortOpt(v, c.move, x))).join("")}</div></section>`;
+    `<div class="opts">${items.map((c) => btn(v, c, "", x, shortOpt(v, c.move, x))).join("")}</div></section>`;
 }
 
 // The options in the order choices() gave them: a block per county (placements), then "move to
@@ -653,7 +702,7 @@ function groupedList(v, ch, x, o) {
   const done = ch.filter((c) => END_T.has(c.move.type)), moves = ch.filter((c) => c.move.type === "move");
   const here = ch.filter(isPlace), plain = ch.filter((c) => !done.includes(c) && !moves.includes(c) && !here.includes(c));
   const out = [];
-  if (plain.length) out.push(`<div class="opts">${plain.map((c) => btn(c, "", x)).join("")}</div>`);
+  if (plain.length) out.push(`<div class="opts">${plain.map((c) => btn(v, c, "", x)).join("")}</div>`);
   const byCounty = new Map();
   for (const c of here) { if (!byCounty.has(c.move.county)) byCounty.set(c.move.county, []); byCounty.get(c.move.county).push(c); }
   // #66: the county blocks and the way to another county are one folded list: the map's boxes (tap a county) do the same job, and
@@ -666,14 +715,14 @@ function groupedList(v, ch, x, o) {
     if (open) {
       for (let r = 0; r < REGIONS.length; r++) {
         const items = moves.filter((c) => REGION_OF[c.move.to] === r).sort((a, b) => a.move.to - b.move.to);
-        if (items.length) list += `<h4 class="t-gh">${esc(x.region(r))}</h4><div class="opts two">${items.map((c) => btn(c, "", x, shortOpt(v, c.move, x))).join("")}</div>`;
+        if (items.length) list += `<h4 class="t-gh">${esc(x.region(r))}</h4><div class="opts two">${items.map((c) => btn(v, c, "", x, shortOpt(v, c.move, x))).join("")}</div>`;
       }
     }
     lists.push(`<div class="mvs"><button type="button" class="opt weak more${open ? " on" : ""}" data-toggle="moves" aria-expanded="${open}">${esc(x.tr(open ? "p.movesShut" : "p.movesOpen"))}</button>` +
       `<p class="ct">${esc(x.tr("p.moveHint"))}</p>${list}</div>`);
   }
   if (lists.length) out.push(`<details class="cgs" data-keep="cgs${v.turn}.${v.step}.${v.phase}.${v.pending ? v.pending.stage : ""}"><summary>${esc(x.tr("p.listCounties"))}</summary>${lists.join("")}</details>`);
-  if (done.length) out.push(`<div class="opts">${done.map((c) => btn(c, "ghost", x)).join("")}</div>`);
+  if (done.length) out.push(`<div class="opts">${done.map((c) => btn(v, c, "ghost", x)).join("")}</div>`);
   return out.join("");
 }
 
@@ -704,12 +753,12 @@ function countyBar(v, ch, x, o) {
   if (open) {
     for (let r = 0; r < REGIONS.length; r++) {
       const items = moves.filter((c) => REGION_OF[c.move.to] === r).sort((a, b) => a.move.to - b.move.to);
-      if (items.length) list += `<h4 class="t-gh">${esc(x.region(r))}</h4><div class="opts two">${items.map((c) => btn(c, "", x, shortOpt(v, c.move, x))).join("")}</div>`;
+      if (items.length) list += `<h4 class="t-gh">${esc(x.region(r))}</h4><div class="opts two">${items.map((c) => btn(v, c, "", x, shortOpt(v, c.move, x))).join("")}</div>`;
     }
     list = `<div class="cbar-m"><p class="ct">${esc(x.tr("p.moveHint"))}</p>${list}</div>`;
   }
-  return `<div class="cbar"><div class="cbar-h"><div class="cbar-t">${head}</div>${done.length ? `<div class="cbar-end">${done.map((c) => btn(c, "ghost", x)).join("")}</div>` : ""}</div>` +
-    (plain.length ? `<div class="opts cbar-o">${plain.map((c) => btn(c, "", x)).join("")}</div>` : "") +
+  return `<div class="cbar"><div class="cbar-h"><div class="cbar-t">${head}</div>${done.length ? `<div class="cbar-end">${done.map((c) => btn(v, c, "ghost", x)).join("")}</div>` : ""}</div>` +
+    (plain.length ? `<div class="opts cbar-o">${plain.map((c) => btn(v, c, "", x)).join("")}</div>` : "") +
     `<div class="cbar-c">${chips}${more}</div>${list}</div>`;
 }
 
@@ -774,15 +823,15 @@ function sourceCards(v) {
 function savePanel(v, ch, x, o) {
   const n = v.turn <= 5 ? 1 : 2, hand = sourceCards(v);
   const dest = x.tr(v.turn <= 5 ? "p.destDebate" : "p.destElection");
-  if (ch.length === 1) return `<p class="pr">${esc(x.tr("p.saveAll", { n, dest }))}</p><div class="opts">${btn(ch[0], "", x)}</div>`;
+  if (ch.length === 1) return `<p class="pr">${esc(x.tr("p.saveAll", { n, dest }))}</p><div class="opts">${btn(v, ch[0], "", x)}</div>`;
   const picks = (o.picks || []).filter((id) => hand.includes(id));
   const want = (ch[0].move.cards || []).length;
   const match = ch.find((c) => c.move.cards.length === picks.length && c.move.cards.every((id) => picks.includes(id)));
   const names = picks.map((id) => x.card(id)).join(x.lang === "en" ? ", " : "、");
   return `<p class="pr">${esc(x.tr("p.save", { n: want, dest }))}</p>` +
     `<p class="ct">${esc(x.tr("p.saveRest"))}</p>` +
-    `<p class="pick">${esc(names || x.tr("p.saveNone"))}</p>` +
-    `<div class="opts">${match ? btn({ move: match.move, label: x.tr("p.saveGo"), advised: match.advised }, "", x) : `<button type="button" class="opt" disabled>${esc(x.tr("p.saveGo"))}</button>`}</div>`;
+    `<p class="pick">${esc(names || x.tr("p.saveNoneHint"))}</p>` +
+    `<div class="opts">${match ? btn(v, { move: match.move, advised: match.advised }, "", x, x.tr("p.saveGo")) : `<button type="button" class="opt" disabled>${esc(x.tr("p.saveGo"))}</button>`}</div>`;
 }
 
 // The sheet (#66, design 甲): the decision is drawn only when there is something to decide beyond picking a card. → { html, card } or
@@ -791,7 +840,7 @@ function savePanel(v, ch, x, o) {
 // election day's placements) is the sheet's own prompt and buttons; the candidate card waits for its "sure?" here. While the human
 // only has to pick a card (or is waiting) there is no sheet: the hand says so.
 function sheetFor(v, ch, x, o) {
-  const hand = sourceCards(v), wrap = (html, card = null, auto = false) => ({ html, card, auto });
+  const hand = sourceCards(v), wrap = (html, card = null, auto = false, sure = false) => ({ html, card, auto, sure });
   if (!ch.length) {
     const sel = o.sel && hand.includes(o.sel) ? o.sel : null;
     return sel ? wrap(sheetHTML(v, ch, x, sel), sel) : null;
@@ -811,7 +860,7 @@ function sheetFor(v, ch, x, o) {
     if (sure) {
       return wrap(`<div class="confirm"><p class="pr">${esc(x.tr("p.candConfirm"))}</p><div class="opts">` +
         `<button type="button" class="opt" data-move="${esc(JSON.stringify(sure.move))}">${esc(x.tr("p.candYes"))}</button>` +
-        `<button type="button" class="opt ghost" data-cancel="1">${esc(x.tr("p.candNo"))}</button></div></div>`);
+        `<button type="button" class="opt ghost" data-cancel="1">${esc(x.tr("p.candNo"))}</button></div></div>`, null, false, true);
     }
     return null;
   }
@@ -826,8 +875,9 @@ function sheetFor(v, ch, x, o) {
 // by itself (it is the only card to pick), so there is nothing to go back to.
 function sheetHTML(v, ch, x, sel, auto = false) {
   const moves = ch.filter((c) => c.move.card === sel);
-  return `<div class="sheet"><button type="button" class="pc-hit" data-camp="${CARD[sel].owner === "local" ? "local" : CARD[sel].owner}" data-sel="${esc(sel)}">${cardFace(sel, x)}</button><div class="sh-r">` +
-    (moves.length ? `<div class="opts">${moves.map((c) => btn(c, "", x)).join("")}</div>` : `<p class="ct">${esc(x.tr("p.notNow"))}</p>`) +
+  const note = auto && { debate: "p.autoDebate", election: "p.autoElection", action: "p.autoAction" }[v.phase]; // #69: what is going on, for a sheet that opened by itself
+  return (note ? `<p class="pr" data-auto-note>${esc(x.tr(note))}</p>` : "") + `<div class="sheet"><button type="button" class="pc-hit" data-camp="${CARD[sel].owner === "local" ? "local" : CARD[sel].owner}" data-sel="${esc(sel)}">${cardFace(sel, x)}</button><div class="sh-r">` +
+    (moves.length ? `<div class="opts">${moves.map((c) => btn(v, c, "", x)).join("")}</div>` : `<p class="ct">${esc(x.tr("p.notNow"))}</p>`) +
     (auto ? "" : `<button type="button" class="back" data-sel="">${esc(x.tr("p.back"))}</button>`) + `</div></div>`;
 }
 
@@ -845,9 +895,9 @@ function handHTML(v, ch, x, o) {
   const keptText = v.phase === "action" || v.phase === "order" || v.phase === "momentum" || v.phase === "save" ? (keptN && v.phase !== "end" ? x.tr("hand.kept", { n: keptN, dest: x.tr(v.turn <= 5 ? "p.destDebate" : "p.destElection") }) : "") : "";
   // The hand is lowered (#66, design 甲): the tray shows the upper part of the cards; a card selected raises it (data-hand="up"), and
   // so does the handle. data-pick="1" when the human may play a card now. The line beside the handle says what to do, or that the rivals are moving.
-  const up = !!(o.sel && hand.includes(o.sel)) || !!o.raise, canPick = ch.some((c) => c.move.card);
+  const up = !!(o.sel && hand.includes(o.sel)) || !!o.raise || savePhase, canPick = ch.some((c) => c.move.card);
   const hintKey = v.phase === "debate" ? "p.pickCardDebate" : v.phase === "election" ? "p.pickCardElection" : "p.pickCard";
-  const hint = v.phase === "end" ? "" : ch.length ? (canPick && !up ? x.tr(hintKey) : "") : o.waitHint || x.tr("hdr.waitHint");
+  const hint = v.phase === "end" ? "" : savePhase ? x.tr("hand.saveHint") : ch.length ? (canPick && !up ? x.tr(hintKey) : "") : o.waitHint || x.tr("hdr.waitHint");
   // The fan: each card tilts a little more than the one before it and the middle ones sit highest. The
   // numbers are computed here so the same hand always draws the same string.
   const n = hand.length, mid = (n - 1) / 2, step = Math.min(4, 24 / Math.max(n, 1));
@@ -858,7 +908,7 @@ function handHTML(v, ch, x, o) {
     return miniCard(id, x, cls.trim(), `data-sel="${esc(id)}"`, advCards.has(id), fan(i));
   }).join("") + candCard(v, ch, x);
   const handle = `<button type="button" class="hh-t" data-hand-toggle aria-expanded="${up}" aria-label="${esc(title + " · " + x.tr(up ? "hand.lower" : "hand.raise"))}">${esc(title)} <i aria-hidden="true">${up ? "▼" : "▲"}</i></button>`;
-  return `<footer class="t-hand" data-hand="${up ? "up" : "down"}"${canPick ? ` data-pick="1"` : ""}><div class="hh">${handle}<span class="hh-n">${keptText ? `<small>${esc(keptText)}</small>` : ""}${hint ? `<span class="hh-hint">${esc(hint)}</span>` : ""}</span>` +
+  return `<footer class="t-hand" data-hand="${up ? "up" : "down"}"${canPick ? ` data-pick="1"` : ""}><div class="hh">${handle}<span class="hh-n">${keptText ? `<small>${esc(keptText)}</small>` : ""}${hint ? `<span class="hh-hint${savePhase ? " save" : ""}"${savePhase ? " data-save-hint" : ""}>${esc(hint)}</span>` : ""}</span>` +
     `<a href="rules${x.lang === "en" ? "?lang=en" : ""}" target="_blank" rel="noopener">${esc(x.d.nav.rules)}</a></div>` +
     `<div class="hs">${cards || `<span class="none">${esc(x.tr("hand.none"))}</span>`}</div></footer>`;
 }
@@ -1096,7 +1146,7 @@ function resultHTML(o, x) {
 // 悔一步 (#43), solo only: o.undo is "on" (back one step), "off" (a draw was made: say so, greyed) or absent.
 function undoHTML(o, x) {
   if (o.undo === "on") return `<button type="button" class="undo" data-undo="1">${esc(x.tr("undo.btn"))}</button>`;
-  if (o.undo === "off") return `<button type="button" class="undo" data-undo="1" disabled>${esc(x.tr("undo.locked"))}</button>`;
+  if (o.undo === "off") return `<span class="undo-off" data-undo-off>${esc(x.tr("undo.lockedNote"))}</span>`; // #69: a line of small print, not a grey button
   return "";
 }
 
@@ -1207,10 +1257,16 @@ export function tableHTML(view, choices, lang, opts = {}) {
   const said = lines.filter((l) => l.seat != null && l.seat !== v.seat).pop() || lines[lines.length - 1];
   const toast = riv.length ? `<p class="t-toast s${said && said.seat != null ? said.seat : riv[riv.length - 1].seat}" data-act-toast>${esc(said ? said.text : feedLine(riv[riv.length - 1], v, x) || x.tr("hdr.feed"))}</p>` : "";
   const notes = toast + resultHTML(o, x) + (choices.length ? adviceLine(x, o) : "");
-  const floats = (notes ? `<div class="t-notes">${notes}</div>` : "") + leadHTML(v, x) + (o.undo ? `<div class="t-undo">${undoHTML(o, x)}</div>` : "");
-  const mapNow = taiwanMap(v, lang, { changed, selected: o.county, narrow: o.narrow, can: [...new Set(choices.filter(isPlace).map((c) => c.move.county))], acts: acts.counties, floats, overlay: o.county != null ? popHTML(v, choices, x, o.county, o.narrow) : "", cover: v.phase === "debate" ? debateHTML(v, x) : "" });
-  const sh = sheetFor(v, choices, x, o), up = !!(o.sel && sourceCards(v).includes(o.sel)) || !!o.raise;
-  const sheet = sh ? `<section class="t-act mine" id="act" data-sheet${sh.card ? ` data-card="${esc(sh.card)}"` : ""}>${sh.html}</section>` : "";
+  const sh = sheetFor(v, choices, x, o);
+  // #69: with a sheet up the undo button is the sheet's first line (on a phone the bar covers the foot of the map, where it used to be).
+  const undoBox = o.undo ? `<div class="t-undo${o.undo === "off" ? " off" : ""}">${undoHTML(o, x)}</div>` : "";
+  const floats = (notes ? `<div class="t-notes">${notes}</div>` : "") + leadHTML(v, x) + (sh ? "" : undoBox);
+  // #69: while the candidate card asks "sure?", the county's box is closed (two layers would stand on the map).
+  const boxK = sh && sh.sure ? null : o.county;
+  const mapNow = taiwanMap(v, lang, { changed, selected: boxK, narrow: o.narrow, can: [...new Set(choices.filter(isPlace).map((c) => c.move.county))], acts: acts.counties, floats, legendInLead: hasLead(v), overlay: boxK != null ? popHTML(v, choices, x, boxK, o.narrow) : "", cover: v.phase === "debate" ? debateHTML(v, x) : "" });
+  // #69: keeping cards with a choice raises the tray by itself, so the cards to tap are in view.
+  const up = !!(o.sel && sourceCards(v).includes(o.sel)) || !!o.raise || (v.phase === "save" && choices.length > 1);
+  const sheet = sh ? `<section class="t-act mine" id="act" data-sheet${sh.card ? ` data-card="${esc(sh.card)}"` : ""}>${undoBox}${sh.html}</section>` : "";
   const next = !choices.length && o.botnext ? `<div class="t-bn"><button type="button" class="opt" data-botnext="1">${esc(o.botnext)}</button></div>` : ""; // step by step (#42)
   return `<div class="tbl${up ? " hand-up" : ""}" data-phase="${esc(v.phase)}">${headerHTML(v, choices, x, o)}<div class="col cl">${playersHTML(v, x, o)}${trackHTML(v, x, o, acts.issues)}</div>` +
     `<div class="col cc">${mapNow}</div>` +
