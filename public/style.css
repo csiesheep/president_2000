@@ -82,10 +82,8 @@ button.btn:hover, a.btn:hover { background: var(--paper2); }
 .sheetbtn { display: flex; flex-direction: column; gap: 1px; padding: 10px 14px; background: var(--paper); color: var(--ink); text-decoration: none; border-radius: 4px; box-shadow: 0 3px 0 var(--edge2), 0 8px 14px rgba(0, 0, 0, .35); min-height: 58px; justify-content: center; }
 .sheetbtn b { font: 900 18px var(--serif); } .sheetbtn small { font-size: 12px; color: var(--mute); }
 .sheetbtn:hover { background: var(--paper2); }
-.box { background: var(--paper); border-radius: 4px; box-shadow: var(--lift); padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 6px; transform: rotate(.4deg); }
-.box h2 { margin: 0; font: 900 16px var(--serif); }
-.box p { margin: 0; font-size: 13px; line-height: 1.7; color: #3a2e22; }
-.links { display: flex; gap: 16px; font-weight: 900; font-size: 14px; flex-wrap: wrap; } .links a { color: var(--ink); text-underline-offset: 3px; }
+.box { background: var(--paper); border-radius: 4px; box-shadow: var(--lift); padding: 14px 16px; transform: rotate(.4deg); }
+.links { display: flex; justify-content: center; gap: 24px; font-weight: 900; font-size: 14px; flex-wrap: wrap; } .links a { color: var(--ink); text-underline-offset: 3px; }
 .big:focus-visible, .btn:focus-visible, .sheetbtn:focus-visible, .lv:focus-visible, .fi:focus-visible { outline: 3px solid #ffd34d; outline-offset: 2px; }
 
 /* ---------------------------------------------------------------- the rules page: a paper sheet on the table */
