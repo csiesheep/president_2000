@@ -563,11 +563,20 @@ function helpHTML(x, o) {
 }
 
 function trackHTML(v, x, o = {}) {
-  // Three slots (#29), each a capsule button: a round picture of its issue on the left, then the slot, the name
-  // and who holds how many cubes on it. Tapping one explains what the slots do (the same note as the label).
-  const slots = v.issues.map((iss, i) => `<button type="button" class="slot helpable${o.help === "slot" ? " on" : ""}" data-issue="${esc(iss.name)}" data-help="slot" aria-expanded="${o.help === "slot"}" aria-label="${esc(x.tr("hdr.slotsL") + " · " + x.tr("hdr.slot." + (i + 1)) + " · " + x.issue(iss.name))}">` +
-    `<span class="sp">${issueImg(iss.name, x)}</span><span class="sb"><span class="sl">${esc(x.tr("hdr.slot." + (i + 1)))}</span><b>${esc(x.issue(iss.name))}</b>` +
-    `<span class="cb">${cubesRow(iss.cubes) || `<em>—</em>`}</span></span></button>`).join("");
+  // Three headlines (#65, design 乙 「黑底報眉」): each slot is one newspaper story, a button. A flag across its top
+  // names its place (頭條 / 二條 / 三條) and its reward, then the issue's name, who leads it and the cubes; tapping one
+  // explains the track (the same note as the label).
+  const sep = x.lang === "en" ? " & " : "";
+  const slots = v.issues.map((iss, i) => {
+    const mx = Math.max(...iss.cubes), top = [0, 1, 2].filter((p) => iss.cubes[p] === mx);
+    const who = top.map((p) => x.short(p)).join(sep);
+    const st = mx === 0 ? x.tr("hl.none") : x.tr(top.length === 1 ? "hl.lead" : "hl.tie", { who });
+    const lab = x.tr("hdr.slot." + (i + 1));
+    return `<button type="button" class="slot hl h${i + 1} helpable${o.help === "slot" ? " on" : ""}" data-issue="${esc(iss.name)}" data-help="slot" data-hl-slot="${i + 1}" aria-expanded="${o.help === "slot"}" aria-label="${esc(x.tr("hdr.slotsL") + " · " + lab + " · " + x.issue(iss.name) + " · " + st)}">` +
+      `<span class="hf" data-hl-reward><b data-hl-label>${esc(lab)}</b><span>${esc(x.tr("hl.reward." + (i + 1)))}</span></span>` +
+      `<span class="hs">${issueImg(iss.name, x)}<span class="hb"><b class="hn" data-hl-name>${esc(x.issue(iss.name))}</b>` +
+      `<span class="hr"><span class="hw${mx > 0 && top.length === 1 ? " w" + top[0] : ""}" data-hl-status>${esc(st)}</span> <span class="cb">${cubesRow(iss.cubes) || `<em>—</em>`}</span></span></span></span></button>`;
+  }).join("");
   // v0.5 (#49): the issue leader (the most cubes over the three issues together, a tie is nobody) takes the media's
   // place on the table; the total of each candidate and who leads.
   let lead = "";
