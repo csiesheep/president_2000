@@ -268,7 +268,7 @@ if (typeof document !== "undefined") {
       } else if (d.cancel) { ui.confirm = null; draw();
       } else if (d.help != null) { ui.help = d.help && ui.help !== d.help ? d.help : null; draw();
       } else if (d.toggle === "moves") { ui.moves = !ui.moves; draw();
-      } else if (d.sel != null) { ui.sel = d.sel || null; if (ui.sel) ui.confirm = null; else ui.raise = false; draw();
+      } else if (d.sel != null) { ui.sel = d.sel && d.sel !== ui.sel ? d.sel : null; if (ui.sel) ui.confirm = null; else ui.raise = false; draw();
       } else if (d.handToggle != null) { ui.raise = !(ui.raise || !!ui.sel); if (!ui.raise) ui.sel = null; draw();
       } else if (d.feedToggle != null) { ui.feed = !ui.feed; draw(); }
       else if (d.pick != null) {

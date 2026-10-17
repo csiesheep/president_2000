@@ -779,7 +779,7 @@ function sheetFor(v, ch, x, o) {
 // by itself (it is the only card to pick), so there is nothing to go back to.
 function sheetHTML(v, ch, x, sel, auto = false) {
   const moves = ch.filter((c) => c.move.card === sel);
-  return `<div class="sheet">${cardFace(sel, x)}<div class="sh-r">` +
+  return `<div class="sheet"><button type="button" class="pc-hit" data-camp="${CARD[sel].owner === "local" ? "local" : CARD[sel].owner}" data-sel="${esc(sel)}">${cardFace(sel, x)}</button><div class="sh-r">` +
     (moves.length ? `<div class="opts">${moves.map((c) => btn(c, "", x)).join("")}</div>` : `<p class="ct">${esc(x.tr("p.notNow"))}</p>`) +
     (auto ? "" : `<button type="button" class="back" data-sel="">${esc(x.tr("p.back"))}</button>`) + `</div></div>`;
 }
