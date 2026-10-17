@@ -1211,3 +1211,32 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
   .tbl:not(.end) .t-debate { inset: 0; }
   .pop { max-height: calc(100dvh - 60px - var(--trayd, 90px) - 8px); }
 }
+
+/* #68: a county stage. The counties that can take a cube are lit on the map (a pale yellow paper, a red frame with a glow, a red plus on its
+   corner); the sheet is a bar: the words and "end the action" on the first row, one chip per lit county (and "move elsewhere…") on the second. */
+.tw-c[data-can] .tw-paper { fill: #fff3c4; stroke: #a8322a; stroke-width: 2; stroke-dasharray: none; filter: drop-shadow(0 0 3px rgba(168, 50, 42, .65)); }
+@media (hover: hover) { .tw-c[data-can]:hover .tw-paper { fill: #ffeaa0; } }
+.cbar { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.cbar-h { display: flex; align-items: flex-start; gap: 8px; }
+.cbar-t { flex: 1; min-width: 0; }
+.tbl:not(.end) .t-act .cbar-t .pr { font-size: 13px; line-height: 1.35; }
+.cbar-t .pn { margin: 1px 0 0; font: 700 12px/1.35 var(--sans); color: var(--mute); }
+.cbar-t .ct { margin: 2px 0 0; font-size: 11px; line-height: 1.35; }
+.cbar-end { flex: none; }
+.tbl:not(.end) .t-act .cbar-end .opt { min-height: 30px; padding: 3px 10px; font-size: 12px; background: transparent; border: 1.5px dashed var(--faint); color: var(--mute); }
+.cbar-c { display: flex; flex-wrap: wrap; gap: 6px; }
+.cchip { min-height: 34px; padding: 4px 11px; border-radius: 17px; border: 1.5px solid #a8322a; background: #fff3c4; color: var(--ink); font: 900 13px/1.2 var(--sans); cursor: pointer; }
+.cchip i { font-style: normal; color: #a8322a; margin-right: 2px; }
+.cchip.weak { border-style: dashed; border-color: var(--faint); background: transparent; color: var(--mute); font-weight: 700; }
+.cchip:focus-visible { outline: 3px solid #ffd34d; outline-offset: 2px; }
+@media (hover: hover) { .cchip:hover { background: #ffeaa0; } }
+@media (max-width: 1099px) {
+  .tbl:not(.end) .t-act:has(.cbar) { z-index: 21; left: calc(-1 * var(--pad)); right: calc(-1 * var(--pad)); bottom: 0; max-height: calc(100% - 154px); padding: 8px var(--pad) calc(8px + env(safe-area-inset-bottom, 0px)); border-radius: 10px 10px 0 0; }
+}
+@media (max-width: 1099px) {
+  .tbl:not(.end) .t-map { margin-bottom: calc(max(var(--trayd), var(--barh, 0px)) - 8px); }
+  /* one row of chips that slides sideways: with every county lit there are more than the width holds, and the map says the same */
+  .cbar-c { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 calc(-1 * var(--pad)); padding: 0 var(--pad); }
+  .cbar-c::-webkit-scrollbar { display: none; }
+  .cbar-c .cchip { flex: none; white-space: nowrap; }
+}

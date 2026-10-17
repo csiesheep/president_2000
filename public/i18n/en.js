@@ -111,7 +111,7 @@ export default {
         stamp: "E", endorseKey: "Stamp colour = who holds the region's endorsement", endorsedBy: "{region} endorsed by {who}",
         endorseNote: "{county} · {region} is endorsed by {who}: non-voter blocks empty here: {free}, half of them on election day (rounded down) → {here}. Whole region: {who} +{all}.",
         legendEmpty: "empty swing blocks", legendGrey: "non-voter blocks", changed: "changed just now",
-        you: "You", board: "Map of Taiwan", hint: "Tap a county to see its blocks and act there.", popNone: "Nothing to do in this county right now.", popGrey: "non-voter {n}", popClose: "Close", islands: "Outer islands", legendPawn: "round marker: where a candidate stands", legendCubes: "Chen, Soong, Lien cubes", popMove: "Move here · {left} CP left",
+        you: "You", board: "Map of Taiwan", hint: "Tap a county to see its blocks and act there.", popNone: "Nothing to do in this county right now.", popWait: "The rivals are moving. Your turn is coming; see where they put cubes.", popPick: "Tap a card in your hand first, pick how many CP, then come back here to place cubes.", popHere: "This card can't place a cube here this turn. The counties that can are lit on the map.", popHereAward: "This step can't place a cube here. The counties that can are lit on the map.", popGrey: "non-voter {n}", popClose: "Close", islands: "Outer islands", legendPawn: "round marker: where a candidate stands", legendCubes: "Chen, Soong, Lien cubes", popMove: "Move here · {left} CP left",
         short: {
           "台北市": "Taipei", "台北縣": "New Taipei", "基隆市": "Keelung", "桃園縣": "Taoyuan",
           "新竹縣": "Hsinchu Co.", "新竹市": "Hsinchu", "苗栗縣": "Miaoli", "台中縣": "Taichung Co.",
@@ -154,6 +154,7 @@ export default {
       card: { local: "Local card", cand: "Candidate card" },
       p: {
         candConfirm: "The candidate card can be used only once per game. Use it now?", candYes: "Yes, use it", candNo: "Not now",
+        barCampaign: "Campaign", barCp: "{cp} CP left", barCanvass: "A success in {county}.", barCanvassLeft: "Pick one thing to do ({left} {left#check|checks} left on this card).", moveElse: "Move elsewhere…",
         listCounties: "Options by county", movesOpen: "Move to another county…", movesShut: "Hide moves", moveHint: "To move, do it before you place your first block.", eg: "open green {n}", eb: "open blue {n}",
         c: {
           fill: "fill 1 block", cross: "cross-camp fill 1 block", steal: "take 1 {who} cube ({kind})", grey: "fill 1 non-voter block", remove: "remove 1 {who} cube ({kind})",

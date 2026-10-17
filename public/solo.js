@@ -9,7 +9,7 @@ import * as E from "./shared/engine.js";
 import { chooseMove, advise } from "./shared/bots.js";
 import { COUNTIES } from "./shared/board.js";
 import { exactP, tableHTML, labelMove, orderChoices, recentLines, resultLine, resultBlock, changedCounties, bind } from "./table.js";
-import { decorate } from "./tutorial.js"; // the tutorial (#27) is a layer on this controller; it only acts while session.tut is set
+import { decorate, boxCounty } from "./tutorial.js"; // the tutorial (#27) is a layer on this controller; it only acts while session.tut is set
 
 const FEED_MAX = 60;
 
@@ -231,7 +231,7 @@ export function screen(session, lang, opts = {}) {
   const html = tableHTML(v, d.choices, lang, {
     feed: session.feed, wait: botsToMove(session), advisor: { on: !!session.advisor, why: d.why },
     undo: session.tut || botsToMove(session).length ? null : canUndo(session) ? "on" : session.drew ? "off" : null,
-    recent: recentLines(rec, v, x), rec, result: resultBlock(session.mine, x), changed, ...opts, turnCard: session.tut ? false : opts.turnCard,
+    recent: recentLines(rec, v, x), rec, result: resultBlock(session.mine, x), changed, ...opts, ...(session.tut && opts.county == null && boxCounty(session) != null ? { county: boxCounty(session) } : {}), turnCard: session.tut ? false : opts.turnCard,
   });
   return session.tut ? decorate(html, session, lang, opts) : html;
 }

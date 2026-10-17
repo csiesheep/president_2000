@@ -53,6 +53,7 @@ export function drawInto(root, html, state = {}) {
   keepImages(root, html);
   for (const d of root.querySelectorAll("details[data-keep]")) if (opened.has(d.dataset.keep)) d.open = true;
   applyState(root, state);
+  fitBar(root);
   fitPop(root);
   keepToast(root);
   const hs = root.querySelector(".hs");
@@ -78,6 +79,15 @@ function keepToast(root) {
   if (sig !== toastSig) { toastSig = sig; toastAt = now; }
   el.style.animationDelay = `-${Math.round(now - toastAt)}ms`;
 }
+// #68: on a phone a county stage's bar sits over the bottom of the page; when it is taller than the tray the map gives it the room (--barh
+// is the bar's height; style.css takes the map's bottom margin from it), so that no lit county ends up under the bar.
+export function fitBar(root) {
+  const tbl = root.querySelector(".tbl:not(.end)");
+  if (!tbl) return;
+  const bar = tbl.querySelector(".t-act:has(.cbar)");
+  if (bar && getComputedStyle(bar).position === "absolute" && getComputedStyle(bar).bottom === "0px") tbl.style.setProperty("--barh", Math.ceil(bar.getBoundingClientRect().height) + "px");
+  else tbl.style.removeProperty("--barh");
+}
 export function fitPop(root) {
   const pop = root.querySelector(".tbl:not(.end) .pop");
   if (!pop) return;
@@ -89,7 +99,7 @@ export function fitPop(root) {
   if (r.top + dy < top) dy = top - r.top;
   if (dy) pop.style.translate = `0 ${Math.round(dy)}px`;
 }
-if (typeof window !== "undefined") window.addEventListener("resize", () => fitPop(document));
+if (typeof window !== "undefined") window.addEventListener("resize", () => { fitBar(document); fitPop(document); });
 
 // ---------------------------------------------------------------- the county box (#25)
 // Both table pages keep the open county in their own state (ui.county) and redraw; this is the part they
@@ -127,6 +137,9 @@ export function bindCounty(root, api) {
   root.addEventListener("click", (ev) => {
     const g = ev.target.closest("[data-county]");
     if (g) return setCounty(root, api, +g.dataset.county, false);
+    // #68: a county chip in the sheet's bar opens that county's box (it never closes it: the chip is not the county)
+    const chip = ev.target.closest("[data-open-county]");
+    if (chip) return api.get() === +chip.dataset.openCounty ? undefined : setCounty(root, api, +chip.dataset.openCounty, false);
     if (ev.target.closest("[data-pop-close]")) setCounty(root, api, null, true);
   });
   root.addEventListener("keydown", (ev) => {
@@ -136,7 +149,7 @@ export function bindCounty(root, api) {
   });
   document.addEventListener("click", (ev) => {
     if (api.get() == null || !ev.target.isConnected) return;
-    if (!ev.target.closest(".pop, [data-county]")) { api.set(null); api.redraw(); }
+    if (!ev.target.closest(".pop, [data-county], [data-open-county]")) { api.set(null); api.redraw(); }
   });
 }
 

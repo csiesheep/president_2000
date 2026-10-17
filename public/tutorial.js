@@ -198,3 +198,11 @@ export function decorate(html, s, lang, opts = {}) {
     (st.kind === "next" ? `<button type="button" class="tut-go" data-tut="next">${esc(last ? U.finish : U.next)}</button>` : "") + `</div></aside>`;
   return out + bubble;
 }
+
+// #68: a move step that is played in a county (a placement) is played in that county's box now, not in the sheet: the screen opens the box by itself
+// when the player has not (the step after "tap the county" has it open already).
+export function boxCounty(s) {
+  const at = locate(s);
+  const m = at && !at.waiting && at.kind === "move" ? at.p.moves[0] : null;
+  return m && typeof m.county === "number" ? m.county : null;
+}
