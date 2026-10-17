@@ -17,7 +17,8 @@
 //     leader, names everyone tied, and names nobody when it is empty;
 //   - each shows the issue's name [data-hl-name] and its cubes (.b.o0 / .o1 / .o2, one per cube);
 //   - the track's label (the help button, data-help="slot") says 「議題頭條」 in Chinese, not "slot" in English;
-//   - the slots have their new names everywhere a player reads them: no 「第一槽／第 1 槽…」 in any Chinese string and no
+//   - the slots have their new names everywhere a player reads them: no 「第一槽／第 1 槽…」 in any Chinese string or card
+//     text (public/shared/cards.js) and no
 //     "slot 1" / "first slot"… in any English one (the help, the record, the rules page, the tutorial, the advisor), and
 //     the help for the slots names 頭條、二條、三條 (in English, the three words on the track).
 // Before #65 lands no slot carries data-hl-slot: every row reports 尚未實作.
@@ -29,6 +30,7 @@ import * as S from "../public/solo.js";
 import { bind } from "../public/table.js";
 import zh from "../public/i18n/zh-Hant.js";
 import en from "../public/i18n/en.js";
+import * as C from "../public/shared/cards.js";
 
 const SHORT_ZH = ["陳", "宋", "連"], SHORT_EN = ["Chen", "Soong", "Lien"];
 const LABEL_ZH = ["頭條", "二條", "三條"];
@@ -168,8 +170,10 @@ check("欄位的標籤：說明按鈕（data-help=\"slot\"，不是三條本身�
 
 check("新名字到處都一樣：中文字串沒有「第一槽／第 1 槽」，英文沒有 slot 1／first slot；三條的說明寫出三個名字", gate(() => {
   const strings = (o, path = "", out = []) => { if (typeof o === "string") out.push([path, o]); else if (o && typeof o === "object") for (const [k, v] of Object.entries(o)) strings(v, path ? `${path}.${k}` : k, out); return out; };
-  const z = strings(zh), e = strings(en);
-  const r = nonEmpty(Math.min(z.length, e.length), "字串"); if (r !== true) return r;
+  // The Chinese card texts live in cards.js, not in the strings (the writer found 民調公布's 「第一槽議題」 there, #65).
+  const cards = [...C.EVENTS, ...C.localCards()].map((c) => [`cards.js ${c.id}`, `${c.name || ""} ${c.text || ""}`]);
+  const z = [...strings(zh), ...cards], e = strings(en);
+  const r = nonEmpty(Math.min(z.length, e.length, cards.length), "字串與牌文"); if (r !== true) return r;
   const badZ = z.filter(([, s]) => /第\s*[一二三123]\s*槽/.test(s)), badE = e.filter(([, s]) => /\bslot\s*[123]\b|\b(first|second|third)\s+slot/i.test(s));
   if (badZ.length) return `中文還有 ${badZ.length} 處舊名：${badZ.slice(0, 4).map(([k, s]) => `${k}「${s.slice(0, 30)}」`).join("；")}`;
   if (badE.length) return `英文還有 ${badE.length} 處舊名：${badE.slice(0, 4).map(([k, s]) => `${k} "${s.slice(0, 40)}"`).join("; ")}`;
@@ -177,7 +181,7 @@ check("新名字到處都一樣：中文字串沒有「第一槽／第 1 槽」�
   for (const w of LABEL_ZH) if (!hz.includes(w)) return `中文的議題說明沒有寫出「${w}」：「${hz}」`;
   const enLabels = slots(S.screen(POOL[0].s, "en")).map((s) => text(element(s.html, "data-hl-label")));
   for (const w of enLabels) if (!w || !he.toLowerCase().includes(w.toLowerCase())) return `英文的議題說明沒有寫出「${w}」："${he}"`;
-  return ok(true, `中文 ${z.length}、英文 ${e.length} 個字串都沒有舊名；說明寫出三個名字`);
+  return ok(true, `中文 ${z.length}（含牌文 ${cards.length}）、英文 ${e.length} 個字串都沒有舊名；說明寫出三個名字`);
 }));
 
 test("issuehl65", () => {
