@@ -239,7 +239,7 @@ export function mount({ T, lang, qs, store, $ }) {
       const done = () => { t.textContent = U.lobby.copied; setTimeout(() => { t.textContent = U.lobby.copy; }, 1500); };
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(done, () => {});
     }
-    else if (d.sel != null) { ui.sel = d.sel || null; if (ui.sel) ui.confirm = null; else ui.raise = false; draw(); }
+    else if (d.sel != null) { ui.sel = d.sel && d.sel !== ui.sel ? d.sel : null; if (ui.sel) ui.confirm = null; else ui.raise = false; draw(); }
     else if (d.handToggle != null) { ui.raise = !(ui.raise || !!ui.sel); if (!ui.raise) ui.sel = null; draw(); }
     else if (d.feedToggle != null) { ui.feed = !ui.feed; draw(); }
     else if (d.pick != null) { ui.picks = ui.picks.includes(d.pick) ? ui.picks.filter((x) => x !== d.pick) : [...ui.picks, d.pick]; draw(); }
