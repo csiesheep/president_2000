@@ -85,7 +85,7 @@ const GATE = POOL.some((p) => buttons(first(S.screen(p.s, "zh-Hant"), "data-shee
   POOL.some((p) => tags(S.screen(p.s, "zh-Hant", { undo: "off" }), "data-undo-off").length);
 const gate = (fn) => () => {
   const ne = nonEmpty(POOL.length, "牌桌的狀態"); if (ne !== true) return ne;
-  if (!GATE) return "TODO: 面板的按鈕還沒有第二行（<small>），也還沒有 data-undo-off";
+  if (!GATE) return "面板的按鈕沒有第二行（<small>），也沒有 data-undo-off（#69 已上線，23d951e；這是退步，不是尚未實作）";
   return fn();
 };
 
