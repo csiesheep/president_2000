@@ -99,7 +99,9 @@ try {
     await load(t, two);
     const fit = JSON.parse(await t.ev(`JSON.stringify((() => { const c = document.querySelector("[data-turncard]"); if (!c) return null; const r = c.getBoundingClientRect();
       return { turn: c.getAttribute("data-turncard"), inside: r.top >= -1 && r.left >= -1 && r.bottom <= innerHeight + 1 && r.right <= innerWidth + 1, h: Math.round(r.height) }; })())`));
-    await sleep(4500);
+    // 7 s since #73 (was 4.5): the first rival's handoff card now follows the turn card, so the second rival step
+    // lands about 2 s later than before; the rule (0 steps while the card shows, at least 2 after) is unchanged.
+    await sleep(7000);
     let m = await read(t);
     const on = m.card.find((x) => x.on), off = m.card.find((x) => !x.on && on && x.t > on.t);
     rule(!!fit && fit.turn === "2" && fit.inside && !!on, `${w}: at the start of turn 2 the card shows (${fit ? `data-turncard ${fit.turn}, ${fit.h}px, ${fit.inside ? "on screen" : "NOT all on screen"}` : "no [data-turncard]"})`);
