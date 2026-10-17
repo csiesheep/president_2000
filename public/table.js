@@ -598,7 +598,7 @@ function headerHTML(v, ch, x, o) {
   const home = "./" + (x.lang === "en" ? "?lang=en" : "");
   // #66 (design 甲): the record is a button up here, with the number of the rivals' new entries on it (from session.rec).
   const n = rivalsOf(o.rec, v).length;
-  const feedBtn = v.phase === "end" ? "" : `<button type="button" class="t-feedb${o.feedOpen ? " on" : ""}" data-feed-toggle="" data-new="${n}" aria-expanded="${!!o.feedOpen}" aria-controls="feed" aria-label="${esc(n ? fill(x.tr("hdr.feedNew"), { n }) : x.tr("hdr.feed"))}">${esc(x.tr("hdr.feed"))}${n ? `<i class="nb" aria-hidden="true">${n}</i>` : ""}</button>`;
+  const feedBtn = v.phase === "end" ? "" : `<button type="button" class="t-feedb${o.feedOpen ? " on" : ""}" data-feed-toggle="" data-new="${n}" aria-expanded="${!!o.feedOpen}" aria-controls="feed" aria-label="${esc(n && !o.feedOpen ? fill(x.tr("hdr.feedNew"), { n }) : x.tr("hdr.feed"))}">${esc(x.tr("hdr.feed"))}${n && !o.feedOpen ? `<i class="nb" aria-hidden="true">${n}</i>` : ""}</button>`;
   return `<header class="t-top"><a class="t-back" href="${home}" aria-label="${esc(x.tr("setup.home"))}">${ICON_BACK}</a>` +
     `<div class="t-ttl"><span class="t-turn" data-turn="1">${esc(x.tr("hdr.turn", { n: v.turn }))}${esc(v.phase === "end" ? ` · ${x.tr("hdr.endDate")}` : init)}</span>` +
     `<span class="t-line"><b class="t-phase">${esc(phase)}</b>${status}</span></div>` + feedBtn +
