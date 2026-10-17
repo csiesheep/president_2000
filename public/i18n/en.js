@@ -119,7 +119,7 @@ export default {
           "花蓮縣": "Hualien", "台東縣": "Taitung", "澎湖縣": "Penghu", "金馬": "Kinmen-Matsu",
         },
       },
-      hl: { lead: "{who} leads", tie: "{who} tied", none: "No one yet", reward: { 1: "+1 momentum, endorsement", 2: "Endorsement", 3: "+1 momentum" } },
+      hl: { lead: "{who} leads", tie: "{who} tied", none: "No one yet", reward: { 1: "+1 mom., endorse.", 2: "Endorse.", 3: "+1 mom." } },
       help: {
         mom: "Momentum: your pull. It is halved at the end of each turn (rounded down), then the overall issue leader gains 1, and leading an issue adds to it. Spend it to trigger your card that an opponent used for CP, or to convert it into cubes on election day.",
         bag: "Bag: a support check draws one cube from here. Your own colour is a success; another colour fails and that cube goes back to its owner. The numbers are the cubes of each colour in the bag.",
