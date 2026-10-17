@@ -309,7 +309,7 @@ export function screen(client, lang, opts = {}) {
     const wait = acting(view).filter((p) => p !== view.seat);
     const xb = bind(lang), rec = client.rec || [];
     const body = tableHTML(view, choices, lang, {
-      recent: recentLines(rec, view, xb), result: resultBlock(client.mine, xb),
+      recent: recentLines(rec, view, xb), rec, result: resultBlock(client.mine, xb),
       changed: [...changedCounties(rec), ...changedCounties((client.mine && client.mine.lines) || [], true)],
       help: opts.help, moves: opts.moves, confirm: opts.confirm,
       feed: client.feed, wait: wait.length ? wait : [0, 1, 2].filter((p) => p !== view.seat),
@@ -318,8 +318,9 @@ export function screen(client, lang, opts = {}) {
       clock: clockOf(client, opts, T),
       again: view.phase === "end" ? (acts.find((a) => a.data.t === "rematch") || null) : null, againWait: U.game.waitAgain,
       open: opts.open, sel: opts.sel, picks: opts.picks, county: opts.county, narrow: opts.narrow, turnCard: opts.turnCard, cardAge: opts.cardAge,
+      feedOpen: opts.feedOpen, raise: opts.raise, chat: chatHTML(client, lang, opts, T), // #66: the table talk is part of the record's drawer
     });
-    return errorHTML(client, T) + body + chatHTML(client, lang, opts, T);
+    return errorHTML(client, T) + body;
   }
   if (!client.room) return errorHTML(client, T) + waitingHTML(U.conn.connecting);
   if (client.room.started) return errorHTML(client, T) + waitingHTML(U.game.noSeat);

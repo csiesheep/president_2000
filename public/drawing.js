@@ -53,6 +53,8 @@ export function drawInto(root, html, state = {}) {
   keepImages(root, html);
   for (const d of root.querySelectorAll("details[data-keep]")) if (opened.has(d.dataset.keep)) d.open = true;
   applyState(root, state);
+  fitPop(root);
+  keepToast(root);
   const hs = root.querySelector(".hs");
   if (!hs) { lastAdvised = null; return; }
   const adv = hs.querySelector(".hc.adv");
@@ -63,6 +65,31 @@ export function drawInto(root, html, state = {}) {
   } else hs.scrollLeft = left;
   lastAdvised = key;
 }
+
+// The table does not scroll (#66), so the county's box must stay inside the free part of the screen, between the top row and the hand:
+// after each draw it is moved up or down (translate) by whatever it sticks out. The arrow keeps pointing at the county's column.
+// The rivals' line over the map shows for about four seconds and fades (CSS); a redraw must not bring it back, so it is told how long it has been there
+// (a new line starts it again).
+let toastSig = null, toastAt = 0;
+function keepToast(root) {
+  const el = root.querySelector("[data-act-toast]");
+  if (!el) { toastSig = null; return; }
+  const sig = el.textContent, now = performance.now();
+  if (sig !== toastSig) { toastSig = sig; toastAt = now; }
+  el.style.animationDelay = `-${Math.round(now - toastAt)}ms`;
+}
+export function fitPop(root) {
+  const pop = root.querySelector(".tbl:not(.end) .pop");
+  if (!pop) return;
+  pop.style.translate = "";
+  const hand = root.querySelector(".t-hand"), top = 48, bottom = (hand ? hand.getBoundingClientRect().top : window.innerHeight) - 6;
+  const r = pop.getBoundingClientRect();
+  let dy = 0;
+  if (r.bottom > bottom) dy = bottom - r.bottom;
+  if (r.top + dy < top) dy = top - r.top;
+  if (dy) pop.style.translate = `0 ${Math.round(dy)}px`;
+}
+if (typeof window !== "undefined") window.addEventListener("resize", () => fitPop(document));
 
 // ---------------------------------------------------------------- the county box (#25)
 // Both table pages keep the open county in their own state (ui.county) and redraw; this is the part they
@@ -86,7 +113,8 @@ export function setCounty(root, api, k, byKey) {
   const pop = root.querySelector(".pop");
   if (pop) {
     if (byKey) (pop.querySelector(".pop-opt") || pop).focus({ preventScroll: true });
-    if (pop.scrollIntoView) pop.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    // (#66: the table never scrolls; fitPop keeps the box inside the free part of the screen instead)
+    if (pop.scrollIntoView && !root.querySelector(".tbl:not(.end)")) pop.scrollIntoView({ block: "nearest", behavior: "smooth" });
   } else if (byKey && prev != null) {
     const g = root.querySelector(`[data-county="${prev}"]`);
     if (g) g.focus({ preventScroll: true });
@@ -173,7 +201,10 @@ function layoutTutorial(root, doScroll) {
   const b = root.querySelector(".tut");
   if (!b) return;
   const vw = document.documentElement.clientWidth, vh = window.innerHeight, narrow = vw < 768;
-  const hand = root.querySelector(".t-hand"), floor = hand ? Math.min(vh, hand.getBoundingClientRect().top) : vh;
+  const hand = root.querySelector(".t-hand"), act = root.querySelector(".t-act");
+  let floor = hand ? Math.min(vh, hand.getBoundingClientRect().top) : vh;
+  // (#66: a county stage's sheet is a bar where the hand was: the bubble sits above it)
+  if (narrow && act && act.getBoundingClientRect().bottom >= vh - 1) floor = Math.min(floor, act.getBoundingClientRect().top);
   const list = [...root.querySelectorAll("[data-tut-focus]")].filter(shown);
   const t = list.find((e) => e.closest(".pop")) || list[0] || null;
   const inHand = !!(t && hand && hand.contains(t));
@@ -183,6 +214,9 @@ function layoutTutorial(root, doScroll) {
   };
   b.style.top = b.style.bottom = b.style.left = b.style.width = "";
   dock();
+  // (#66: the table does not scroll) a bubble that would cover what it points at goes to the top of the screen instead
+  const covers = () => list.some((e) => hits(b.getBoundingClientRect(), e.getBoundingClientRect(), 4));
+  if (narrow && list.length && !inHand && covers()) { b.style.top = "50px"; b.style.bottom = "auto"; if (covers()) dock(); }
   const top = b.getBoundingClientRect().top;
   if (doScroll && inHand) {
     // The hand is a strip that scrolls sideways: bring the lit card to its middle.

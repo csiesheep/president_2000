@@ -106,7 +106,7 @@ const STEPS = [
     const m = c.pd && c.pd.stage === "campaign" ? c.legal.find((q) => q.type === "done") : null;
     return { moves: m ? [m] : [], target: m ? mv(m) : null, vars: (x) => ({ ...base(c, x), left: cpLeft(c) }) };
   } },
-  { id: "opponents", kind: "next", plan: (c) => ({ target: 'data-now="1"', vars: (x) => ({ ...base(c, x), a: x.short(1), b: x.short(2) }) }) },
+  { id: "opponents", kind: "next", plan: (c) => ({ target: 'data-feed-toggle=""', vars: (x) => ({ ...base(c, x), a: x.short(1), b: x.short(2) }) }) },
   { id: "issues", kind: "next", plan: (c) => ({ target: 'data-issues="1"', vars: (x) => base(c, x) }) },
   { id: "debate", kind: "next", plan: (c) => ({ target: 'data-turn="1"', vars: (x) => base(c, x) }) },
   { id: "finish", kind: "next", plan: (c) => ({ target: null, vars: (x) => base(c, x) }) },

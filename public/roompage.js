@@ -69,7 +69,7 @@ export function mount({ T, lang, qs, store, $ }) {
 
   // ---- the room
   let roomCode = null, name = "", client = RC.setAdvisor(RC.newClient(), store.get(ADV_KEY) === true), sock = null, attempts = 0, retry = null, tick = null, terminal = false, gone = false;
-  let ui = { county: null, seat: null, narrow: narrowNow(), sel: null, picks: [], help: null, moves: false, confirm: null, draft: "", level: [1, 2, 3].includes(store.get(LEVEL_KEY)) ? store.get(LEVEL_KEY) : 2 };
+  let ui = { feed: false, raise: false, county: null, seat: null, narrow: narrowNow(), sel: null, picks: [], help: null, moves: false, confirm: null, draft: "", level: [1, 2, 3].includes(store.get(LEVEL_KEY)) ? store.get(LEVEL_KEY) : 2 };
 
   const say = (text) => { banner.textContent = text || ""; banner.hidden = !text; };
   // The turn card (#44): every player's own screen opens each turn with it, once (the turn it was shown for is kept in this
@@ -120,7 +120,7 @@ export function mount({ T, lang, qs, store, $ }) {
     // A redraw replaces the chat box: keep what is typed, and the caret if the box had focus.
     const box = $("#chatin"), had = box && document.activeElement === box, caret = had ? [box.selectionStart, box.selectionEnd] : null;
     const log = stage.querySelector(".chatlog"), pinned = !log || log.scrollHeight - log.scrollTop - log.clientHeight < 40;
-    drawInto(stage, RC.screen(client, lang, { level: ui.level, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow, sel: ui.sel, picks: ui.picks, draft: ui.draft, help: ui.help, moves: ui.moves, confirm: ui.confirm, turnCard: !!card && !card.out && !!cv, cardAge: card ? performance.now() - card.t0 : 0 }), { seat: ui.seat, menu: menu.isOpen() });
+    drawInto(stage, RC.screen(client, lang, { feedOpen: ui.feed, raise: ui.raise, level: ui.level, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow, sel: ui.sel, picks: ui.picks, draft: ui.draft, help: ui.help, moves: ui.moves, confirm: ui.confirm, turnCard: !!card && !card.out && !!cv, cardAge: card ? performance.now() - card.t0 : 0 }), { seat: ui.seat, menu: menu.isOpen() });
     // At the table the top row has its own menu button, so the page's top bar steps aside.
     $("#room").classList.toggle("intable", !!stage.querySelector(".tbl"));
     const nb = $("#chatin");
@@ -221,14 +221,14 @@ export function mount({ T, lang, qs, store, $ }) {
     closeCard(true);
   });
   addEventListener("keydown", (ev) => { if (ev.key === "Escape" && card && !card.out) closeCard(true); });
-  const toAct = () => { const a = $("#act"); if (a && a.scrollIntoView) a.scrollIntoView({ block: "start", behavior: "smooth" }); };
+  // (#66: the table is one screen that never scrolls, so a tapped card or a question no longer scrolls to the decision)
   stage.addEventListener("click", (ev) => {
     const t = ev.target.closest("button, a");
     if (!t) return;
     const d = t.dataset;
-    if (d.msg) { const m = JSON.parse(d.msg); ui.sel = null; ui.picks = []; send(m); if (m.t === "move") window.scrollTo({ top: 0 }); }
-    else if (d.confirm && d.move) { ui.confirm = d.move; ui.sel = null; draw(); toAct(); }
-    else if (d.move) { ui.sel = null; ui.picks = []; ui.moves = false; ui.confirm = null; ui.county = null; send({ t: "move", move: JSON.parse(d.move) }); if (d.pop == null) window.scrollTo({ top: 0 }); }
+    if (d.msg) { const m = JSON.parse(d.msg); ui.sel = null; ui.raise = false; ui.picks = []; send(m); if (m.t === "move") window.scrollTo({ top: 0 }); }
+    else if (d.confirm && d.move) { ui.confirm = d.move; ui.sel = null; draw(); }
+    else if (d.move) { ui.sel = null; ui.raise = false; ui.picks = []; ui.moves = false; ui.confirm = null; ui.county = null; send({ t: "move", move: JSON.parse(d.move) }); if (d.pop == null) window.scrollTo({ top: 0 }); }
     else if (d.cancel) { ui.confirm = null; draw(); }
     else if (d.help != null) { ui.help = d.help && ui.help !== d.help ? d.help : null; draw(); }
     else if (d.toggle === "moves") { ui.moves = !ui.moves; draw(); }
@@ -239,7 +239,9 @@ export function mount({ T, lang, qs, store, $ }) {
       const done = () => { t.textContent = U.lobby.copied; setTimeout(() => { t.textContent = U.lobby.copy; }, 1500); };
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(done, () => {});
     }
-    else if (d.sel != null) { ui.sel = d.sel || null; if (ui.sel) ui.confirm = null; draw(); if (ui.sel) toAct(); }
+    else if (d.sel != null) { ui.sel = d.sel || null; if (ui.sel) ui.confirm = null; else ui.raise = false; draw(); }
+    else if (d.handToggle != null) { ui.raise = !(ui.raise || !!ui.sel); if (!ui.raise) ui.sel = null; draw(); }
+    else if (d.feedToggle != null) { ui.feed = !ui.feed; draw(); }
     else if (d.pick != null) { ui.picks = ui.picks.includes(d.pick) ? ui.picks.filter((x) => x !== d.pick) : [...ui.picks, d.pick]; draw(); }
   });
   stage.addEventListener("click", (ev) => { // a hand card or a county tapped (#42)

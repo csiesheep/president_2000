@@ -54,7 +54,7 @@ export default {
         resultOk: "It worked! {county} has one more of your cubes. You have {left} CP left. A check like this can also fail: then nothing is placed, and the 1 CP is spent anyway.",
         resultFail: "Missed. The check failed, so {county} gets no new cube, and the 1 CP is spent anyway. Checks are always a risk. You have {left} CP left.",
         endAction: "You have {left} CP left. It is fine not to spend them all: this card's CP only count for this action. Choose \"End the action\".",
-        opponents: "Now {a} and {b} act. This \"Just now\" box records what they did: which card they played, where they placed cubes, and whether their checks worked. Read it before each of your turns.",
+        opponents: "Now {a} and {b} act. What they did shows right on the board: a county they touched glows in their colour with a chip like \"+2\", a headline they moved flashes, and one line at the top of the map says what they played. The Record button up here keeps every step. Look before each of your turns.",
         issues: "This is the issue track. At the end of each turn, whoever has the most cubes on an issue card leads it and gets a reward: the Lead story gives 1 momentum and 1 endorsement, Page two gives 1 endorsement, Page three gives 1 momentum. The Issue action puts cubes there: 1 CP for the first, 2 CP for each after, and no check.",
         debate: "A preview: after four cards each turn, the 1 card left in your hand is set aside face down. Turn 6 is the Policy Forum, where everyone flips those cards to fight over issues, and the winner places 2 to 4 cubes without a check. Turn 9 is election day: canvassing first, then the swing-block shift and endorsements, and finally the count.",
         finish: "Tutorial complete. You can play this game on to the end, or go back home and start a new one.",
@@ -63,7 +63,7 @@ export default {
     // Direction C (#26): the box lid on the home page, the player boards, the candidate card
     look: {
       home: { meta: "3 players · 9 turns", sub: "Soong, Lien, Chen.", play: "Play solo", playSub: "Against three levels of AI", host: "Host a room", hostSub: "Send the code to friends", join: "Join", joinSub: "Enter the 4-character code", rules: "Open the rulebook" },
-      board: { label: "Player boards", cubes: "{n} on the board", mom: "Momentum", hand: "Hand {n} · kept {k}", bag: "Bag {n}", luck: "Luck {n}%", luckW: "Luck", canvassW: "Canvass", votes: "M votes", votesNone: " votes" },
+      board: { label: "Player boards", cubes: "{n} on the board", mom: "Momentum", hand: "Hand {n} · kept {k}", bag: "Bag {n}", luck: "Luck {n}%", luckW: "Luck", canvassW: "Canvass", votes: "M votes", votesNone: " votes", leadTag: "Issue lead" },
       card: { seal: "Once a game", used: "Used" },
     },
     solo: {
@@ -101,7 +101,7 @@ export default {
         speed: "Rivals' speed", slow: "Slow", normal: "Normal", fast: "Fast", step: "Step", stepNote: "Step: the rivals stop after each move until you tap Next.", sound: "Sound", volume: "Volume", next: "Next" },
       hdr: {
         ph: { action: "Action {n}/4", order: "Order", momentum: "Momentum", save: "Set aside", debate: "Forum", election: "Election day", end: "The count" },
-        turn: "Turn {n}", endDate: "18 March", initiative: "Initiative: {who}", order: "{who} first", first: "Acts first", star: "Initiative", mom: "Momentum", bag: "Bag", luck: "Luck", feed: "Record", momL: "Momentum", slotsL: "Issue headlines", issueTotal: "Issue totals", leadIs: "Issue leader: {who}", leadNone: "Issue leader: nobody (tied)", tap: "Tap for an explanation",
+        turn: "Turn {n}", endDate: "18 March", initiative: "Initiative: {who}", order: "{who} first", first: "Acts first", star: "Initiative", mom: "Momentum", bag: "Bag", luck: "Luck", feed: "Record", feedNew: "Record, {n} new", feedClose: "Close ×", momL: "Momentum", slotsL: "Issue headlines", issueTotal: "Issue totals", leadIs: "Issue leader: {who}", leadNone: "Issue leader: nobody (tied)", tap: "Tap for an explanation",
         yourTurn: "Your move", busy: "{who} is acting…", waitHint: "The bots are acting. You can look through your hand meanwhile.",
         slot: { 1: "Lead story", 2: "Page two", 3: "Page three" },
         phase: { action: "Action phase {n} / 4", order: "Pick your place in the order", momentum: "Momentum phase", save: "Set aside", debate: "The Policy Forum", election: "Election day · canvassing", end: "The count" },
@@ -150,11 +150,11 @@ export default {
       },
       replay: { hit: "Hit", miss: "Miss" },
       undo: { btn: "↶ Undo", done: "Went back one step", locked: "A draw was made — can't undo" },
-      hand: { title: "Hand {n}", titleDebate: "Policy Forum pile {n}", titleElection: "Election-day pile {n}", kept: "{n} kept for the {dest}", none: "No cards" },
+      hand: { title: "Hand {n}", titleDebate: "Policy Forum pile {n}", titleElection: "Election-day pile {n}", kept: "{n} kept for the {dest}", none: "No cards", raise: "Tap to raise", lower: "Tap to lower" },
       card: { local: "Local card", cand: "Candidate card" },
       p: {
         candConfirm: "The candidate card can be used only once per game. Use it now?", candYes: "Yes, use it", candNo: "Not now",
-        movesOpen: "Move to another county…", movesShut: "Hide moves", moveHint: "To move, do it before you place your first block.", eg: "open green {n}", eb: "open blue {n}",
+        listCounties: "Options by county", movesOpen: "Move to another county…", movesShut: "Hide moves", moveHint: "To move, do it before you place your first block.", eg: "open green {n}", eb: "open blue {n}",
         c: {
           fill: "fill 1 block", cross: "cross-camp fill 1 block", steal: "take 1 {who} cube ({kind})", grey: "fill 1 non-voter block", remove: "remove 1 {who} cube ({kind})",
           convert: "turn 1 non-voter block into a green swing block", move: "{county}\n{left} CP left after moving",

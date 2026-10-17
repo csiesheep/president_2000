@@ -70,7 +70,7 @@ if (typeof document !== "undefined") {
       gLang.href = "?" + (tutorialUrl ? "tutorial" : "play") + (other ? "&lang=en" : "");
     };
     syncUrl();
-    let ui = { sel: null, picks: [], help: null, moves: false, confirm: null, county: null, seat: null, narrow: narrowNow() };
+    let ui = { feed: false, raise: false, sel: null, picks: [], help: null, moves: false, confirm: null, county: null, seat: null, narrow: narrowNow() };
     let timer = null;
     const save = () => store.set(KEY, session);
     // A line that shows for a moment and goes (#43: "went back one step").
@@ -126,7 +126,7 @@ if (typeof document !== "undefined") {
       hear();
       // The tutorial's "player board" step is about the hand and the bag: on a phone that board shows them while it is on.
       const boardStep = !!(session.tut && Tut.step(session, code).id === "board");
-      drawInto(stage, Solo.screen(session, code, { sel: ui.sel, picks: ui.picks, help: ui.help, moves: ui.moves, confirm: ui.confirm, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow, turnCard: !!card && !card.out, cardAge: card ? performance.now() - card.t0 : 0, ...stepOpt() }), { seat: boardStep ? session.seat : ui.seat, menu: menu.isOpen() });
+      drawInto(stage, Solo.screen(session, code, { feedOpen: ui.feed, raise: ui.raise, sel: ui.sel, picks: ui.picks, help: ui.help, moves: ui.moves, confirm: ui.confirm, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow, turnCard: !!card && !card.out, cardAge: card ? performance.now() - card.t0 : 0, ...stepOpt() }), { seat: boardStep ? session.seat : ui.seat, menu: menu.isOpen() });
       $("#solo").classList.add("intable");
       $("#quit").hidden = false;
       placeTutorial(stage);
@@ -181,7 +181,7 @@ if (typeof document !== "undefined") {
       onStep: () => { swallow = !!timer; setTimeout(() => { swallow = false; }, 0); if (session.tut) skipAll(); else skipStep(); }, onAll: () => { swallow = !!timer; setTimeout(() => { swallow = false; }, 0); skipAll(); },
       ignore: "[data-menu], [data-menu-top], #gmenu, .mset, [data-botnext], [data-turncard], [data-rp-next], a, input, textarea" });
     // (in the tutorial the bubble decides what scrolls)
-    const toAct = () => { if (session && session.tut) return; const a = $("#act"); if (a && a.scrollIntoView) a.scrollIntoView({ block: "start", behavior: "smooth" }); };
+    // (#66: the table is one screen that never scrolls, so a tapped card or a question does not scroll to the decision any more)
 
     const setup = () => {
       syncUrl();
@@ -238,7 +238,7 @@ if (typeof document !== "undefined") {
       if (d.tut) {
         // The tutorial's bubble: next, or out of the tutorial (what is left is a normal game).
         session = d.tut === "skip" ? Tut.skip(session) : Tut.next(session);
-        ui = { ...ui, sel: null, picks: [], confirm: null, county: null, seat: null };
+        ui = { ...ui, raise: false, sel: null, picks: [], confirm: null, county: null, seat: null };
         save(); pump(); // the bubble scrolls the next target into view itself
       } else if (d.seat != null) { const p = store.get(SETUP) || { seat: 0, level: 2 }; store.set(SETUP, { ...p, seat: +d.seat }); setup(); }
       else if (d.level != null) { const p = store.get(SETUP) || { seat: 0, level: 2 }; store.set(SETUP, { ...p, level: +d.level }); setup(); }
@@ -246,29 +246,31 @@ if (typeof document !== "undefined") {
         const p = store.get(SETUP) || { seat: 0, level: 2 };
         const seed = crypto.getRandomValues(new Uint32Array(1))[0];
         session = Solo.setAdvisor(Solo.advance(Solo.newSolo({ seat: p.seat, level: p.level, seed })), store.get(ADV) === true);
-        ui = { sel: null, picks: [], help: null, moves: false, confirm: null, county: null, seat: null, narrow: narrowNow() };
+        ui = { feed: false, raise: false, sel: null, picks: [], help: null, moves: false, confirm: null, county: null, seat: null, narrow: narrowNow() };
         save(); pump(); window.scrollTo(0, 0);
       } else if (d.advisor != null) {
         session = Solo.setAdvisor(session, d.advisor === "on"); store.set(ADV, session.advisor);
         save(); draw();
       } else if (d.confirm && d.move) {
         // The candidate card is once a game: ask first (the table draws the question).
-        ui.confirm = d.move; ui.sel = null; draw(); toAct();
+        ui.confirm = d.move; ui.sel = null; draw();
       } else if (d.undo) {
         if (!session.tut && Solo.canUndo(session)) {
           session = Solo.undo(session);
-          ui = { ...ui, sel: null, picks: [], moves: false, confirm: null, county: null };
+          ui = { ...ui, raise: false, sel: null, picks: [], moves: false, confirm: null, county: null };
           save(); pump(); window.scrollTo({ top: 0 }); notice(S.undo.done);
         }
       } else if (d.move) {
         const m = JSON.parse(d.move);
         session = session.tut ? Tut.act(session, m) : Solo.act(session, m);
-        ui.sel = null; ui.picks = []; ui.moves = false; ui.confirm = null; ui.county = null;
+        ui.sel = null; ui.raise = false; ui.picks = []; ui.moves = false; ui.confirm = null; ui.county = null;
         save(); pump(); if (d.pop == null) window.scrollTo({ top: 0 }); // from the county box, stay on the map
       } else if (d.cancel) { ui.confirm = null; draw();
       } else if (d.help != null) { ui.help = d.help && ui.help !== d.help ? d.help : null; draw();
       } else if (d.toggle === "moves") { ui.moves = !ui.moves; draw();
-      } else if (d.sel != null) { ui.sel = d.sel || null; if (ui.sel) ui.confirm = null; draw(); if (ui.sel) toAct(); }
+      } else if (d.sel != null) { ui.sel = d.sel || null; if (ui.sel) ui.confirm = null; else ui.raise = false; draw();
+      } else if (d.handToggle != null) { ui.raise = !(ui.raise || !!ui.sel); if (!ui.raise) ui.sel = null; draw();
+      } else if (d.feedToggle != null) { ui.feed = !ui.feed; draw(); }
       else if (d.pick != null) {
         ui.picks = ui.picks.includes(d.pick) ? ui.picks.filter((x) => x !== d.pick) : [...ui.picks, d.pick];
         draw();

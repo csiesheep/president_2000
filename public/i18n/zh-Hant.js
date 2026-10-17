@@ -53,7 +53,7 @@ export default {
         resultOk: "成功！{county}多了一顆你的方塊。你還剩 {left} CP。不過這種檢定也可能失敗：沒中就沒填成，那 1 CP 照樣用掉。",
         resultFail: "沒中。這次沒有成功，{county}沒有多方塊，這 1 CP 照樣用掉。檢定本來就有風險，你還剩 {left} CP。",
         endAction: "你還剩 {left} CP。沒用完也沒關係，這張牌的 CP 只用在這個行動。選「結束行動」。",
-        opponents: "輪到{a}和{b}了。這一欄「剛剛」記著他們做了什麼：出了哪張牌、放在哪裡、檢定有沒有成功。每次輪到你之前先看這裡。",
+        opponents: "輪到{a}和{b}了。他們做了什麼會直接畫在盤面上：動到的縣市會亮起他們的顏色、角落有「+2」這種小標，動到的議題頭條會閃一下，地圖上方那一行寫出他們打了什麼。上面的「紀錄」按鈕留著每一步。每次輪到你之前先看一眼。",
         issues: "這是議題軌道。每回合結算時，議題牌上方塊最多的人是領先者，拿獎勵：頭條 1 動能加 1 背書，二條 1 背書，三條 1 動能。用「議題」行動可以往上放方塊：第一顆 1 CP，之後每顆 2 CP，不用檢定。",
         debate: "預告：每回合出完 4 張牌，手上剩下的 1 張面朝下留著。第 6 回合是公辦政見發表會，大家翻出留牌爭議題，贏的人免檢定放 2 到 4 顆方塊。第 9 回合是投票日：先催票，再棄保、背書，最後計票。",
         finish: "教學完成。你可以接著把這局打完，或回首頁開新局。",
@@ -62,7 +62,7 @@ export default {
     // 方向 C（#26）：首頁的盒蓋、玩家板、候選人牌
     look: {
       home: { meta: "3 人 · 9 回合", sub: "宋楚瑜、連戰、陳水扁。", play: "單人開打", playSub: "對三種難度的 AI", host: "開房", hostSub: "傳代碼給朋友", join: "加入", joinSub: "輸入 4 碼代碼", rules: "翻開規則書" },
-      board: { label: "玩家板", cubes: "{n} 顆在盤上", mom: "動能", hand: "手牌 {n} · 已留 {k}", bag: "袋中 {n}", luck: "運氣 {n}%", luckW: "運氣", canvassW: "催票", votes: "0萬票", votesNone: "票" },
+      board: { label: "玩家板", cubes: "{n} 顆在盤上", mom: "動能", hand: "手牌 {n} · 已留 {k}", bag: "袋中 {n}", luck: "運氣 {n}%", luckW: "運氣", canvassW: "催票", votes: "0萬票", votesNone: "票", leadTag: "議題領先" },
       card: { seal: "整局一次", used: "已用" },
     },
     solo: {
@@ -100,7 +100,7 @@ export default {
         speed: "對手速度", slow: "慢", normal: "正常", fast: "快", step: "逐步", stepNote: "逐步：對手每走一步就停下，按「下一步」再繼續。", sound: "音效", volume: "音量", next: "下一步" },
       hdr: {
         ph: { action: "行動 {n}/4", order: "選順位", momentum: "動能階段", save: "留牌", debate: "政見發表會", election: "投票日", end: "開票結果" },
-        turn: "第 {n} 回合", endDate: "3 月 18 日", initiative: "主動權 {who}", order: "{who}先走", first: "第一個行動", star: "主動權", mom: "動能", bag: "袋子", luck: "運氣", feed: "紀錄", momL: "動能", slotsL: "議題頭條", issueTotal: "議題總數", leadIs: "議題總領先者：{who}", leadNone: "議題總領先者：沒有（平手）", tap: "點一下看說明",
+        turn: "第 {n} 回合", endDate: "3 月 18 日", initiative: "主動權 {who}", order: "{who}先走", first: "第一個行動", star: "主動權", mom: "動能", bag: "袋子", luck: "運氣", feed: "紀錄", feedNew: "紀錄，{n} 則新的", feedClose: "收起 ×", momL: "動能", slotsL: "議題頭條", issueTotal: "議題總數", leadIs: "議題總領先者：{who}", leadNone: "議題總領先者：沒有（平手）", tap: "點一下看說明",
         yourTurn: "輪到你", busy: "{who} 行動中…", waitHint: "對手行動中。你可以先翻看手牌。",
         slot: { 1: "頭條", 2: "二條", 3: "三條" },
         phase: { action: "行動階段 {n} / 4", order: "選行動順位", momentum: "動能階段", save: "留牌", debate: "公辦政見發表會", election: "投票日 · 催票", end: "開票結果" },
@@ -149,11 +149,11 @@ export default {
       },
       replay: { hit: "命中", miss: "沒中" },
       undo: { btn: "↶ 悔一步", done: "已退回上一步", locked: "抽過檢定，不能悔" },
-      hand: { title: "手牌 {n}", titleDebate: "政見發表會留牌 {n}", titleElection: "投票日留牌 {n}", kept: "已留 {n} 張（給{dest}）", none: "沒有牌" },
+      hand: { title: "手牌 {n}", titleDebate: "政見發表會留牌 {n}", titleElection: "投票日留牌 {n}", kept: "已留 {n} 張（給{dest}）", none: "沒有牌", raise: "點一下拉起", lower: "點一下收起" },
       card: { local: "地方牌", cand: "候選人牌" },
       p: {
         candConfirm: "候選人牌整局只能用一次。現在就用嗎？", candYes: "確定使用", candNo: "先不要",
-        movesOpen: "移到別的縣市…", movesShut: "收起移動", moveHint: "要移動的話，得在放第一塊之前。", eg: "空綠 {n}", eb: "空藍 {n}",
+        listCounties: "各縣市的選項", movesOpen: "移到別的縣市…", movesShut: "收起移動", moveHint: "要移動的話，得在放第一塊之前。", eg: "空綠 {n}", eb: "空藍 {n}",
         c: {
           fill: "填 1 塊", cross: "跨營填 1 塊", steal: "搶{who} 1 顆（{kind}）", grey: "填 1 塊無色塊", remove: "移除{who} 1 顆（{kind}）",
           convert: "把 1 塊無色塊轉成綠營游離塊", move: "{county}\n移動後剩 {left} CP",
