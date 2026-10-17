@@ -18,7 +18,8 @@
 //   - the cards are paper with square corners (radius at most 2 px); the 頭條 has a picture with square corners, and on
 //     the desk all three do;
 //   - nothing is cut: the label, flag, name and status stay inside their card and do not overflow their own box;
-//   - the totals line ([data-issue-lead]) is drawn inside the track; the phone page never scrolls sideways.
+//   - the totals line ([data-issue-lead]) is drawn inside the track or, since #66, as a float inside the map box; the
+//     phone page never scrolls sideways. (#66 also widens the desk's middle column: the desk cap is 720×115 since.)
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
@@ -82,6 +83,7 @@ const MEASURE = `(() => {
       return { slot: c.dataset.hlSlot, ...R(c), rad: rad(c), img: drawn(img) ? { ...R(img), rad: Math.max(...chain(img, c).map(rad)) } : null,
         label: part(c, "data-hl-label"), reward: part(c, "data-hl-reward"), name: part(c, "data-hl-name"), status: part(c, "data-hl-status") }; }),
     lead: (() => { const e = document.querySelector("[data-issue-lead]"); return drawn(e) ? R(e) : null; })(),
+    map: (() => { const e = document.querySelector(".tw-box"); return drawn(e) ? R(e) : null; })(),
     sw: document.documentElement.scrollWidth, iw: innerWidth,
   });
 })()`;
@@ -101,7 +103,8 @@ for (const t of tables()) for (const lang of ["zh-Hant", "en"]) {
 if (pages.length < 4) rule(false, `only ${pages.length / 2} tables reached`);
 const br = await launch();
 try {
-  for (const [dev, w, h, mobile, maxW, maxHs, nameMin] of [["phone", 390, 664, true, 370, { "zh-Hant": 73, en: 90 }, 14], ["desk", 1280, 800, false, 618, { "zh-Hant": 115, en: 115 }, 16]]) {
+  // Desk width 720 since #66 (design 甲): the middle column grew from 618 to about 706–712; the heights stay.
+  for (const [dev, w, h, mobile, maxW, maxHs, nameMin] of [["phone", 390, 664, true, 370, { "zh-Hant": 73, en: 90 }, 14], ["desk", 1280, 800, false, 720, { "zh-Hant": 115, en: 115 }, 16]]) {
     for (const p of pages) {
       const t = await tab(br, p.url, w, h, mobile);
       const m = JSON.parse(await t.ev(MEASURE));
@@ -123,7 +126,9 @@ try {
       const cut = [];
       for (const c of C) for (const k of ["label", "reward", "name", "status"]) { const e = c[k]; if (e && (e.over || e.r > c.r + 1 || e.b > c.b + 1 || e.x < c.x - 1)) cut.push(`${c.slot}.${k}「${e.txt}」`); }
       rule(!cut.length, `${who}: nothing cut${cut.length ? ` (${cut.join(", ")})` : ""}`);
-      rule(!!m.lead && !!m.track && m.lead.b <= m.track.b + 1, `${who}: the totals line inside the track (${m.lead ? Math.round(m.lead.b) : "none"} ≤ ${m.track ? Math.round(m.track.b) : "-"})`);
+      // The totals line sits in the track, or (since #66, design 甲) as a small float inside the map box.
+      const inMap = !!m.lead && !!m.map && m.lead.x >= m.map.x - 1 && m.lead.r <= m.map.r + 1 && m.lead.y >= m.map.y - 1 && m.lead.b <= m.map.b + 1;
+      rule(!!m.lead && ((!!m.track && m.lead.b <= m.track.b + 1) || inMap), `${who}: the totals line inside the track or on the map (${m.lead ? `bottom ${Math.round(m.lead.b)}, track ends ${m.track ? Math.round(m.track.b) : "-"}, ${inMap ? "on the map" : "not on the map"}` : "none"})`);
       if (dev === "phone") rule(m.sw <= m.iw, `${who}: no sideways scroll (${m.sw} ≤ ${m.iw})`);
     }
   }
