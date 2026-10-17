@@ -95,7 +95,7 @@ if (typeof document !== "undefined") {
       heard = { seed: session.seed, st: session.st };
     };
     // The rivals' moves shown big (#47). Not in the tutorial: it has its own steps for the rivals' turn and keeps the old way.
-    const rep = Replay.createReplay({ labels: { hit: S.replay.hit, miss: S.replay.miss }, lang: code, rules: () => session && session.st && session.st.rules, onIdle: () => { if (!card && cardWanted()) pump(); else if (Sound.gap() == null && session && session.st && !Solo.botsToMove(session).length && stage.querySelector("[data-botnext]")) draw(); } });
+    const rep = Replay.createReplay({ labels: { hit: S.replay.hit, miss: S.replay.miss }, lang: code, rules: () => session && session.st && session.st.rules, onIdle: () => { if (!card && cardWanted()) pump(); else if (autoWanted() && !autoTimer) pump(); else if (Sound.gap() == null && session && session.st && !Solo.botsToMove(session).length && stage.querySelector("[data-botnext]")) draw(); } });
     const stepOpt = () => (Sound.gap() == null && session.st && (Solo.botsToMove(session).length || rep.active()) ? { botnext: S.menu.next } : {});
     // The turn card (#44): each turn opens with it, once. It holds the rivals back, stays about 1.5 s and fades out; a tap
     // anywhere closes it (that is not the skip: the rivals only start after it has gone, one step at a time as before).
@@ -131,10 +131,25 @@ if (typeof document !== "undefined") {
       $("#quit").hidden = false;
       placeTutorial(stage);
     };
+    // #70: a decision with one option only is made by the page itself, one beat (about 0.7 s) after it is the player's turn:
+    // the turn card is gone, the rivals' replay is over, nobody is to move. Never in the tutorial (Solo.autoChoice says null).
+    const AUTO_WAIT = 700;
+    let autoTimer = null;
+    const autoWanted = () => !!(session && session.st && !session.tut && !card && !rep.active() && !Solo.botsToMove(session).length && Solo.autoChoice(session, code));
+    const autoMake = () => {
+      autoTimer = null;
+      if (!autoWanted()) return;
+      const m = Solo.autoChoice(session, code), label = Solo.choices(session, code)[0].label;
+      session = Solo.act(session, m, { auto: true, label });
+      ui.sel = null; ui.raise = false; ui.picks = []; ui.moves = false; ui.confirm = null; ui.county = null;
+      save(); pump();
+    };
     const pump = () => {
+      clearTimeout(autoTimer); autoTimer = null;
       if (!card && cardWanted()) openCard();
       draw();
       if (card) return; // the rivals wait for the card
+      if (autoWanted()) { autoTimer = setTimeout(autoMake, AUTO_WAIT); return; }
       const wait = Sound.gap(); // the rivals' speed (#42); null = step by step, they wait for 下一步
       if (timer || wait == null || !Solo.botsToMove(session).length) return;
       timer = setTimeout(() => { timer = null; step(); }, wait + rep.blockMs());

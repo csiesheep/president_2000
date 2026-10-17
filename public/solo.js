@@ -185,28 +185,43 @@ export function choices(session, lang) {
   return decide(session, lang).choices;
 }
 
-export function act(session, m) {
+// #70: a decision with one option only is made by the page itself. autoChoice gives that move (never in the tutorial,
+// where every step is the player's own tap), else null.
+export function autoChoice(session, lang) {
+  if (session.tut || session.st.phase === "end") return null;
+  const ch = choices(session, lang);
+  return ch.length === 1 ? ch[0].move : null;
+}
+
+// act(session, m, { auto: true, label }): the step the page made by itself. It plays like any other, but undo goes back
+// past it (the snapshot taken before it is flagged `auto`), and the note "only one option, done" (autoNote, the step's
+// words in `label`) stays until the human next decides on their own.
+export function act(session, m, opts = {}) {
   const next = move(session, session.seat, m);
   if (session.tut) return next;
+  const note = opts.auto ? { text: opts.label || "" } : null;
   // 悔一步 (#43): the session as it stood before this move is kept (without its own history), in the human's
   // current action only. A move that drew something random (the engine's rng moved) can't be taken back:
   // the history is dropped and `drew` remembers it, so the panel can say why. A bot moving clears both.
-  if (next.st.rng !== session.st.rng) return { ...next, undo: [], drew: true };
-  const { undo, ...prev } = session;
-  return { ...next, undo: (undo || []).concat([prev]).slice(-UNDO_MAX) };
+  if (next.st.rng !== session.st.rng) return { ...next, undo: [], drew: true, autoNote: note };
+  const { undo, autoNote, ...prev } = session;
+  return { ...next, autoNote: note, undo: (undo || []).concat([opts.auto ? { ...prev, auto: true } : prev]).slice(-UNDO_MAX) };
 }
 
 const UNDO_MAX = 8;
 
+// The last snapshot that is the human's own (not one taken before a step the page made by itself).
+const ownAt = (session) => { const u = session.undo || []; for (let i = u.length - 1; i >= 0; i--) if (!u[i].auto) return i; return -1; };
+
 export function canUndo(session) {
   // Undo is only for your own action: once a bot is to move the action is over (#48).
-  return !session.tut && !!(session.undo && session.undo.length) && !botsToMove(session).length;
+  return !session.tut && ownAt(session) >= 0 && !botsToMove(session).length;
 }
 
 export function undo(session) {
   if (!canUndo(session)) return session;
-  const rest = session.undo.slice(0, -1), prev = session.undo[session.undo.length - 1];
-  return { ...prev, advisor: session.advisor, undo: rest, drew: session.drew };
+  const at = ownAt(session), { auto, autoNote, ...prev } = session.undo[at];
+  return { ...prev, advisor: session.advisor, undo: session.undo.slice(0, at), drew: session.drew, autoNote: null };
 }
 
 // The region the human's pawn stands in: the one the map opens first.
@@ -231,7 +246,7 @@ export function screen(session, lang, opts = {}) {
   const html = tableHTML(v, d.choices, lang, {
     feed: session.feed, wait: botsToMove(session), advisor: { on: !!session.advisor, why: d.why },
     undo: session.tut || botsToMove(session).length ? null : canUndo(session) ? "on" : session.drew ? "off" : null,
-    recent: recentLines(rec, v, x), rec, result: resultBlock(session.mine, x), changed, ...opts, ...(session.tut && opts.county == null && boxCounty(session) != null ? { county: boxCounty(session) } : {}), turnCard: session.tut ? false : opts.turnCard,
+    recent: recentLines(rec, v, x), rec, result: resultBlock(session.mine, x), autoNote: session.autoNote || null, changed, ...opts, ...(session.tut && opts.county == null && boxCounty(session) != null ? { county: boxCounty(session) } : {}), turnCard: session.tut ? false : opts.turnCard,
   });
   return session.tut ? decorate(html, session, lang, opts) : html;
 }

@@ -127,6 +127,24 @@ export function mount({ T, lang, qs, store, $ }) {
     if (nb && had) { nb.focus({ preventScroll: true }); try { nb.setSelectionRange(caret[0], caret[1]); } catch { /* not a text field */ } }
     const nl = stage.querySelector(".chatlog");
     if (nl && pinned) nl.scrollTop = nl.scrollHeight;
+    autoCheck();
+  };
+  // #70: a decision with one option only is sent by the page itself, one beat (about 0.7 s) after it is this seat's turn: the
+  // turn card is gone, the replay is over, nothing of ours is in flight. A state that was already tried is not tried again
+  // (a refused move leaves the table as it was and the player decides).
+  let autoTimer = null, autoFor = null;
+  const autoCheck = () => {
+    const m = !gone && !terminal && !card && !rep.active() && client.state && !client.sentMove ? RC.autoMove(client, lang) : null;
+    if (!m) { clearTimeout(autoTimer); autoTimer = null; autoFor = null; return; }
+    if (autoTimer && autoFor === client.state) return;
+    clearTimeout(autoTimer); autoFor = client.state;
+    autoTimer = setTimeout(() => {
+      autoTimer = null;
+      const k = !card && !rep.active() && !client.sentMove && autoFor === client.state ? RC.autoMove(client, lang) : null;
+      if (!k) return;
+      ui.sel = null; ui.raise = false; ui.picks = []; ui.moves = false; ui.confirm = null; ui.county = null;
+      send({ t: "move", move: k.move }, { auto: k.label });
+    }, 700);
   };
   // The move clock: rewrite the seconds in place once a second, without redrawing the page.
   const clockTick = () => {
@@ -184,9 +202,10 @@ export function mount({ T, lang, qs, store, $ }) {
       retry = setTimeout(() => { clearInterval(tick); say(C.retrying); connect(); }, wait * 1000);
     };
   };
-  const send = (msg) => {
+  const send = (msg, opts = {}) => {
     if (msg.t === "move") rep.skipAll(); // a decision skips the rest of the replay
     client = RC.sent({ ...client, error: null }, msg.t === "move" ? msg.move : null);
+    if (msg.t === "move") client = { ...client, autoNote: opts.auto != null ? { text: opts.auto } : null }; // #70: the note stays until the player next decides
     if (sock && sock.readyState === 1) sock.send(JSON.stringify(msg));
     draw();
   };

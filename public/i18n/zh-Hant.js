@@ -143,7 +143,7 @@ export default {
         },
       },
       res: {
-        ok: "檢定成功：{what}", okPlain: "檢定成功", did: "你剛剛：{what}", label: "你的上一步",
+        ok: "檢定成功：{what}", okPlain: "檢定成功", did: "你剛剛：{what}", label: "你的上一步", auto: "只有一個選項，自動做了",
         fail: "檢定失敗：{where}，抽到{drew}，這顆回到{drew}手上", failNoWhere: "檢定失敗：抽到{drew}，這顆回到{drew}手上",
         okLuck: "檢定成功（成功率 {p}%）：{what}", okPlainLuck: "檢定成功（成功率 {p}%）", failLuck: "檢定失敗（成功率 {p}%）：{where}", failNoWhereLuck: "檢定失敗（成功率 {p}%）",
       },
