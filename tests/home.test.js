@@ -22,7 +22,8 @@ import en from "../public/i18n/en.js";
 const HOME = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
 const get = (d, path) => path.split(".").reduce((o, k) => (o && typeof o === "object" ? o[k] : undefined), d);
 const TITLE_GONE = !/data-i18n="ui\.look\.home\.boxTitle"/.test(HOME);
-const c62 = (name, fn) => check(name, () => (TITLE_GONE ? fn() : "TODO: 首頁還有「盒子裡有什麼」的標題（#62）"));
+// Since #62 landed (79fd83a), the title back in the page is a failure, not 尚未實作.
+const c62 = (name, fn) => check(name, () => (TITLE_GONE ? fn() : "首頁又有「盒子裡有什麼」的標題：#62 已上線，這是退步，不是尚未實作"));
 
 section("62 首頁");
 c62("沒有「盒子裡有什麼」：首頁沒有標題、沒有那段介紹（data-i18n 與文字都沒有）", () => {
