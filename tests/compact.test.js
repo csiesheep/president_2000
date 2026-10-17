@@ -402,7 +402,10 @@ check("動能、手牌、袋子（v0.7：運氣）還在：每塊候選人板有
         nBag++;
       } else {
         const want = luckOn(p.lang, p.v.luck[s]), alt = s === 2 && (p.v.active || []).includes("provincial_staff") ? luckOn(p.lang, 50) : null;
-        if (!hay.includes(want) && !(alt && hay.includes(alt))) return `${p.where}：${SEAT[s]} 板上找不到「${want}」（v0.7）`;
+        // #61: on election day the panel may show the canvassing luck instead (「催票 N%」 / "Canvass N%").
+        const ev = p.v.phase === "election" && p.v.election ? Math.min(95, Math.min(80, p.v.luck[s] + 10 * p.v.election.mom[s]) + 10 * ((p.v.election.leads || [0, 0, 0])[s])) : null;
+        const canv = ev == null ? null : p.lang === "en" ? `Canvass ${ev}%` : `催票 ${ev}%`;
+        if (!hay.includes(want) && !(alt && hay.includes(alt)) && !(canv && hay.includes(canv))) return `${p.where}：${SEAT[s]} 板上找不到「${want}」（v0.7）`;
         nLuck++;
       }
       n++;

@@ -183,6 +183,32 @@ c60("投票日：轉換之後你看到的第一個畫面，「剛剛」有一行
   return ok(true, `${n} 局的轉換都寫出三家的催票運氣（${led} 局有人領先議題）`);
 });
 
+// #61 (the owner: 「手機也要顯示運氣」, design 乙): each panel says in data-luck the luck it shows, and shows it — in the action
+// phases the seat's luck (「運氣 N%」 / "Luck N%"; 50 for 連 in a turn of 省府舊部), on election day the canvassing luck
+// (「催票 N%」 / "Canvass N%", N = min(95, min(80, luck + 10 × momentum) + 10 × issues led)). 尚未實作 until data-luck exists.
+const canvassOf = (st, p) => Math.min(95, Math.min(80, st.luck[p] + 10 * st.election.mom[p]) + 10 * ((st.election.leads || [0, 0, 0])[p]));
+const HAS_DATA_LUCK = (() => { try { return /class="pl-card[^"]*" data-seat="\d"[^>]*data-luck="/.test(S.screen(S.advance(S.newSolo({ seat: 0, level: 1, seed: 1 })), "zh-Hant")); } catch { return false; } })();
+c60("候選人板的 data-luck 與字：行動階段是運氣、投票日是催票運氣「催票 N%」（中英；#61）", () => {
+  if (!HAS_DATA_LUCK) return "TODO: 候選人板還沒有 data-luck（#61）";
+  let act = 0, elect = 0;
+  const WORD = { "zh-Hant": { luck: "運氣", canvass: "催票" }, en: { luck: "Luck", canvass: "Canvass" } };
+  for (const lang of LANGS) for (const seed of [72, 73]) walk(S.newSolo({ seat: seed % 3, level: 2, seed }), lang, seed + 11, (s) => {
+    const inElection = s.st.phase === "election" && s.st.election;
+    if (s.st.phase !== "action" && !inElection) return;
+    const html = S.screen(s, lang);
+    for (const p of panels(html)) {
+      const want = inElection ? canvassOf(s.st, p.seat) : p.seat === 2 && (s.st.active || []).includes("provincial_staff") ? 50 : s.st.luck[p.seat];
+      const dl = (p.html.match(/data-luck="(\d+)"/) || [])[1], word = WORD[lang][inElection ? "canvass" : "luck"];
+      if (Number(dl) !== want) throw new Error(`${lang} 第 ${s.st.turn} 回合（${s.st.phase}）：${SHORT[lang][p.seat]}的 data-luck 是 ${dl}（應為 ${want}）`);
+      if (!text(p.html).includes(`${word} ${want}%`)) throw new Error(`${lang} 第 ${s.st.turn} 回合（${s.st.phase}）：${SHORT[lang][p.seat]}的板子沒有「${word} ${want}%」：${text(p.html).slice(0, 120)}`);
+      if (inElection) elect++; else act++;
+    }
+  });
+  let r = nonEmpty(act, "行動階段的候選人板"); if (r !== true) return r;
+  r = nonEmpty(elect, "投票日的候選人板"); if (r !== true) return r;
+  return ok(true, `${act} 塊行動階段的板子寫運氣、${elect} 塊投票日的板子寫催票運氣，data-luck 都對`);
+});
+
 // The rules page describes the rules in play, v0.7 since #60: its card gallery (rules.js, 「全部的牌」) draws the same
 // stubs as the table, so no rest cubes there either. Found at #60's first delivery (6d38a16): rules.js still drew them.
 c60("規則頁「全部的牌」也不畫休息方塊：rulesHTML（中英）沒有 data-rest；牌還在", () => {
