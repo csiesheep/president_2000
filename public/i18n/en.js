@@ -144,7 +144,7 @@ export default {
         },
       },
       res: {
-        ok: "Check succeeded: {what}", okPlain: "Check succeeded", did: "You just did: {what}", label: "Your last step",
+        ok: "Check succeeded: {what}", okPlain: "Check succeeded", did: "You just did: {what}", label: "Your last step", auto: "Only one option, done",
         fail: "Check failed: {where}. Drew {drew}; that cube goes back to {drew}'s supply.", failNoWhere: "Check failed: drew {drew}; that cube goes back to {drew}'s supply.",
         okLuck: "Check succeeded ({p}% chance): {what}", okPlainLuck: "Check succeeded ({p}% chance)", failLuck: "Check failed ({p}% chance): {where}", failNoWhereLuck: "Check failed ({p}% chance)",
       },

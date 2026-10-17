@@ -210,6 +210,13 @@ function decide(client, lang) {
   return { choices: list, why };
 }
 
+// #70: the only option of this seat's decision ({ move, label }), else null. The page makes it by itself after a beat.
+export function autoMove(client, lang) {
+  if (!client.state || client.state.view.phase === "end") return null;
+  const ch = decide(client, lang).choices;
+  return ch.length === 1 ? { move: ch[0].move, label: ch[0].label } : null;
+}
+
 export function actions(client, lang) {
   const T = dict(lang), U = T.ui.room;
   if (client.state) {
@@ -309,7 +316,7 @@ export function screen(client, lang, opts = {}) {
     const wait = acting(view).filter((p) => p !== view.seat);
     const xb = bind(lang), rec = client.rec || [];
     const body = tableHTML(view, choices, lang, {
-      recent: recentLines(rec, view, xb), rec, result: resultBlock(client.mine, xb),
+      recent: recentLines(rec, view, xb), rec, result: resultBlock(client.mine, xb), autoNote: client.autoNote || null,
       changed: [...changedCounties(rec), ...changedCounties((client.mine && client.mine.lines) || [], true)],
       help: opts.help, moves: opts.moves, confirm: opts.confirm,
       feed: client.feed, wait: wait.length ? wait : [0, 1, 2].filter((p) => p !== view.seat),

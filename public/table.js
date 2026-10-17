@@ -1139,8 +1139,16 @@ function nowHTML(x, o) {
 }
 
 // Your own last step (o.result = resultBlock), at the top of the decision.
-function resultHTML(o, x) {
-  return o.result ? `<p class="res ${o.result.kind}" data-res="1" role="status"><small>${esc(x.tr("res.label"))}</small>${esc(o.result.text)}</p>` : "";
+function resultHTML(o, x, merge) {
+  // #70: when the step the page made by itself also made a check, the note and "your last step" are one line (the note
+  // takes the label's place), so the stack over the map does not grow.
+  const auto = merge && o.autoNote;
+  return o.result ? `<p class="res ${o.result.kind}" data-res="1"${auto ? ` data-auto-note="1"` : ""} role="status"><small>${esc(x.tr(auto ? "res.auto" : "res.label"))}</small>${esc(o.result.text)}</p>` : "";
+}
+
+// #70: the step the page made by itself (o.autoNote = { text }): one line, until the player next decides.
+function autoNoteHTML(o, x, merge) {
+  return o.autoNote && !(merge && o.result) ?`<p class="autonote" data-auto-note="1" role="status"><small>${esc(x.tr("res.auto"))}</small>${esc(o.autoNote.text)}</p>` : "";
 }
 
 // 悔一步 (#43), solo only: o.undo is "on" (back one step), "off" (a draw was made: say so, greyed) or absent.
@@ -1256,7 +1264,7 @@ export function tableHTML(view, choices, lang, opts = {}) {
   const riv = rivalsOf(o.rec, v), lines = recentLines(o.rec || [], v, x);
   const said = lines.filter((l) => l.seat != null && l.seat !== v.seat).pop() || lines[lines.length - 1];
   const toast = riv.length ? `<p class="t-toast s${said && said.seat != null ? said.seat : riv[riv.length - 1].seat}" data-act-toast>${esc(said ? said.text : feedLine(riv[riv.length - 1], v, x) || x.tr("hdr.feed"))}</p>` : "";
-  const notes = toast + resultHTML(o, x) + (choices.length ? adviceLine(x, o) : "");
+  const notes = toast + autoNoteHTML(o, x, true) + resultHTML(o, x, true) + (choices.length ? adviceLine(x, o) : "");
   const sh = sheetFor(v, choices, x, o);
   // #69: with a sheet up the undo button is the sheet's first line (on a phone the bar covers the foot of the map, where it used to be).
   const undoBox = o.undo ? `<div class="t-undo${o.undo === "off" ? " off" : ""}">${undoHTML(o, x)}</div>` : "";
