@@ -79,7 +79,7 @@ const MEASURE = `(()=>{
     const chain = []; for (let e = im; e; e = e.parentElement) { chain.push(e); if (e === s) break; }
     const sq = !!im && vis(im) && Math.max(...chain.map((e) => parseFloat(getComputedStyle(e).borderTopLeftRadius) || 0)) <= 2;
     return { ...R(s), round, hl: s.dataset.hlSlot || null, sq }; });
-  const now = document.querySelector("[data-now]");
+  const now = document.querySelector("[data-now]"), hasNow = !!now;
   const cubes = [...document.querySelectorAll(".tw [data-slot]")].filter((e) => ["chen", "soong", "lien"].includes(e.dataset.slot)).map((e) => e.getBoundingClientRect().width);
   const picEls = [...document.querySelectorAll(".tw-box [data-pawn-pic], .tw [data-pawn] image")];
   const pics = picEls.map((e) => e.getBoundingClientRect().width);
@@ -90,7 +90,7 @@ const MEASURE = `(()=>{
     return { ok: !!c && c.getAttribute("data-county") === want, hit: t ? (t.getAttribute("data-pawn-pic") ? "the picture" : t.localName) : "nothing" }; });
   scrollTo(0, 0);
   const adv = document.querySelector("[data-advisor]"), menu = document.querySelector("[data-menu]");
-  return JSON.stringify({ panels, issues, now: now && vis(now) ? R(now).y : null, cubes: cubes.length ? [Math.min(...cubes), Math.max(...cubes)] : null, pics,
+  return JSON.stringify({ panels, issues, hasNow, now: now && vis(now) ? R(now).y : null, cubes: cubes.length ? [Math.min(...cubes), Math.max(...cubes)] : null, pics,
     taps, adv: adv && vis(adv) ? R(adv) : null, menu: menu && vis(menu) ? { ...R(menu), exp: menu.getAttribute("aria-expanded") } : null,
     quitVis: vis(document.getElementById("quit")), langVis: vis(document.getElementById("glang")), quitTop: onTop(document.getElementById("quit")), langTop: onTop(document.getElementById("glang")),
     sw: document.documentElement.scrollWidth, iw: innerWidth });
@@ -115,7 +115,9 @@ try {
       rule(P.every((p) => p.img && Math.abs(p.img.x - p.x) <= 2 && p.img.w >= 0.35 * p.w && p.img.h >= 0.9 * p.h), `${tag}: picture on the left of each panel (${P.map((p) => (p.img ? `${Math.round(p.img.x - p.x)}/${Math.round((100 * p.img.w) / p.w)}%w/${Math.round((100 * p.img.h) / p.h)}%h` : "none")).join(", ")})`);
       rule(P.every((p) => !p.stick), `${tag}: nothing sticks out of a candidate panel${P.some((p) => p.stick) ? " (「" + P.find((p) => p.stick).stick + "」)" : ""}`);
     }
-    rule(m.now != null && m.now <= 220, `${tag}: "just now" starts at ${m.now == null ? "—" : Math.round(m.now)} px (≤ 220)`);
+    // #66 (design 甲) takes the 「剛剛」 block away: without one the row has nothing to measure and passes saying so.
+    if (!m.hasNow) rule(true, `${tag}: no "just now" block (#66)`);
+    else rule(m.now != null && m.now <= 220, `${tag}: "just now" starts at ${m.now == null ? "—" : Math.round(m.now)} px (≤ 220)`);
     if (I.length !== 3) rule(false, `${tag}: ${I.length} issue slots on screen, not 3`);
     else {
       rule(Math.max(...I.map((s) => s.y)) - Math.min(...I.map((s) => s.y)) <= 1 && I.every((s) => s.h <= 56), `${tag}: issue slots in one row, ${I.map((s) => Math.round(s.h)).join("/")} px high (≤ 56)`);

@@ -69,7 +69,8 @@ async function tab(br, w, h, mobile) {
 
 const BUTTONS = (scroll) => `(async()=>{
   const vis = (e) => { const r = e.getBoundingClientRect(), s = getComputedStyle(e); return e.getClientRects().length > 0 && r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none"; };
-  const bs = [...document.querySelectorAll("#act button")].filter((b) => vis(b) && !b.disabled);
+  // The decision's buttons: in #act, or (since #66, design 甲) in the sheet [data-sheet] wherever the table puts it.
+  const bs = [...document.querySelectorAll("#act button, [data-sheet] button")].filter((b, i, a) => a.indexOf(b) === i && vis(b) && !b.disabled);
   const out = [];
   for (const b of bs) {
     if (${scroll}) { b.scrollIntoView({ block: "center" }); await new Promise((r) => setTimeout(r, 120)); }
