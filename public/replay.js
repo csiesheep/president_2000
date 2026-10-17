@@ -157,7 +157,7 @@ export function createReplay({ labels, lang, onIdle, ready, rules } = {}) { // r
     c.leave = () => {
       if (c.leaving || !card) return;
       c.leaving = true;
-      const li = document.querySelector("[data-now] li:last-child");
+      const li = document.querySelector("[data-feed-toggle]"); // (#66: the card leaves into the record button in the top row; it was the last line of 「剛剛」)
       if (p.fast || noMove) card.style.transition = `opacity ${p.out}ms ease-in`;
       else {
         const a = center(card), z = center(li) || { x: a.x, y: 0 };

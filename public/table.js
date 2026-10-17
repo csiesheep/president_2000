@@ -488,6 +488,35 @@ function popHTML(v, ch, x, k, narrow) {
     (rows.length ? `<div class="pop-o">${rows.map(opt).join("")}</div>` : `<p class="ct">${esc(tr("map.popNone"))}</p>`) + `</div>`;
 }
 
+// ---------------------------------------------------------------- what the rivals just did (#66)
+
+// The record's entries (o.rec: solo.js / roomclient.js hand over session.rec) that are the rivals': a seat, not the human's, not a "say".
+const rivalsOf = (rec, v) => (rec || []).filter((e) => e.seat != null && e.seat !== v.seat && e.k !== "say");
+const CUBE_KINDS = new Set(["fill", "cross", "grey", "steal", "remove"]);
+
+// → { counties: { "<k>": { who, n } }, issues: { "<name>": { who, n } } }: per county the rival who put the most cubes there (the earlier
+// seat on a tie) and how many; a county a rival only walked into has n 0 and the walker. Per issue the rival who touched it most.
+function rivalActs(rec, v) {
+  const per = new Map(), iss = new Map(), walker = new Map();
+  for (const e of rivalsOf(rec, v)) {
+    if (CUBE_KINDS.has(e.k) && e.county != null && e.ok) { if (!per.has(e.county)) per.set(e.county, [0, 0, 0]); per.get(e.county)[e.seat]++; }
+    else if (e.k === "move" && e.to != null) { if (!per.has(e.to)) per.set(e.to, [0, 0, 0]); walker.set(e.to, e.seat); }
+    else if (e.k === "issue" && e.issue != null) { if (!iss.has(e.issue)) iss.set(e.issue, [0, 0, 0]); iss.get(e.issue)[e.seat]++; }
+  }
+  const top = (cnt, fallback = 0) => { const n = Math.max(...cnt); return { who: n > 0 ? cnt.indexOf(n) : fallback, n }; };
+  const counties = {}, issues = {};
+  for (const [k, cnt] of per) counties[k] = top(cnt, walker.get(k) ?? 0);
+  for (const [name, cnt] of iss) issues[name] = top(cnt);
+  return { counties, issues };
+}
+
+// The issue totals of the three candidates and who leads (the most cubes over the three issues together, a tie is nobody, -1).
+function issueTotals(v) {
+  const tot = [0, 1, 2].map((p) => v.issues.reduce((s, i) => s + i.cubes[p], 0)), max = Math.max(...tot);
+  return { tot, who: tot.filter((n) => n === max).length === 1 ? tot.indexOf(max) : -1 };
+}
+const hasLead = (v) => v.rules === "v0.5" || isV06(v);
+
 // The room's move clock (o.clock = { left, deadline, tpl }): the page rewrites it every second.
 function clockHTML(c) {
   if (!c) return "";
@@ -510,9 +539,12 @@ function headerHTML(v, ch, x, o) {
   else status = `<span class="wait">${esc(o.waitLabel ? fill(o.waitLabel, { who: waitNames || "…" }) : x.tr("hdr.busy", { who: waitNames || "…" }))}${clockHTML(o.clock)}</span>`;
   const init = v.phase === "end" ? "" : isV06(v) ? ` · ${x.tr("hdr.order", { who: x.short(orderOf(v)[0]) })}` : v.initiative >= 0 ? ` · ${x.tr("hdr.initiative", { who: x.short(v.initiative) })}` : "";
   const home = "./" + (x.lang === "en" ? "?lang=en" : "");
+  // #66 (design 甲): the record is a button up here, with the number of the rivals' new entries on it (from session.rec).
+  const n = rivalsOf(o.rec, v).length;
+  const feedBtn = v.phase === "end" ? "" : `<button type="button" class="t-feedb${o.feedOpen ? " on" : ""}" data-feed-toggle="" data-new="${n}" aria-expanded="${!!o.feedOpen}" aria-controls="feed" aria-label="${esc(n ? fill(x.tr("hdr.feedNew"), { n }) : x.tr("hdr.feed"))}">${esc(x.tr("hdr.feed"))}${n ? `<i class="nb" aria-hidden="true">${n}</i>` : ""}</button>`;
   return `<header class="t-top"><a class="t-back" href="${home}" aria-label="${esc(x.tr("setup.home"))}">${ICON_BACK}</a>` +
     `<div class="t-ttl"><span class="t-turn" data-turn="1">${esc(x.tr("hdr.turn", { n: v.turn }))}${esc(v.phase === "end" ? ` · ${x.tr("hdr.endDate")}` : init)}</span>` +
-    `<span class="t-line"><b class="t-phase">${esc(phase)}</b>${status}</span></div>` +
+    `<span class="t-line"><b class="t-phase">${esc(phase)}</b>${status}</span></div>` + feedBtn +
     `${o.advisor && v.phase !== "end" ? advisorBar(x, o) : ""}` +
     `<button type="button" class="t-menu" data-menu aria-haspopup="true" aria-expanded="false" aria-label="${esc(x.tr("menu.label"))}">${ICON_MENU}</button></header>`;
 }
@@ -530,7 +562,7 @@ function playersHTML(v, x, o = {}) {
   const onBoard = (p) => v.counties.reduce((s, c) => s + c.blocks.filter((b) => b.o === p).length, 0);
   const first = (p) => (isV06(v) ? v.order[0] === p : v.initiative === p) && v.phase !== "end";
   const flag = x.tr(isV06(v) ? "hdr.first" : "hdr.star");
-  const v7 = isV07(v);
+  const v7 = isV07(v), leadP = hasLead(v) && v.phase !== "end" ? issueTotals(v).who : -1;
   const boards = orderOf(v).map((p) => {
     const mom = v.mom[p], n = onBoard(p);
     const big = n ? (x.lang === "en" ? (n / 10).toFixed(1) : String(n)) : "0";
@@ -544,7 +576,7 @@ function playersHTML(v, x, o = {}) {
     };
     return `<article class="pl s${p}${p === v.seat ? " me" : ""}${first(p) ? " first" : ""}">` +
       `<div class="pl-card" data-seat="${p}"${v7 ? ` data-luck="${luckNow(v, p)}"` : ""}><button type="button" class="pl-tap" data-detail="${p}" aria-expanded="false" aria-label="${esc(`${x.full(p)} · ${fill(L.cubes, { n })} · ${L.mom} ${mom}`)}">` +
-      `<span class="pl-pic"><img src="art/candidates/${SEATS[p]}.webp" alt="${esc(x.full(p))}" width="480" height="640" loading="lazy" decoding="async"></span><b class="no">${NO[p]}</b>` +
+      `<span class="pl-pic"><img src="art/candidates/${SEATS[p]}.webp" alt="${esc(x.full(p))}" width="480" height="640" loading="lazy" decoding="async"></span><b class="no">${NO[p]}</b>${p === leadP ? `<i class="pl-lead">${esc(x.d.ui.look.board.leadTag)}</i>` : ""}` +
       `<span class="pl-t"><span class="pl-n">${first(p) ? `<i class="flag-i" role="img" aria-label="${esc(flag)}" title="${esc(flag)}">⚑</i>` : ""}${esc(x.lang === "en" ? x.short(p) : x.full(p))}</span>` +
       `<span class="pl-v">${votes}</span><span class="pl-mm">${esc(L.mom)} ${dots}</span>${v7 ? lk(p) : ""}</span></button></div>` +
       `<div class="pl-d"><span class="pl-h">${esc(fill(L.hand, { n: inHand(p), k: kept(p) }))}</span>` +
@@ -562,7 +594,7 @@ function helpHTML(x, o) {
   return `<p class="help" role="note">${esc(x.tr("help." + o.help))} <button type="button" class="hx" data-help="">${esc(x.tr("help.close"))}</button></p>`;
 }
 
-function trackHTML(v, x, o = {}) {
+function trackHTML(v, x, o = {}, acts = {}) {
   // Three headlines (#65, design 乙 「黑底報眉」): each slot is one newspaper story, a button. A flag across its top
   // names its place (頭條 / 二條 / 三條) and its reward, then the issue's name, who leads it and the cubes; tapping one
   // explains the track (the same note as the label).
@@ -571,22 +603,24 @@ function trackHTML(v, x, o = {}) {
     const mx = Math.max(...iss.cubes), top = [0, 1, 2].filter((p) => iss.cubes[p] === mx);
     const who = top.map((p) => x.short(p)).join(sep);
     const st = mx === 0 ? x.tr("hl.none") : x.tr(top.length === 1 ? "hl.lead" : "hl.tie", { who });
-    const lab = x.tr("hdr.slot." + (i + 1));
-    return `<button type="button" class="slot hl h${i + 1} helpable${o.help === "slot" ? " on" : ""}" data-issue="${esc(iss.name)}" data-help="slot" data-hl-slot="${i + 1}" aria-expanded="${o.help === "slot"}" aria-label="${esc(x.tr("hdr.slotsL") + " · " + lab + " · " + x.issue(iss.name) + " · " + st)}">` +
+    const lab = x.tr("hdr.slot." + (i + 1)), act = acts[iss.name];
+    // #66: a rival who moved this issue just now flashes the headline and leaves a chip on it
+    const chip = act ? `<span class="act-chip s${act.who}" data-act-chip data-issue="${esc(iss.name)}" data-who="${SEATS[act.who]}" data-n="${act.n}" aria-hidden="true">${esc(x.short(act.who))} +${act.n}</span>` : "";
+    return `<button type="button" class="slot hl h${i + 1} helpable${o.help === "slot" ? " on" : ""}" data-issue="${esc(iss.name)}" data-help="slot" data-hl-slot="${i + 1}"${act ? " data-changed" : ""} aria-expanded="${o.help === "slot"}" aria-label="${esc(x.tr("hdr.slotsL") + " · " + lab + " · " + x.issue(iss.name) + " · " + st)}">` +
       `<span class="hf" data-hl-reward><b data-hl-label>${esc(lab)}</b><span>${esc(x.tr("hl.reward." + (i + 1)))}</span></span>` +
       `<span class="hs">${issueImg(iss.name, x)}<span class="hb"><b class="hn" data-hl-name>${esc(x.issue(iss.name))}</b>` +
-      `<span class="hr"><span class="hw${mx > 0 && top.length === 1 ? " w" + top[0] : ""}" data-hl-status>${esc(st)}</span> <span class="cb">${cubesRow(iss.cubes) || `<em>—</em>`}</span></span></span></span></button>`;
+      `<span class="hr"><span class="hw${mx > 0 && top.length === 1 ? " w" + top[0] : ""}" data-hl-status>${esc(st)}</span> <span class="cb">${cubesRow(iss.cubes) || `<em>—</em>`}</span></span></span></span>${chip}</button>`;
   }).join("");
-  // v0.5 (#49): the issue leader (the most cubes over the three issues together, a tie is nobody) takes the media's
-  // place on the table; the total of each candidate and who leads.
-  let lead = "";
-  if (v.rules === "v0.5" || isV06(v)) {
-    const tot = [0, 1, 2].map((p) => v.issues.reduce((s, i) => s + i.cubes[p], 0)), max = Math.max(...tot);
-    const who = tot.filter((n) => n === max).length === 1 ? tot.indexOf(max) : -1;
-    lead = `<p class="ct t-lead" data-issue-lead="${who}"><b>${esc(x.tr("hdr.issueTotal"))}</b> ${[0, 1, 2].map((p) => `<span class="n${p === who ? " on" : ""}">${esc(x.short(p))} ${tot[p]}</span>`).join(" · ")}` +
-      ` <em>${esc(who >= 0 ? x.tr("hdr.leadIs", { who: x.short(who) }) : x.tr("hdr.leadNone"))}</em></p>`;
-  }
-  return `<section class="t-track" data-issues="1" aria-label="${esc(x.tr("hdr.slotsL"))}"><button type="button" class="slotsl helpable${o.help === "slot" ? " on" : ""}" data-help="slot" aria-expanded="${o.help === "slot"}" aria-label="${esc(x.tr("hdr.slotsL") + " · " + x.tr("hdr.tap"))}">${esc(x.tr("hdr.slotsL"))} <i aria-hidden="true">?</i></button>${slots}${lead}</section>`;
+  return `<section class="t-track" data-issues="1" aria-label="${esc(x.tr("hdr.slotsL"))}"><button type="button" class="slotsl helpable${o.help === "slot" ? " on" : ""}" data-help="slot" aria-expanded="${o.help === "slot"}" aria-label="${esc(x.tr("hdr.slotsL") + " · " + x.tr("hdr.tap"))}">${esc(x.tr("hdr.slotsL"))} <i aria-hidden="true">?</i></button>${slots}${helpHTML(x, o)}</section>`;
+}
+
+// v0.5 (#49): the issue leader (the most cubes over the three issues together, a tie is nobody) takes the media's place on the
+// table; the total of each candidate and who leads. #66: a small float at the map's foot.
+function leadHTML(v, x) {
+  if (!hasLead(v)) return "";
+  const { tot, who } = issueTotals(v);
+  return `<p class="t-lead" data-issue-lead="${who}"><b>${esc(x.tr("hdr.issueTotal"))}</b> ${[0, 1, 2].map((p) => `<span class="n${p === who ? " on" : ""}">${esc(x.short(p))} ${tot[p]}</span>`).join(" · ")}` +
+    ` <em>${esc(who >= 0 ? x.tr("hdr.leadIs", { who: x.short(who) }) : x.tr("hdr.leadNone"))}</em></p>`;
 }
 
 // ---------------------------------------------------------------- the action panel
@@ -612,7 +646,10 @@ function groupedList(v, ch, x, o) {
   if (plain.length) out.push(`<div class="opts">${plain.map((c) => btn(c, "", x)).join("")}</div>`);
   const byCounty = new Map();
   for (const c of here) { if (!byCounty.has(c.move.county)) byCounty.set(c.move.county, []); byCounty.get(c.move.county).push(c); }
-  for (const [k, items] of byCounty) out.push(countyBlock(v, k, items, x));
+  // #66: the county blocks and the way to another county are one folded list: the map's boxes (tap a county) do the same job, and
+  // the sheet stays a bar the map can be seen over. [data-keep] keeps it open across a redraw (drawing.js).
+  const lists = [];
+  for (const [k, items] of byCounty) lists.push(countyBlock(v, k, items, x));
   if (moves.length) {
     const open = !!o.moves;
     let list = "";
@@ -622,9 +659,10 @@ function groupedList(v, ch, x, o) {
         if (items.length) list += `<h4 class="t-gh">${esc(x.region(r))}</h4><div class="opts two">${items.map((c) => btn(c, "", x, shortOpt(v, c.move, x))).join("")}</div>`;
       }
     }
-    out.push(`<div class="mvs"><button type="button" class="opt weak more${open ? " on" : ""}" data-toggle="moves" aria-expanded="${open}">${esc(x.tr(open ? "p.movesShut" : "p.movesOpen"))}</button>` +
+    lists.push(`<div class="mvs"><button type="button" class="opt weak more${open ? " on" : ""}" data-toggle="moves" aria-expanded="${open}">${esc(x.tr(open ? "p.movesShut" : "p.movesOpen"))}</button>` +
       `<p class="ct">${esc(x.tr("p.moveHint"))}</p>${list}</div>`);
   }
+  if (lists.length) out.push(`<details class="cgs" data-keep="cgs${v.turn}.${v.step}.${v.phase}.${v.pending ? v.pending.stage : ""}"><summary>${esc(x.tr("p.listCounties"))}</summary>${lists.join("")}</details>`);
   if (done.length) out.push(`<div class="opts">${done.map((c) => btn(c, "ghost", x)).join("")}</div>`);
   return out.join("");
 }
@@ -666,7 +704,7 @@ function prompt(v, ch, x) {
   if (!pd) return `<p class="pr">${t("p.play", { n: Math.min(v.step + 1, 4) })}</p>`;
   const cardHead = pd.card === "candidate" ? x.tr("card.cand") : x.card(pd.card);
   switch (pd.stage) {
-    case "trigger": return `<p class="pr">${t("p.trigger", { card: cardHead })}</p><div class="sheet">${CARD[pd.card] ? cardFace(pd.card, x) : ""}</div>`;
+    case "trigger": return `<p class="pr">${t("p.trigger", { card: cardHead })}</p>`; // (the card itself is drawn by sheetFor, beside the buttons)
     case "effect": return fxPrompt(v, x);
     case "local": return `<p class="pr"><b>${esc(cardHead)}</b> · ${t("p.local", { county: x.county(COUNTIES.findIndex((c) => c[0] === CARD[pd.card].county)) })}</p>`;
     case "kind": return `<p class="pr"><b>${esc(cardHead)}</b> · ${t("p.kind", { cp: pd.cp })}</p>`;
@@ -701,40 +739,49 @@ function savePanel(v, ch, x, o) {
     `<div class="opts">${match ? btn({ move: match.move, label: x.tr("p.saveGo"), advised: match.advised }, "", x) : `<button type="button" class="opt" disabled>${esc(x.tr("p.saveGo"))}</button>`}</div>`;
 }
 
-function panelHTML(v, ch, x, o) {
-  const hand = sourceCards(v);
+// The sheet (#66, design 甲): the decision is drawn only when there is something to decide beyond picking a card. → { html, card } or
+// null. A card selected (o.sel) opens that card with its plays; exactly one card to pick and nothing else opens that card by itself;
+// everything that is not a card pick (the order, the momentum choices, keeping cards, a play that is pending, the debate's award,
+// election day's placements) is the sheet's own prompt and buttons; the candidate card waits for its "sure?" here. While the human
+// only has to pick a card (or is waiting) there is no sheet: the hand says so.
+function sheetFor(v, ch, x, o) {
+  const hand = sourceCards(v), wrap = (html, card = null, auto = false) => ({ html, card, auto });
   if (!ch.length) {
     const sel = o.sel && hand.includes(o.sel) ? o.sel : null;
-    const next = o.botnext ? `<div class="opts"><button type="button" class="opt" data-botnext="1">${esc(o.botnext)}</button></div>` : ""; // step by step (#42)
-    return (sel ? sheetHTML(v, ch, x, sel) : `<p class="pr dim">${esc(o.waitHint || x.tr("hdr.waitHint"))}</p>`) + next;
+    return sel ? wrap(sheetHTML(v, ch, x, sel), sel) : null;
   }
   const cardMoves = ch.filter((c) => c.move.card && (c.move.type === "play" || c.move.type === "reveal" || c.move.type === "canvass"));
   // A hand card tapped in a step that plays no card (order, momentum, keeping all) still opens its face (with "not now"), as it does when waiting.
-  if (o.sel && hand.includes(o.sel) && !cardMoves.length && !ch.some((c) => c.move.type === "candidate") && !(v.phase === "save" && ch.length > 1)) return sheetHTML(v, ch, x, o.sel);
-  if (v.phase === "save") return savePanel(v, ch, x, o);
+  if (o.sel && hand.includes(o.sel) && !cardMoves.length && !ch.some((c) => c.move.type === "candidate") && !(v.phase === "save" && ch.length > 1)) return wrap(sheetHTML(v, ch, x, o.sel), o.sel);
+  if (v.phase === "save") return wrap(savePanel(v, ch, x, o));
   if (cardMoves.length || ch.some((c) => c.move.type === "candidate")) {
     const cards = [...new Set(cardMoves.map((c) => c.move.card))];
-    let sel = o.sel && (hand.includes(o.sel) || cards.includes(o.sel)) ? o.sel : null;
-    if (!sel && cards.length === 1 && !ch.some((c) => c.move.type === "candidate")) sel = cards[0];
+    let sel = o.sel && (hand.includes(o.sel) || cards.includes(o.sel)) ? o.sel : null, auto = false;
+    if (!sel && cards.length === 1 && !ch.some((c) => c.move.type === "candidate")) { sel = cards[0]; auto = true; }
     const cand = ch.filter((c) => c.move.type === "candidate");
-    if (sel) return sheetHTML(v, ch, x, sel);
+    if (sel) return wrap(sheetHTML(v, ch, x, sel, auto), sel, auto);
     // The candidate card can be used once a game: tapping it asks again before it is played.
     const sure = cand.find((c) => o.confirm && JSON.stringify(c.move) === o.confirm);
     if (sure) {
-      return `<div class="confirm"><p class="pr">${esc(x.tr("p.candConfirm"))}</p><div class="opts">` +
+      return wrap(`<div class="confirm"><p class="pr">${esc(x.tr("p.candConfirm"))}</p><div class="opts">` +
         `<button type="button" class="opt" data-move="${esc(JSON.stringify(sure.move))}">${esc(x.tr("p.candYes"))}</button>` +
-        `<button type="button" class="opt ghost" data-cancel="1">${esc(x.tr("p.candNo"))}</button></div></div>`;
+        `<button type="button" class="opt ghost" data-cancel="1">${esc(x.tr("p.candNo"))}</button></div></div>`);
     }
-    return prompt(v, ch, x) + `<p class="ct">${esc(x.tr(v.phase === "debate" ? "p.pickCardDebate" : v.phase === "election" ? "p.pickCardElection" : "p.pickCard"))}</p>` +
-      (cand.length ? `<div class="opts">${cand.map((c) => btn(c, "", x)).join("")}</div>` : "");
+    return null;
   }
-  return prompt(v, ch, x) + groupedList(v, ch, x, o);
+  if (v.phase === "action" && v.pending && v.pending.stage === "trigger" && CARD[v.pending.card]) { // your card, played by a rival for CP: trigger it?
+    return wrap(prompt(v, ch, x) + `<div class="sheet">${cardFace(v.pending.card, x)}<div class="sh-r">${groupedList(v, ch, x, o)}</div></div>`);
+  }
+  return wrap(prompt(v, ch, x) + groupedList(v, ch, x, o));
 }
 
-function sheetHTML(v, ch, x, sel) {
+// A card opened: the card face on the left, its plays (or "not now") and the way back on the right. `auto`: the table opened it
+// by itself (it is the only card to pick), so there is nothing to go back to.
+function sheetHTML(v, ch, x, sel, auto = false) {
   const moves = ch.filter((c) => c.move.card === sel);
-  return `<div class="sheet"><button type="button" class="back" data-sel="">${esc(x.tr("p.back"))}</button>${cardFace(sel, x)}` +
-    (moves.length ? `<div class="opts">${moves.map((c) => btn(c, "", x)).join("")}</div>` : `<p class="ct">${esc(x.tr("p.notNow"))}</p>`) + `</div>`;
+  return `<div class="sheet">${cardFace(sel, x)}<div class="sh-r">` +
+    (moves.length ? `<div class="opts">${moves.map((c) => btn(c, "", x)).join("")}</div>` : `<p class="ct">${esc(x.tr("p.notNow"))}</p>`) +
+    (auto ? "" : `<button type="button" class="back" data-sel="">${esc(x.tr("p.back"))}</button>`) + `</div></div>`;
 }
 
 // ---------------------------------------------------------------- hand bar
@@ -747,7 +794,13 @@ function handHTML(v, ch, x, o) {
   const playable = new Set(ch.filter((c) => c.move.card).map((c) => c.move.card));
   const kept = v.turn <= 5 ? v.savedDebate[me] : v.savedElection[me];
   const keptN = Array.isArray(kept) ? kept.length : kept;
-  const title = v.phase === "debate" ? x.tr("hand.titleDebate", { n: hand.length }) : v.phase === "election" ? x.tr("hand.titleElection", { n: hand.length }) : x.tr("hand.title", { n: hand.length }) + (keptN && v.phase !== "end" ? " · " + x.tr("hand.kept", { n: keptN, dest: x.tr(v.turn <= 5 ? "p.destDebate" : "p.destElection") }) : "");
+  const title = v.phase === "debate" ? x.tr("hand.titleDebate", { n: hand.length }) : v.phase === "election" ? x.tr("hand.titleElection", { n: hand.length }) : x.tr("hand.title", { n: hand.length });
+  const keptText = v.phase === "action" || v.phase === "order" || v.phase === "momentum" || v.phase === "save" ? (keptN && v.phase !== "end" ? x.tr("hand.kept", { n: keptN, dest: x.tr(v.turn <= 5 ? "p.destDebate" : "p.destElection") }) : "") : "";
+  // The hand is lowered (#66, design 甲): the tray shows the upper part of the cards; a card selected raises it (data-hand="up"), and
+  // so does the handle. data-pick="1" when the human may play a card now. The line beside the handle says what to do, or that the rivals are moving.
+  const up = !!(o.sel && hand.includes(o.sel)) || !!o.raise, canPick = ch.some((c) => c.move.card);
+  const hintKey = v.phase === "debate" ? "p.pickCardDebate" : v.phase === "election" ? "p.pickCardElection" : "p.pickCard";
+  const hint = v.phase === "end" ? "" : ch.length ? (canPick && !up ? x.tr(hintKey) : "") : o.waitHint || x.tr("hdr.waitHint");
   // The fan: each card tilts a little more than the one before it and the middle ones sit highest. The
   // numbers are computed here so the same hand always draws the same string.
   const n = hand.length, mid = (n - 1) / 2, step = Math.min(4, 24 / Math.max(n, 1));
@@ -757,7 +810,9 @@ function handHTML(v, ch, x, o) {
     const cls = (o.sel === id ? "sel " : "") + (ch.length && !playable.has(id) ? "dis" : "");
     return miniCard(id, x, cls.trim(), `data-sel="${esc(id)}"`, advCards.has(id), fan(i));
   }).join("") + candCard(v, ch, x);
-  return `<footer class="t-hand"><div class="hh"><span>${esc(title)}</span><a href="rules${x.lang === "en" ? "?lang=en" : ""}" target="_blank" rel="noopener">${esc(x.d.nav.rules)}</a></div>` +
+  const handle = `<button type="button" class="hh-t" data-hand-toggle aria-expanded="${up}" aria-label="${esc(title + " · " + x.tr(up ? "hand.lower" : "hand.raise"))}">${esc(title)} <i aria-hidden="true">${up ? "▼" : "▲"}</i></button>`;
+  return `<footer class="t-hand" data-hand="${up ? "up" : "down"}"${canPick ? ` data-pick="1"` : ""}><div class="hh">${handle}<span class="hh-n">${keptText ? `<small>${esc(keptText)}</small>` : ""}${hint ? `<span class="hh-hint">${esc(hint)}</span>` : ""}</span>` +
+    `<a href="rules${x.lang === "en" ? "?lang=en" : ""}" target="_blank" rel="noopener">${esc(x.d.nav.rules)}</a></div>` +
     `<div class="hs">${cards || `<span class="none">${esc(x.tr("hand.none"))}</span>`}</div></footer>`;
 }
 
@@ -787,7 +842,7 @@ function debateHTML(v, x) {
     const sums = st ? `<p class="ds">${esc(x.tr("debate.sums", { a: st.cp[1], b: st.cp[2], c: st.cp[0] }))}</p>` : "";
     return `<section class="dcol${st ? " done" : ""}"><h4>${esc(x.issue(name))} <small>${esc(head)}</small></h4>${rows}${sums}</section>`;
   }).join("");
-  return `<section class="t-debate"><h3 class="t-h">${esc(x.tr("debate.title"))}</h3><p class="ct">${esc(x.tr("debate.rule"))}</p>${cols}</section>`;
+  return `<section class="t-debate"${d.award ? " data-award=\"1\"" : ""}><h3 class="t-h">${esc(x.tr("debate.title"))}</h3><p class="ct">${esc(x.tr("debate.rule"))}</p>${cols}</section>`;
 }
 
 // ---------------------------------------------------------------- the record
@@ -874,15 +929,18 @@ export function firstSayings(entries) {
 
 function feedHTML(v, x, o) {
   const all = o.feed || [], keep = firstSayings(all);
-  const feed = all.map((e, i) => ({ e, i })).slice(-14).reverse();
-  if (!feed.length) return "";
+  const feed = all.map((e, i) => ({ e, i })).slice(-30).reverse();
+  if (!feed.length && !o.chat) return "";
   const rows = feed.map(({ e, i }) => {
     const line = e.k === "say" ? "" : feedLine(e, v, x);
     const say = keep.has(i) ? sayLine(e.why, line ? null : e.seat, x) : "";
     if (!line && !say) return "";
     return `<li class="${e.seat != null ? "s" + e.seat : "sys"}${e.k === "turn" ? " turn" : ""}">${line ? esc(line) : ""}${say ? `<span class="say">${esc(say)}</span>` : ""}</li>`;
   }).join("");
-  return `<section class="t-feed"><h3 class="t-h">${esc(x.tr("hdr.feed"))}</h3><ol>${rows}</ol></section>`;
+  // #66: the record is opened from the top row's button (o.feedOpen); at the count it stays open, as before.
+  const open = v.phase === "end" || !!o.feedOpen;
+  return `<section class="t-feed" id="feed" data-open="${open ? "1" : "0"}"><div class="fd-h"><h3 class="t-h">${esc(x.tr("hdr.feed"))}</h3>` +
+    (v.phase === "end" ? "" : `<button type="button" class="fd-x" data-feed-toggle>${esc(x.tr("hdr.feedClose"))}</button>`) + `</div><ol>${rows}</ol>${o.chat || ""}</section>`;
 }
 
 // ---------------------------------------------------------------- the count
@@ -1083,17 +1141,32 @@ function turnCardHTML(v, x, o) {
 export function tableHTML(view, choices, lang, opts = {}) {
   const x = bind(lang), v = view, o = opts;
   x.v7 = isV07(v); // v0.7: no rest cubes on the stubs
-  const map = taiwanMap(v, lang, { changed: o.changed, selected: o.county, narrow: o.narrow, overlay: o.county != null ? popHTML(v, choices, x, o.county, o.narrow) : "" });
-  // Three columns on a wide desk (the players; the issues and the map; the notes and the decision). On a
-  // phone the columns dissolve (display: contents) and style.css puts the pieces in one order.
+  // #66: what the rivals did since the human last decided is on the map (a halo and a chip on each county they touched), on the
+  // headlines (a flash and a chip) and in one line at the map's top (the toast); all of it is read off o.rec (session.rec).
+  const acts = v.phase === "end" ? { counties: {}, issues: {} } : rivalActs(o.rec, v);
+  const changed = [...new Set([...(o.changed || []), ...Object.keys(acts.counties).map(Number)])];
+  const map = v.phase === "end" ? taiwanMap(v, lang, { changed, selected: o.county, narrow: o.narrow, overlay: o.county != null ? popHTML(v, choices, x, o.county, o.narrow) : "" }) : "";
+  // Three columns on a wide desk (the players; the issues and the map; the record and the sheet). On a
+  // phone the columns dissolve (display: contents) and style.css puts the pieces in one frame.
   if (v.phase === "end") {
     // The count (#33) leads: on a phone it is the first thing under the top row and the board follows ("see the final
     // board", #end-board); on a wide desk it sits in the middle column above the map.
     return `<div class="tbl end" data-phase="end">${headerHTML(v, choices, x, o)}<div class="col cl"><i id="end-board" class="e-mark"></i>${playersHTML(v, x, o)}${feedHTML(v, x, o)}</div>` +
       `<div class="col cc">${endHTML(v, x, o)}${map}</div><div class="col cr">${nowHTML(x, o)}${resultHTML(o, x)}</div></div>`;
   }
-  return `<div class="tbl" data-phase="${esc(v.phase)}">${headerHTML(v, choices, x, o)}<div class="col cl">${playersHTML(v, x, o)}${feedHTML(v, x, o)}</div>` +
-    `<div class="col cc">${trackHTML(v, x, o)}${helpHTML(x, o)}${v.phase === "debate" ? debateHTML(v, x) : ""}${map}</div>` +
-    `<div class="col cr">${nowHTML(x, o)}<section class="t-act${choices.length ? " mine" : ""}" id="act">${resultHTML(o, x)}${choices.length ? adviceLine(x, o) : ""}${o.undo ? `<div class="uw">${undoHTML(o, x)}${panelHTML(v, choices, x, o)}</div>` : panelHTML(v, choices, x, o)}</section></div>` +
-    `${handHTML(v, choices, x, o)}${o.turnCard ? turnCardHTML(v, x, o) : ""}</div>`;
+  const riv = rivalsOf(o.rec, v), lines = recentLines(o.rec || [], v, x);
+  const said = lines.filter((l) => l.seat != null && l.seat !== v.seat).pop() || lines[lines.length - 1];
+  const toast = riv.length ? `<p class="t-toast s${said && said.seat != null ? said.seat : riv[riv.length - 1].seat}" data-act-toast>${esc(said ? said.text : feedLine(riv[riv.length - 1], v, x) || x.tr("hdr.feed"))}</p>` : "";
+  // What happened since the human last decided, every line, for a screen reader (the eye gets the toast, the chips and the halos).
+  const spoken = lines.length ? `<ul class="sr" aria-label="${esc(x.tr("now.title"))}">${lines.map((l) => `<li>${esc(l.text)}</li>`).join("")}</ul>` : "";
+  const notes = toast + resultHTML(o, x) + (choices.length ? adviceLine(x, o) : "");
+  const floats = spoken + (notes ? `<div class="t-notes">${notes}</div>` : "") + leadHTML(v, x) + (o.undo ? `<div class="t-undo">${undoHTML(o, x)}</div>` : "");
+  const mapNow = taiwanMap(v, lang, { changed, selected: o.county, narrow: o.narrow, acts: acts.counties, floats, overlay: o.county != null ? popHTML(v, choices, x, o.county, o.narrow) : "", cover: v.phase === "debate" ? debateHTML(v, x) : "" });
+  const sh = sheetFor(v, choices, x, o), up = !!(o.sel && sourceCards(v).includes(o.sel)) || !!o.raise;
+  const sheet = sh ? `<section class="t-act mine" id="act" data-sheet${sh.card ? ` data-card="${esc(sh.card)}"` : ""}>${sh.html}</section>` : "";
+  const next = !choices.length && o.botnext ? `<div class="t-bn"><button type="button" class="opt" data-botnext="1">${esc(o.botnext)}</button></div>` : ""; // step by step (#42)
+  return `<div class="tbl${up ? " hand-up" : ""}" data-phase="${esc(v.phase)}">${headerHTML(v, choices, x, o)}<div class="col cl">${playersHTML(v, x, o)}</div>` +
+    `<div class="col cc">${trackHTML(v, x, o, acts.issues)}${mapNow}</div>` +
+    `<div class="col cr">${feedHTML(v, x, o)}${sheet}</div>` +
+    `${handHTML(v, choices, x, o)}${next}${o.turnCard ? turnCardHTML(v, x, o) : ""}</div>`;
 }

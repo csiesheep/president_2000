@@ -5,6 +5,9 @@
 //   opts.selected  the county whose box is open (data-selected, a pale yellow paper)
 //   opts.narrow    true on a phone: every county is a small colour bar instead of a full paper
 //   opts.overlay   html placed inside the map's box (the county box, drawn by table.js)
+//   opts.acts      (#66) what the rivals just did, { "<county>": { who, n } } (n = the cubes they put there, 0 = only walked
+//                  in): the county's paper gets a halo in that candidate's colour and a chip [data-act-chip] is laid over
+//                  the map beside it (an HTML element placed in % of the svg, like the candidates' pictures)
 //
 // What a test or a page can read off the string: data-county (+ data-changed / data-selected) on one element
 // per county, data-slot + data-of on every vote block, data-pawn + data-of on every candidate, and
@@ -243,6 +246,8 @@ function paper(v, k, d, lang, o, mode, s, m, pics) {
   const hw = Math.max(s.w, 30), hh = Math.max(s.h, 30);
   let t = `<rect class="tw-hit" x="${f1(s.cx - hw / 2)}" y="${f1(s.cy - hh / 2)}" width="${f1(hw)}" height="${f1(hh)}" fill="transparent"/>`;
   t += `<rect class="tw-paper" data-paper="${k}" x="${f1(x0)}" y="${f1(y0)}" width="${f1(s.w)}" height="${f1(s.h)}" rx="2.5" fill="${PAPER}" stroke="${INK}" stroke-width="${s.bold ? 1.3 : 0.9}" filter="url(#tw-sh)"/>`;
+  const act = (o.acts || {})[k];
+  if (act) t += `<rect class="tw-glow" data-glow="${SEATS[act.who]}" x="${f1(x0 - 1.5)}" y="${f1(y0 - 1.5)}" width="${f1(s.w + 3)}" height="${f1(s.h + 3)}" rx="4" fill="none" stroke="${SEAT_COL[act.who]}" stroke-width="2.4" pointer-events="none"/>`;
   t += `<text x="${f1(x0 + 4)}" y="${f1(y0 + font + 1)}" font-family="'Noto Serif TC', serif" font-size="${font}" font-weight="900" fill="${INK}">${esc(label)}</text>`;
   sl.forEach((kind, i) => { t += slotRect(kind, k, x0 + 4 + (i % c) * (sz + gap), y0 + font + 4 + Math.floor(i / c) * (sz + gap), sz); });
   const pw = pawns(v, k, d, x0 + s.w, y0, m);
@@ -376,15 +381,21 @@ export function taiwanMap(view, lang, opts = {}) {
     const endorse = v.endorse[r];
     const parts = endorse >= 0 ? `${M.endorse} ${cand(d, endorse).short}` : "";
     const name = lang === "en" ? d.regions[REGIONS[r]] : REGIONS[r];
-    return `<li data-region="${r}" data-endorse="${endorse}"><i class="sw" style="background:${TINT[r]}"></i><b>${esc(name)}</b>${parts ? `<span>${esc(parts)}</span>` : ""}</li>`;
+    return `<li data-region="${r}" data-endorse="${endorse}"><b>${esc(name)}</b>${parts ? ` <span>${esc(parts)}</span>` : ""}</li>`;
   }).join("");
+  // (#66: the region list under the map is gone from the page; the screen-reader list stays, with who holds each region's endorsement.)
   // The national media box, all three always shown, 陳 宋 連 (#34): "全國媒體 陳 0 · 宋 0 · 連 2".
   const med = v.media; // v0.5 (#49) has no media: no box
   const media = !Array.isArray(med) ? "" : `<p class="ct tw-media" data-media-national="${med.join(",")}"><b>${esc(M.national)}</b> ${esc([0, 1, 2].map((p) => `${cand(d, p).short} ${med[p]}`).join(" · "))}</p>`;
   const holders = REGIONS.some((_, r) => v.endorse[r] >= 0);
   const key = holders ? `<p class="ct tw-endkey" data-endorse-legend><i class="tw-stampkey" aria-hidden="true">${esc(M.stamp)}</i>${esc(M.endorseKey)}</p>` : "";
-  const sq = (cls) => `<i class="lb ${cls}"></i>`;
-  const legend = `<p class="legend tw-leg"><span>${sq("chen")}${sq("soong")}${sq("lien")} ${esc(M.legendCubes)}</span><span>${sq("green")}${sq("blue")} ${esc(M.legendEmpty)}</span><span>${sq("grey")} ${esc(M.legendGrey)}</span><span><i class="lb pw"></i>${esc(M.legendPawn)}</span></p>`;
-  return `<section class="t-map" aria-label="${esc(M.board)}"><h3 class="t-h">${esc(M.board)}</h3><p class="ct tw-hint">${esc(M.hint)}</p>` +
-    `<div class="tw-box">${svg}${pics.join("")}${o.overlay || ""}</div>${key}<ul class="tw-reg">${keyList}</ul>${media}${legend}</section>`;
+  // The rivals' chips (#66): beside the paper, on its bottom-left edge (the top-right is the candidates', the bottom-right the endorsement
+  // stamp's), kept inside the board. They sit in the page as HTML placed in % of the svg and take no taps.
+  const pc = (n, of) => Math.round((n / of) * 100000) / 1000;
+  const chips = Object.entries(o.acts || {}).map(([k, a]) => {
+    const s = L.spots[k], x = Math.max(2, Math.min(m.w - 44, s.cx - s.w / 2)), y = Math.max(9, Math.min(m.h - 9, s.cy + s.h / 2));
+    return `<span class="act-chip s${a.who}" data-act-chip data-county="${k}" data-who="${SEATS[a.who]}" data-n="${a.n}" aria-hidden="true" style="left:${pc(x, m.w)}%;top:${pc(y, m.h)}%">${esc(cand(d, a.who).short)} ${a.n ? "+" + a.n : "▸"}</span>`;
+  }).join("");
+  return `<section class="t-map" aria-label="${esc(M.board)}"><h3 class="sr">${esc(M.board)}</h3>` +
+    `<div class="tw-box" style="--aw:${m.w};--ah:${m.h}" title="${esc(M.hint)}">${svg}${pics.join("")}${chips}${key}${media}${o.floats || ""}${o.overlay || ""}</div><ul class="sr tw-keys">${keyList}</ul>${o.cover || ""}</section>`;
 }

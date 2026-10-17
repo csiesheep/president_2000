@@ -231,7 +231,7 @@ export function screen(session, lang, opts = {}) {
   const html = tableHTML(v, d.choices, lang, {
     feed: session.feed, wait: botsToMove(session), advisor: { on: !!session.advisor, why: d.why },
     undo: session.tut || botsToMove(session).length ? null : canUndo(session) ? "on" : session.drew ? "off" : null,
-    recent: recentLines(rec, v, x), result: resultBlock(session.mine, x), changed, ...opts, turnCard: session.tut ? false : opts.turnCard,
+    recent: recentLines(rec, v, x), rec, result: resultBlock(session.mine, x), changed, ...opts, turnCard: session.tut ? false : opts.turnCard,
   });
   return session.tut ? decorate(html, session, lang, opts) : html;
 }
