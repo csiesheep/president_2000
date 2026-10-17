@@ -54,6 +54,7 @@ export function drawInto(root, html, state = {}) {
   for (const d of root.querySelectorAll("details[data-keep]")) if (opened.has(d.dataset.keep)) d.open = true;
   applyState(root, state);
   fitPop(root);
+  keepToast(root);
   const hs = root.querySelector(".hs");
   if (!hs) { lastAdvised = null; return; }
   const adv = hs.querySelector(".hc.adv");
@@ -67,6 +68,16 @@ export function drawInto(root, html, state = {}) {
 
 // The table does not scroll (#66), so the county's box must stay inside the free part of the screen, between the top row and the hand:
 // after each draw it is moved up or down (translate) by whatever it sticks out. The arrow keeps pointing at the county's column.
+// The rivals' line over the map shows for about four seconds and fades (CSS); a redraw must not bring it back, so it is told how long it has been there
+// (a new line starts it again).
+let toastSig = null, toastAt = 0;
+function keepToast(root) {
+  const el = root.querySelector("[data-act-toast]");
+  if (!el) { toastSig = null; return; }
+  const sig = el.textContent, now = performance.now();
+  if (sig !== toastSig) { toastSig = sig; toastAt = now; }
+  el.style.animationDelay = `-${Math.round(now - toastAt)}ms`;
+}
 export function fitPop(root) {
   const pop = root.querySelector(".tbl:not(.end) .pop");
   if (!pop) return;
