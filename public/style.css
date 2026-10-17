@@ -448,6 +448,27 @@ button.btn.menub { width: 40px; height: 40px; padding: 0; justify-content: cente
 .lv.on { background: var(--ink); color: var(--paper); }
 .setup .go { margin-top: 6px; justify-content: center; }
 .setup .note { margin: 0; text-align: center; font-size: 11px; color: var(--mute); }
+/* #63: on a phone the setup page fits one screen (iPhone in Safari, 390 x 664) without scrolling: the name, the Pick tag and the blurb
+   share a grid, so the blurb gets the card's full width; spacing and sizes come down, no word is dropped. */
+@media (max-width: 520px) {
+  #solo:has(.setup) { padding-top: 6px; padding-bottom: 6px; gap: 6px; }
+  .setup { gap: 5px; padding: 8px 12px 8px; }
+  .setup .kicker { font-size: 11px; line-height: 1.2; }
+  .setup .st { font-size: 21px; line-height: 1.15; }
+  .setup .sub { font-size: 12.5px; line-height: 1.35; }
+  .cands { gap: 6px; margin-top: 1px; }
+  .cand { display: grid; grid-template-columns: auto 1fr auto; column-gap: 10px; row-gap: 1px; align-items: start; min-height: 0; padding: 5px 8px 5px 6px; }
+  .cand .pic { grid-row: 1 / 3; width: 40px; height: 53px; align-self: center; }
+  .cand .no { width: 17px; height: 17px; font-size: 11px; line-height: 17px; }
+  .cand .cb { display: contents; }
+  .cand .nm { grid-column: 2; font-size: 17px; line-height: 1.25; }
+  .cand .tag { grid-column: 3; grid-row: 1; font-size: 10.5px; padding: 1px 6px; align-self: center; }
+  .cand .bl { grid-column: 2 / 4; font-size: 11.5px; line-height: 1.35; }
+  .setup .lh { margin: 2px 0 0; font-size: 13px; line-height: 1.2; }
+  .lv { height: 44px; font-size: 13.5px; line-height: 1.15; }
+  .setup .go { margin-top: 2px; min-height: 50px; font-size: 20px; }
+  .setup .note { font-size: 10.5px; line-height: 1.35; }
+}
 .rform .fl { margin-top: 6px; font: 900 13px var(--serif); }
 .fi { font: 400 17px var(--sans); color: var(--ink); background: #fffdf6; border: 1.5px solid var(--ink); border-radius: 4px; padding: 0 12px; height: 48px; width: 100%; }
 .fi.code { font: 900 30px var(--serif); letter-spacing: 6px; text-transform: uppercase; }
