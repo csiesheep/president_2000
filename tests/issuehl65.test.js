@@ -111,7 +111,8 @@ check("報眉的獎勵：中文頭條「+1 動能、抽背書」、二條「抽�
       if (r == null) return `${p.where}（${name}）：第 ${i + 1} 條沒有 data-hl-reward`;
       if (lang === "zh-Hant") { if (!squash(r).includes(squash(REWARD_ZH[i])) || (i === 1 && /動能/.test(r)) || (i === 2 && /背書/.test(r))) return `${p.where}：第 ${i + 1} 條的獎勵是「${r}」，應為「${REWARD_ZH[i]}」`; }
       else {
-        const mo = /momentum/i.test(r), es = /endorse/i.test(r);
+        // English may shorten momentum to "mom." (orchestrator ruling #65-2: the full words do not fit a phone flag).
+        const mo = /\bmom(entum|\.)/i.test(r), es = /endorse/i.test(r);
         if ([mo && es, es && !mo, mo && !es][i] !== true) return `${p.where}（英文）：第 ${i + 1} 條的獎勵是「${r}」`;
       }
     }

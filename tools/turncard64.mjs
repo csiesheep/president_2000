@@ -19,7 +19,11 @@
 //     bottom on screen), in both languages; turns 6 and 9 scroll no more than they did before #64 (overlay scroll height
 //     Chinese 786 / 737, English 900 / 845, measured at 65d3053); on the desk the card is 640–720 px wide and needs no
 //     scrolling, except the English turn 6 which may reach 830 (as before);
-//   - the phone page never scrolls sideways.
+//   - the phone page never scrolls sideways;
+//   - the votes read true: the three bars ([data-tc-votes]: the element with a width in % and its track, the parent)
+//     have tracks of one width (±1 px) and each bar is its share of the most votes (±3 %). (Added after #64's first
+//     delivery: the bars shared a row with the amount, so a shorter amount gave a longer track and 連 320 drew longer
+//     than 陳 330. Nothing else measured it.)
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
@@ -87,6 +91,8 @@ const MEASURE = `(() => {
     img: drawn(img) ? r(img) : null,
     steps: steps.map((s) => ({ v: s.dataset.step, w: s.getBoundingClientRect().width, drawn: drawn(s) })),
     nowBg: now ? cs(now).backgroundColor : null, farBg: far.map((s) => cs(s).backgroundColor),
+    bars: o ? [...o.querySelectorAll("[data-tc-votes]")].map((row) => { const fill = [...row.querySelectorAll("[style]")].find((e) => /width\\s*:\\s*[\\d.]+%/.test(e.getAttribute("style")));
+      return { who: row.dataset.tcVotes, now: Number(row.dataset.now), fill: fill ? fill.getBoundingClientRect().width : null, track: fill && fill.parentElement ? fill.parentElement.getBoundingClientRect().width : null }; }) : [],
     sh: o ? o.scrollHeight : 0, ch: o ? o.clientHeight : 0, sw: document.documentElement.scrollWidth, iw: innerWidth, ih: innerHeight,
   });
 })()`;
@@ -128,6 +134,9 @@ try {
         rule(!!m.img && m.img.w >= imgMin * m.card.w, `${who}: headline picture ≥ ${imgMin * 100}% of the card's width (${m.img ? `${Math.round(m.img.w)} of ${Math.round(m.card.w)}` : "not drawn"})`);
       }
       rule(m.radius != null && m.radius <= 2, `${who}: square corners (radius ${m.radius}px)`);
+      const B = m.bars, top = Math.max(1, ...B.map((b) => b.now));
+      const barsOk = B.length === 3 && B.every((b) => b.track > 0 && b.fill != null) && Math.max(...B.map((b) => b.track)) - Math.min(...B.map((b) => b.track)) <= 1 && B.every((b) => Math.abs(b.fill / b.track - b.now / top) <= 0.03);
+      rule(barsOk, `${who}: the vote bars share one track and read true (${B.map((b) => `${b.who} ${b.now}: ${b.fill == null ? "no bar" : `${Math.round(b.fill)}/${Math.round(b.track)}`}`).join(", ")})`);
       const stepsOk = m.steps.length === 9 && m.steps.every((s) => s.drawn && s.w >= 20) && m.nowBg && m.farBg.every((b) => b !== m.nowBg);
       rule(stepsOk, `${who}: nine calendar cells ≥ 20px, this turn's cell coloured apart (${m.steps.length} cells, narrowest ${m.steps.length ? Math.round(Math.min(...m.steps.map((s) => s.w))) : "-"}px, now ${m.nowBg})`);
       if (dev === "phone") {

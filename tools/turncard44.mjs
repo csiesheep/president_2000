@@ -65,7 +65,8 @@ async function tab(br, w, h, mobile, reduced = false) {
 
 // A solo game right at the start of turn 2, with the rivals to move first (made with the game's own code).
 function turnTwo() {
-  for (const seed of [4601, 4602, 4603, 4604, 4605, 4606]) {
+  // Seeds 4601–4660: by v0.7 the first six no longer reach a turn 2 the rivals open (#64's FE found it).
+  for (let seed = 4601; seed <= 4660; seed++) {
     let s = S.newSolo({ seat: 0, level: 2, seed });
     for (let n = 0; n < 3000 && s.st.phase !== "end"; n++) {
       const before = s.st.log.length;
