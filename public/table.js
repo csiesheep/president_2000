@@ -567,6 +567,23 @@ function rivalActs(rec, v) {
   return { counties, issues };
 }
 
+// #72: every action's result at its county. → { "<k>": [ { who, mine, list: [entry, ...] } ] }: per county one chip per candidate, the
+// entries in the record's order (the rivals' from rec, then the human's own last move's from mine); a failed check is an entry too.
+export function countyActs(rec, mine, v) {
+  const per = {};
+  const add = (e, isMine) => {
+    const k = e.k === "move" ? e.to : e.county;
+    if (k == null || !(CUBE_KINDS.has(e.k) || e.k === "move")) return;
+    const who = e.seat ?? v.seat, list = per[k] || (per[k] = []);
+    let c = list.find((q) => q.who === who && q.mine === isMine);
+    if (!c) list.push(c = { who, mine: isMine, list: [] });
+    c.list.push(e);
+  };
+  for (const e of rivalsOf(rec, v)) add(e, false);
+  for (const e of mine || []) add(e, true);
+  return per;
+}
+
 // The issue totals of the three candidates and who leads (the most cubes over the three issues together, a tie is nobody, -1).
 function issueTotals(v) {
   const tot = [0, 1, 2].map((p) => v.issues.reduce((s, i) => s + i.cubes[p], 0)), max = Math.max(...tot);
@@ -1251,7 +1268,8 @@ export function tableHTML(view, choices, lang, opts = {}) {
   // #66: what the rivals did since the human last decided is on the map (a halo and a chip on each county they touched), on the
   // headlines (a flash and a chip) and in one line at the map's top (the toast); all of it is read off o.rec (session.rec).
   const acts = v.phase === "end" ? { counties: {}, issues: {} } : rivalActs(o.rec, v);
-  const changed = [...new Set([...(o.changed || []), ...Object.keys(acts.counties).map(Number)])];
+  const marks = v.phase === "end" ? {} : countyActs(o.rec, o.mineActs, v);
+  const changed = [...new Set([...(o.changed || []), ...Object.keys(acts.counties).map(Number), ...Object.keys(marks).map(Number)])];
   const map = v.phase === "end" ? taiwanMap(v, lang, { changed, selected: o.county, narrow: o.narrow, overlay: o.county != null ? popHTML(v, choices, x, o.county, o.narrow) : "" }) : "";
   // Three columns on a wide desk (the players; the issues and the map; the record and the sheet). On a
   // phone the columns dissolve (display: contents) and style.css puts the pieces in one frame.
@@ -1271,7 +1289,7 @@ export function tableHTML(view, choices, lang, opts = {}) {
   const floats = (notes ? `<div class="t-notes">${notes}</div>` : "") + leadHTML(v, x) + (sh ? "" : undoBox);
   // #69: while the candidate card asks "sure?", the county's box is closed (two layers would stand on the map).
   const boxK = sh && sh.sure ? null : o.county;
-  const mapNow = taiwanMap(v, lang, { changed, selected: boxK, narrow: o.narrow, can: [...new Set(choices.filter(isPlace).map((c) => c.move.county))], acts: acts.counties, floats, legendInLead: hasLead(v), overlay: boxK != null ? popHTML(v, choices, x, boxK, o.narrow) : "", cover: v.phase === "debate" ? debateHTML(v, x) : "" });
+  const mapNow = taiwanMap(v, lang, { changed, selected: boxK, narrow: o.narrow, can: [...new Set(choices.filter(isPlace).map((c) => c.move.county))], acts: acts.counties, marks, floats, legendInLead: hasLead(v), overlay: boxK != null ? popHTML(v, choices, x, boxK, o.narrow) : "", cover: v.phase === "debate" ? debateHTML(v, x) : "" });
   // #69: keeping cards with a choice raises the tray by itself, so the cards to tap are in view.
   const up = !!(o.sel && sourceCards(v).includes(o.sel)) || !!o.raise || (v.phase === "save" && choices.length > 1);
   const sheet = sh ? `<section class="t-act mine" id="act" data-sheet${sh.card ? ` data-card="${esc(sh.card)}"` : ""}>${undoBox}${sh.html}</section>` : "";
