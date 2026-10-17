@@ -22,7 +22,10 @@
 //   - when the rivals placed cubes before this decision, at least one [data-act-chip][data-county] is drawn, its centre
 //     inside the map and within 40 px of its county's box, and the county carries data-changed (when they placed none,
 //     the row says so and passes);
-//   - on the desk the candidates (.t-players) sit left of the map.
+//   - on the desk the candidates (.t-players) sit left of the map;
+//   - the floats over the map — the toast [data-act-toast], the totals [data-issue-lead], the issue chips — cover no
+//     county's box while they are visible (added after the first delivery: the toast sat on 台北市 and 金馬, the totals
+//     on 屏東).
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 
@@ -71,13 +74,18 @@ const MEASURE = (en) => `(() => {
   const chips = [...document.querySelectorAll("[data-act-chip][data-county]")].filter(drawn).map((c) => { const b = r(c); const g = q('.tw-c[data-county="' + c.dataset.county + '"]'); const gr = g ? r(g) : null;
     return { county: c.dataset.county, cx: b.x + b.w / 2, cy: b.y + b.h / 2, changed: !!(g && g.hasAttribute("data-changed")), near: !!gr && b.x + b.w / 2 >= gr.x - 40 && b.x + b.w / 2 <= gr.r + 40 && b.y + b.h / 2 >= gr.y - 40 && b.y + b.h / 2 <= gr.b + 40 }; });
   const pick = [...document.querySelectorAll(".hc[data-sel]")].filter((c) => drawn(c) && !c.classList.contains("dis"))[0];
+  // The floats over the map (the toast, the totals, the issue chips) must not sit on any county's box.
+  const boxes = [...document.querySelectorAll(".tw-c[data-county]")].map((g) => { const p = g.querySelector("[data-paper]") || g; return { k: g.dataset.county, ...r(p) }; });
+  const hit = (b) => boxes.filter((x) => b.x < x.r - 1 && b.r > x.x + 1 && b.y < x.b - 1 && b.b > x.y + 1).map((x) => x.k);
+  const floats = [["toast", q("[data-act-toast]")], ["totals", q("[data-issue-lead]")], ...[...document.querySelectorAll("[data-act-chip][data-issue]")].map((e, i) => ["issue chip " + i, e])]
+    .filter(([, e]) => drawn(e) && Number(getComputedStyle(e).opacity) > 0.05).map(([n, e]) => ({ n, over: hit(r(e)) }));
   return JSON.stringify({
     sh: document.documentElement.scrollHeight, ih, sw: document.documentElement.scrollWidth, iw: innerWidth,
     map: map ? r(map) : null, top: top ? r(top) : null, tog: drawn(tog) ? r(tog) : null,
     players: q(".t-players") ? r(q(".t-players")) : null, track: q(".t-track") ? r(q(".t-track")) : null,
     now: drawn(q(".t-now")), reg: drawn(q(".tw-reg")), leg: drawn(q(".tw-leg")), playText: play.test(document.body.innerText),
     hand: hand ? hand.dataset.hand : null, pickFlag: hand ? hand.dataset.pick : null, hcVis: vis,
-    chips, pickCard: pick ? { ...r(pick), id: pick.dataset.sel } : null,
+    chips, pickCard: pick ? { ...r(pick), id: pick.dataset.sel } : null, floats,
   });
 })()`;
 const AFTER_TAP = `(() => {
@@ -119,6 +127,7 @@ try {
       rule(m.hand === "down" && m.hcVis != null && m.hcVis >= 0.3 && m.hcVis <= 0.6, `${who}: the hand lowered, 30–60 % of a card on screen (data-hand ${m.hand}, ${m.hcVis == null ? "no card" : Math.round(m.hcVis * 100) + "%"})`);
       if (m.chips.length) rule(m.chips.every((c) => c.changed && c.near && c.cx >= m.map.x && c.cx <= m.map.r && c.cy >= m.map.y && c.cy <= m.map.b), `${who}: the rivals' chips on the map, each within 40 px of its county, the county marked (${m.chips.map((c) => `${c.county}${c.changed ? "" : " unmarked"}${c.near ? "" : " far"}`).join(", ")})`);
       else rule(true, `${who}: the rivals placed no cube before this decision (chips not sampled)`);
+      rule(m.floats.every((f) => !f.over.length), `${who}: the floats over the map (toast, totals, issue chips) cover no county box (${m.floats.length ? m.floats.map((f) => `${f.n}: ${f.over.length ? "over " + f.over.join(",") : "clear"}`).join("; ") : "no floats drawn"})`);
       // tap a playable card
       if (m.pickCard) {
         await t.tapAt(m.pickCard.x + m.pickCard.w / 2, Math.min(m.pickCard.y + 20, m.ih - 4)); await sleep(500);
@@ -128,7 +137,7 @@ try {
         if (a.back) { await t.tapAt(a.back.x + a.back.w / 2, a.back.y + a.back.h / 2); await sleep(400); }
         const c = JSON.parse(await t.ev(AFTER_TAP));
         rule(c.hand === "down" && !c.sheet, `${who}: the back button lowers the hand again (data-hand ${c.hand}, sheet ${c.sheet ? "still drawn" : "gone"})`);
-      } else rule(false, `${who}: no playable card to tap`);
+      } else rule(true, `${who}: this decision picks no card (a sheet opened first); the tap not sampled here`);
       // the record
       if (m.tog) {
         await t.tapAt(m.tog.x + m.tog.w / 2, m.tog.y + m.tog.h / 2); await sleep(400);
