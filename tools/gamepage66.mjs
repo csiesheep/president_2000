@@ -16,7 +16,9 @@
 //   - the hand is lowered: .t-hand[data-hand="down"], and of the first hand card (.hc) between 30 % and 60 % is on
 //     screen; a tap (a real pointer tap, CDP) on a playable card raises it: .t-hand[data-hand="up"], a [data-sheet]
 //     whose .opt[data-move] buttons (at least one) are wholly on screen, the page still not scrolling; its back
-//     button ([data-sel=""]) lowers it again;
+//     button ([data-sel=""]) lowers it again; and (#67, owner 2026-10-17 「再點一下同一張牌，會收起來」) a second tap on
+//     the same card in the tray lowers it too, as does a tap on the raised card's own face in the sheet (the face
+//     carries data-sel="<id>" like the tray card);
 //   - a tap on [data-feed-toggle] draws the record (.t-feed[data-open="1"]) on screen with at least one line, still
 //     without the page scrolling; a second tap closes it (the record not drawn);
 //   - when the rivals placed cubes before this decision, at least one [data-act-chip][data-county] is drawn, its centre
@@ -134,7 +136,20 @@ try {
         const a = JSON.parse(await t.ev(AFTER_TAP));
         rule(a.hand === "up" && !!a.sheet && a.card === m.pickCard.id && a.opts.length > 0 && a.opts.every((o) => inside(o, a.ih)) && a.sh <= a.ih + 1,
           `${who}: a tap raises the hand and shows the card's plays on screen (data-hand ${a.hand}, sheet for ${a.card || "-"}, ${a.opts.length} plays${a.opts.length ? ` at ${Math.round(Math.min(...a.opts.map((o) => o.y)))}–${Math.round(Math.max(...a.opts.map((o) => o.b)))}` : ""}, scroll ${a.sh}/${a.ih})`);
-        if (a.back) { await t.tapAt(a.back.x + a.back.w / 2, a.back.y + a.back.h / 2); await sleep(400); }
+        // #67: the same card tapped again in the tray lowers the hand; so does the raised face in the sheet.
+        const SAME = (where) => `(()=>{const e=[...document.querySelectorAll('${where} [data-sel="${m.pickCard.id}"]')].find((x)=>x.getClientRects().length&&x.getBoundingClientRect().width>0); if(!e) return null; const r=e.getBoundingClientRect(); return JSON.stringify({x:r.x,y:r.y,w:r.width,h:r.height});})()`;
+        const tray = JSON.parse(await t.ev(SAME(".t-hand")) || "null");
+        if (tray) { await t.tapAt(tray.x + tray.w / 2, Math.min(Math.max(tray.y + 20, 0), m.ih - 4)); await sleep(500); }
+        const s2 = JSON.parse(await t.ev(AFTER_TAP));
+        rule(!!tray && s2.hand === "down" && !s2.sheet, `${who}: a second tap on the same tray card lowers the hand (#67; ${tray ? `data-hand ${s2.hand}, sheet ${s2.sheet ? "still drawn" : "gone"}` : "the card not found in the tray"})`);
+        if (s2.hand !== "up") { await t.tapAt(m.pickCard.x + m.pickCard.w / 2, Math.min(m.pickCard.y + 20, m.ih - 4)); await sleep(500); }
+        const face = JSON.parse(await t.ev(SAME("[data-sheet]")) || "null");
+        if (face) { await t.tapAt(face.x + face.w / 2, Math.min(Math.max(face.y + face.h / 2, 0), m.ih - 4)); await sleep(500); }
+        const s3 = JSON.parse(await t.ev(AFTER_TAP));
+        rule(!!face && s3.hand === "down" && !s3.sheet, `${who}: a tap on the raised card's face lowers the hand (#67; ${face ? `data-hand ${s3.hand}, sheet ${s3.sheet ? "still drawn" : "gone"}` : "no [data-sel] face in the sheet"})`);
+        if (s3.hand !== "up") { await t.tapAt(m.pickCard.x + m.pickCard.w / 2, Math.min(m.pickCard.y + 20, m.ih - 4)); await sleep(500); }
+        const b2 = JSON.parse(await t.ev(AFTER_TAP));
+        if (b2.back) { await t.tapAt(b2.back.x + b2.back.w / 2, b2.back.y + b2.back.h / 2); await sleep(400); }
         const c = JSON.parse(await t.ev(AFTER_TAP));
         rule(c.hand === "down" && !c.sheet, `${who}: the back button lowers the hand again (data-hand ${c.hand}, sheet ${c.sheet ? "still drawn" : "gone"})`);
       } else rule(true, `${who}: this decision picks no card (a sheet opened first); the tap not sampled here`);
