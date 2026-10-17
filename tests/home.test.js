@@ -8,6 +8,7 @@
 //   - no 「盒子裡有什麼」 title and no box description: no element carrying data-i18n="ui.look.home.boxTitle" or
 //     "ui.look.home.box", and neither text in the page;
 //   - the two strings are gone from both languages (nobody reads them any more), as #52 did with unused strings;
+//   - the subtitle keeps only the three names (the owner, later: 「Main page 移除 把方塊放上 24 個縣市，搶到投票日。」);
 //   - the two links stay: <a id="rules" href="rules"> (app.js sets its language) with data-i18n="ui.look.home.rules", and
 //     the link to https://games.csiesheep.com/ with data-i18n="nav.hub"; both strings still there.
 // The removal checks report 尚未實作 while the title is still in the page; the links are checked from the start.
@@ -34,6 +35,15 @@ c62("兩個字串拿掉了：ui.look.home.boxTitle、ui.look.home.box 中英都�
   const left = [];
   for (const [lang, d] of [["zh", zh], ["en", en]]) for (const k of ["ui.look.home.boxTitle", "ui.look.home.box"]) if (get(d, k) !== undefined) left.push(`${lang} ${k}`);
   return left.length ? `還有 ${left.join("、")}` : ok(true, "中英都沒有這兩個字串");
+});
+// Then, the same day: 「Main page 移除 把方塊放上 24 個縣市，搶到投票日。」 The subtitle keeps the three names.
+c62("副標題只剩三個名字：沒有「把方塊放上 24 個縣市，搶到投票日。」（中英、首頁的預設字也一樣）", () => {
+  const zs = get(zh, "ui.look.home.sub") || "", es = get(en, "ui.look.home.sub") || "";
+  const left = [];
+  if (/把方塊放上|搶到投票日/.test(zs) || /把方塊放上|搶到投票日/.test(HOME)) left.push(`zh「${zs}」`);
+  if (/24 counties|election day/i.test(es)) left.push(`en「${es}」`);
+  if (!/宋楚瑜、連戰、陳水扁/.test(zs) || !/Soong, Lien, Chen/.test(es)) left.push(`三個名字不見了（zh「${zs}」、en「${es}」）`);
+  return left.length ? `還有 ${left.join("、")}` : ok(true, `副標題：zh「${zs}」、en「${es}」`);
 });
 check("兩個連結還在：規則書（id=\"rules\" href=\"rules\"）與 csiesheep games（games.csiesheep.com），字串也在", () => {
   const rules = /<a\b[^>]*\bid="rules"[^>]*\bhref="rules"[^>]*\bdata-i18n="ui\.look\.home\.rules"[^>]*>/.test(HOME) || /<a\b[^>]*\bhref="rules"[^>]*\bid="rules"[^>]*>/.test(HOME);
