@@ -11,7 +11,10 @@
 //     ending an action with nothing left, a local card's one placement, the debate's last card, election day's last
 //     card, an event's one placement …): within 2.5 s, without a tap, the page has made it — the state on screen is no
 //     longer that one (the session store holds another state) — and a note [data-auto-note] is on screen whose words
-//     hold 「只有一個選項，自動做了」;
+//     hold 「只有一個選項，自動做了」; the note's words are not cut (no hidden overflow or line clamp with more words than
+//     room), and neither it nor any note stacked with it (.t-notes) covers a county's box — the rule #66 set for the
+//     floats over the map (added after the first delivery, cb9330b: on the phone the note stacked over 「你的上一步」 and
+//     covered 台東 in 8 of 12 states, its words cut to 「屏東縣 · 填 1 塊 ⋯」);
 //   - chains met where the human made a move, the only option followed, and then the human has a choice again (the
 //     session put in the store is the one right after the human's move, its undo history holding the state before it):
 //     the page makes the only option by itself; then a tap on undo ([data-undo]) brings back the state before the
@@ -94,13 +97,16 @@ const LOOK = `(() => {
   const u = document.querySelector("button[data-undo]:not([disabled])"), b = vis(u) ? u.getBoundingClientRect() : null;
   return JSON.stringify({ log: st && st.st ? st.st.log.length + ":" + JSON.stringify(st.st.pending || null).length + ":" + st.st.phase + ":" + st.st.turn : null,
     notes: [...document.querySelectorAll("[data-auto-note]")].filter(vis).map((e) => e.textContent.replace(/\\s+/g, " ").trim()),
+    cut: [...document.querySelectorAll("[data-auto-note], [data-auto-note] *")].filter(vis).filter((e) => { const cs = getComputedStyle(e), clamp = cs.webkitLineClamp && cs.webkitLineClamp !== "none"; return (clamp || /hidden|clip/.test(cs.overflowY)) && e.scrollHeight > e.clientHeight + 1; }).length,
+    over: (() => { const R = (e) => { const b = e.getBoundingClientRect(); return { x: b.left, y: b.top, r: b.right, b: b.bottom }; }; const notes = [...document.querySelectorAll(".t-notes > *, [data-auto-note]")].filter(vis).map(R);
+      return [...document.querySelectorAll(".tw-c[data-county]")].map((g) => ({ k: g.dataset.county, ...R(g.querySelector("[data-paper]") || g) })).filter((c) => notes.some((n) => n.x < c.r - 1 && n.r > c.x + 1 && n.y < c.b - 1 && n.b > c.y + 1)).map((c) => c.k); })(),
     undo: b ? { x: b.left + b.width / 2, y: b.top + b.height / 2 } : null });
 })()`;
 const fp = (s) => `${s.st.log.length}:${JSON.stringify(s.st.pending || null).length}:${s.st.phase}:${s.st.turn}`;
 
 const out = [];
 const rule = (ok, what) => out.push({ ok, what });
-const res = { made: [], stuck: [], noNote: [], undoOk: 0, undoBad: [] };
+const res = { made: [], stuck: [], noNote: [], undoOk: 0, undoBad: [], covers: [], cutNotes: [] };
 const br = await launch();
 try {
   const t = await tab(br);
@@ -115,7 +121,7 @@ try {
       if (!moved) { res.stuck.push(`${kind} (「${x.label}」)`); continue; }
       await sleep(150); m = JSON.parse(await t.ev(LOOK));
       if (!m.notes.some((n) => n.includes("只有一個選項，自動做了"))) res.noNote.push(`${kind}: ${m.notes.length ? "「" + m.notes[0].slice(0, 30) + "」" : "no note"}`);
-      else res.made.push(kind);
+      else { res.made.push(kind); if (m.over.length) res.covers.push(`${kind}: over ${m.over.join(",")}`); if (m.cut) res.cutNotes.push(kind); }
     }
     for (const c of ST.chains) {
       await open(c.s2);
@@ -138,6 +144,7 @@ try {
 } finally { br.close(); }
 rule(ST.singles.length >= 4, `kinds of single-option states met: ${ST.singles.length} (${ST.singles.map(([k]) => k).join(", ")}; needs ≥ 4)`);
 rule(!res.stuck.length && res.made.length + res.noNote.length === ST.singles.length, `the page makes the only option within 2.5 s without a tap (${ST.singles.length - res.stuck.length} of ${ST.singles.length}${res.stuck.length ? "; still waiting: " + res.stuck.slice(0, 4).join(" | ") : ""})`);
+rule(res.made.length > 0 && !res.covers.length && !res.cutNotes.length, `the note and the notes stacked with it cover no county box, and its words are not cut (${res.made.length} notes${res.covers.length ? "; " + res.covers.slice(0, 4).join(" | ") : ""}${res.cutNotes.length ? "; words cut: " + res.cutNotes.slice(0, 4).join(", ") : ""})`);
 rule(!res.noNote.length && res.made.length > 0, `each one leaves a note 「只有一個選項，自動做了 …」 (${res.made.length} with it${res.noNote.length ? "; without: " + res.noNote.slice(0, 3).join(" | ") : ""})`);
 rule(ST.chains.length > 0 && !res.undoBad.length, `undo right after an option made by itself goes back to before the human's move, no loop (${res.undoOk} of ${ST.chains.length}${res.undoBad.length ? "; " + res.undoBad.slice(0, 3).join(" | ") : ""})`);
 for (const o of out) console.log(`${o.ok ? "✓" : "✗"} ${o.what}`);
