@@ -1007,7 +1007,7 @@ function headlineOf(log, turn) {
 }
 function turnCardHTML(v, x, o) {
   if (v.phase === "end" || !v.log) return "";
-  const T = x.S.tc, n = v.turn, en = x.lang === "en";
+  const T = x.S.tc, n = v.turn;
   const entries = v.log.filter((e) => e.t === "turn");
   const cur = entries.filter((e) => e.turn === n).pop(), prev = entries.filter((e) => e.turn === n - 1).pop();
   const init = cur && cur.initiative >= 0 ? cur.initiative : v.initiative;
@@ -1015,42 +1015,59 @@ function turnCardHTML(v, x, o) {
   const iso = `${dy}-${pad2(d.getUTCMonth() + 1)}-${pad2(dd)}`;
   const special = n === 1 || n === 6 || n === 9;
   const date = fill(n === 9 ? T.day : dd <= 10 ? T.early : dd <= 20 ? T.mid : T.late, { y: dy, m: dm, d: dd });
-  const kicker = special ? fill(T.special, { n, name: T["t" + n].name }) : fill(T.turn, { n });
   const sub = n === 9 ? T.today : fill(T.weeks, { n: (9 - n) * 2 });
-  const pic = (p) => `<img class="tc-pic" src="art/candidates/${SEATS[p]}.webp" alt="" width="48" height="64">`;
-  // The nine steps; the debate (6) and election day (9) are marked.
-  const seg = [], lab = [];
+  const pic = (p, c) => `<img class="${c}" src="art/candidates/${SEATS[p]}.webp" alt="" width="48" height="64">`;
+  // The paper's head (#64): the ears (which turn, how long to go), the name, and the dateline under a double rule.
+  const masthead = `<div class="tc-ears"><div class="tc-ear l"><b>${esc(fill(T.ear1, { n }))}</b><i>${esc(T.earSep)}</i><span>${esc(T.ear2)}</span></div>` +
+    `<h1 class="tc-mast" data-masthead>${esc(T.paper)}</h1><div class="tc-ear r"><b>${esc(sub)}</b></div></div>` +
+    `<p class="tc-dl" data-dateline>${esc(date)}</p>`;
+  // The nine-turn calendar; the debate (6) and election day (9) are named under their cells.
+  const cells = [], lab = [];
   for (let i = 1; i <= 9; i++) {
-    seg.push(`<i class="${i < n ? "past" : i === n ? "now" : "far"}${i === 6 || i === 9 ? " mark" : ""}"></i>`);
+    const st = i < n ? "past" : i === n ? "now" : "far";
+    cells.push(`<span class="${st}${i === 6 || i === 9 ? " mark" : ""}" data-tc-step="${i}" data-state="${st}">${i}</span>`);
     lab.push(`<span${i === 9 ? ' class="r"' : ""}>${i === 6 ? esc(T.debateMark) : i === 9 ? esc(T.voteMark) : ""}</span>`);
   }
-  const track = `<div class="tc-track"><div class="tc-seg">${seg.join("")}</div><div class="tc-lab">${lab.join("")}</div></div>`;
-  let mid = "";
-  if (n === 9) mid = `<ol class="tc-steps">${T.t9.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>`;
-  else if (special) mid = `<p class="tc-body">${esc(T["t" + n].body)}</p>`;
-  if (n === 6) mid += `<div class="tc-iss">${(v.issues || []).map((i) => `<span><img src="art/issues/${esc(i.name)}.webp" alt="" width="64" height="48"><b>${esc(x.issue(i.name))}</b></span>`).join("")}</div>`;
-  const ord = isV06(v) && cur && Array.isArray(cur.order) ? cur.order : null;
-  const first = ord ? `<div class="tc-init">${pic(ord[0])}<span>${T.order.split("{order}").map(esc).join(`<b>${esc(orderText(ord, x))}</b>`)}</span></div>`
-    : init != null && init >= 0 ? `<div class="tc-init">${pic(init)}<span>${T.initiative.split("{who}").map(esc).join(`<b>${esc(x.short(init))}</b>`)}</span></div>` : "";
+  const track = `<div class="tc-track"><div class="tc-cells">${cells.join("")}</div><div class="tc-lab">${lab.join("")}</div></div>`;
+  // The front-page slot: last turn's headline; on the special turns (1, 6, 9) their own words (#44).
   const hl = n > 1 ? headlineOf(v.log, n) : null;
-  const head = hl ? `<div class="tc-hl" data-headline="${esc(hl.card)}" data-how="${hl.how}" data-who="${SEATS[hl.seat]}"><p class="tc-lbl">${esc(T.headline)}</p><div class="tc-hlr"><img src="${cardArt(hl.card)}" alt="" width="600" height="400"><div><b>${esc(x.card(hl.card))}</b><span>${esc(fill(hl.how === "event" ? T.played : T.triggered, { who: x.short(hl.seat) }))}</span></div></div></div>` : "";
+  let top = "", sp = "";
+  if (special) {
+    sp = `<h2 class="tc-h">${esc(T["t" + n].name)}</h2>`;
+    if (n === 9) sp += `<ol class="tc-steps">${T.t9.steps.map((st) => `<li>${esc(st)}</li>`).join("")}</ol>`;
+    else sp += `<p class="tc-body">${esc(T["t" + n].body)}</p>`;
+    if (n === 6) sp += `<div class="tc-iss">${(v.issues || []).map((i) => `<span><img src="art/issues/${esc(i.name)}.webp" alt="" width="64" height="48"><b>${esc(x.issue(i.name))}</b></span>`).join("")}</div>`;
+  }
+  if (hl) {
+    const who = x.short(hl.seat), name = x.card(hl.card);
+    top += `<div class="tc-hl" data-headline="${esc(hl.card)}" data-how="${hl.how}" data-who="${SEATS[hl.seat]}"><p class="tc-lbl">${esc(T.headline)}</p>` +
+      `<h2 class="tc-h" data-hl-title>${esc(fill(hl.how === "event" ? T.titlePlays : T.titleTriggers, { who, card: name }))}</h2>` +
+      `<figure><img src="${cardArt(hl.card)}" alt="" width="600" height="400"><figcaption data-hl-text>${esc(fill(T.cap, { card: name, who, cp: CARD[hl.card].cp, text: x.cardText(hl.card) }))}</figcaption></figure></div>`;
+  }
+  if (top) top = `<section class="tc-top">${top}</section>`;
+  if (sp) sp = `<section class="tc-sp">${sp}</section>`;
+  // Order: from this turn's log entry (an old save has none: who holds the initiative, as before).
+  const ord = isV06(v) && cur && Array.isArray(cur.order) ? cur.order : null;
+  const orderBox = ord
+    ? `<section class="tc-ordr"><p class="tc-lbl">${esc(T.ordL)}</p><ol class="tc-order" data-tc-order data-order="${ord.map((p) => SEATS[p]).join(",")}">` +
+      ord.map((p, i) => `${i ? '<li class="ar" aria-hidden="true">→</li>' : ""}<li><em>${i + 1}</em>${pic(p, "tc-opic")}<b>${esc(x.short(p))}</b></li>`).join("") + `</ol></section>`
+    : init != null && init >= 0 ? `<section class="tc-ordr"><div class="tc-init">${pic(init, "tc-opic")}<span>${T.initiative.split("{who}").map(esc).join(`<b>${esc(x.short(init))}</b>`)}</span></div></section>` : "";
   // Votes: from this turn's log entry (an old save has none: the board as it is now, no change shown).
   const blocks = (p) => v.counties.reduce((s, c) => s + c.blocks.filter((b) => b.o === p).length, 0);
   const now = [0, 1, 2].map((p) => (cur && cur.votes ? cur.votes[p] : blocks(p)));
   const old = cur && cur.votes && prev && prev.votes ? prev.votes : null;
-  const top = Math.max(1, ...now);
-  const amount = (b) => (en ? (b / 10).toFixed(1) : String(b * 10));
+  const topv = Math.max(1, ...now);
+  const amount = (b) => (x.lang === "en" ? (b / 10).toFixed(1) : String(b * 10));
   const rows = [0, 1, 2].sort((a, b) => now[b] - now[a] || a - b).map((p) => {
     const dl = old ? now[p] - old[p] : null;
     const chg = dl == null ? "" : `<em class="${dl > 0 ? "up" : dl < 0 ? "dn" : "eq"}">${dl > 0 ? "▲" + amount(dl) : dl < 0 ? "▼" + amount(-dl) : "—"}</em>`;
-    return `<div class="tc-v s${p}" data-tc-votes="${SEATS[p]}" data-now="${now[p]}"${dl == null ? "" : ` data-delta="${dl}"`}>${pic(p)}<b class="tc-n">${esc(x.short(p))}</b>` +
-      `<span class="tc-b"><i style="width:${(now[p] / top * 100).toFixed(1)}%"></i></span><span class="tc-a"><b>${amount(now[p])}</b>${esc(T.unit)} ${chg}</span></div>`;
+    return `<div class="tc-v s${p}" data-tc-votes="${SEATS[p]}" data-now="${now[p]}"${dl == null ? "" : ` data-delta="${dl}"`}>${pic(p, "tc-pic")}<b class="tc-n">${esc(x.short(p))}</b>` +
+      `<span class="tc-b"><i style="width:${(now[p] / topv * 100).toFixed(1)}%"></i></span><span class="tc-a"><b>${amount(now[p])}</b>${esc(T.unit)} ${chg}</span></div>`;
   }).join("");
   const age = Math.max(0, Math.round(o.cardAge || 0));
-  return `<div class="tc${n === 9 ? " dark" : ""}${age ? "" : " fresh"}" data-turncard="${n}" data-date="${iso}" data-weeks="${(9 - n) * 2}" data-initiative="${init >= 0 ? SEATS[init] : ""}" role="dialog" aria-modal="true" aria-label="${esc(T.label)}">` +
-    `<div class="tc-card"><div class="tc-hd"><p class="tc-k">${esc(kicker)}</p><h2 class="tc-date">${esc(date)}</h2><p class="tc-wk">${esc(sub)}</p></div>` +
-    track + mid + `<div class="tc-cols"><div class="tc-l">${first}${head}</div>` +
-    `<div class="tc-vt"><p class="tc-lbl">${esc(T.votes)}</p>${rows}</div></div>` +
+  return `<div class="tc${n === 9 ? " dark" : ""}${special ? " sp" : ""}${age ? "" : " fresh"}" data-turncard="${n}" data-date="${iso}" data-weeks="${(9 - n) * 2}" data-initiative="${init >= 0 ? SEATS[init] : ""}" role="dialog" aria-modal="true" aria-label="${esc(T.label)}">` +
+    `<div class="tc-card"><header class="tc-hd">${masthead}</header>` +
+    `${sp}<div class="tc-main">${top}<section class="tc-vt"><p class="tc-lbl">${esc(T.votes)}</p>${rows}</section>${orderBox}</div>` + track +
     `<div class="tc-ft"><div class="tc-prog"><i${age ? ` style="animation-delay:-${age}ms"` : ""}></i></div><div class="tc-row"><span class="tc-hint">${esc(T.hint)}</span><button type="button" class="tc-go" data-tc-close="1">${esc(fill(T.start, { n }))}</button></div></div></div></div>`;
 }
 

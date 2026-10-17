@@ -75,6 +75,8 @@ export default {
       },
       // The turn card (#44)
       tc: {
+        paper: "The Campaign Daily", ear1: "Turn {n}", earSep: " ", ear2: "of 9", ordL: "Fewest first",
+        titlePlays: "{who} plays {card}", titleTriggers: "{who} triggers {card}", cap: "{card} ({who}'s {cp} CP card): {text}",
         turn: "Turn {n} of 9", special: "Turn {n} · {name}",
         months: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
         early: "Early {m} {y}", mid: "Mid {m} {y}", late: "Late {m} {y}", day: "{d} {m} {y}",

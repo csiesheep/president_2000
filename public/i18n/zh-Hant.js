@@ -74,6 +74,8 @@ export default {
       },
       // 回合開場卡（#44）
       tc: {
+        paper: "選戰日報", ear1: "第 {n} 回合", earSep: " · ", ear2: "共 9 回合", ordL: "票少的先",
+        titlePlays: "{who}打出{card}", titleTriggers: "{who}觸發{card}", cap: "{card}（{who}的 {cp} CP 牌）：{text}",
         turn: "第 {n} 回合 · 共 9 回合", special: "第 {n} 回合 · {name}",
         months: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"],
         early: "{y} 年 {m} 月上旬", mid: "{y} 年 {m} 月中旬", late: "{y} 年 {m} 月下旬", day: "{y} 年 {m} 月 {d} 日",
