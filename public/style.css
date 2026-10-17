@@ -776,7 +776,7 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
 .tc-h { margin: 0; font: 900 32px/1.1 "Noto Serif TC", var(--serif); }
 .tc-hl { display: flex; flex-direction: column; gap: 4px; }
 .tc-hl figure { margin: 0; display: flex; flex-direction: column; gap: 3px; }
-.tc-hl img { width: 100%; height: 132px; object-fit: cover; border: 1px solid var(--pi); display: block; }
+.tc-hl img { width: 100%; height: 96px; object-fit: cover; border: 1px solid var(--pi); display: block; }
 .tc-hl figcaption { font-size: 11px; line-height: 1.4; color: var(--pm); }
 .tc-sp { display: flex; flex-direction: column; gap: 3px; }
 .tc-sp .tc-h { font-size: 24px; } :lang(en) .tc-sp .tc-h { font-size: 22px; }
@@ -788,13 +788,13 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
 .tc-iss span { display: flex; align-items: center; gap: 6px; border: 1px solid var(--pl); padding: 3px 5px; font-size: 12px; }
 .tc-iss img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex: none; }
 .tc-vt { display: flex; flex-direction: column; gap: 5px; border-top: 1px solid var(--pi); padding: 6px 10px 0 0; border-right: 1px solid var(--pi); }
-.tc-v { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; grid-template-areas: "n b a"; gap: 6px; align-items: center; font-size: 13px; }
+.tc-v { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "n a" "b b"; gap: 1px 6px; align-items: center; font-size: 13px; }
 .tc-pic { display: none; }
 .tc-n { grid-area: n; font: 900 13px "Noto Serif TC", var(--serif); white-space: nowrap; }
 .tc-b { grid-area: b; display: block; height: 10px; background: var(--pt); }
 .tc-b i { display: block; height: 100%; background: var(--k-chen); }
 .tc-v.s1 .tc-b i { background: var(--k-soong); } .tc-v.s2 .tc-b i { background: var(--k-lien); }
-.tc-a { grid-area: a; white-space: nowrap; font-size: 13px; }
+.tc-a { grid-area: a; white-space: nowrap; font-size: 13px; text-align: right; }
 .tc-a em { font-style: normal; font-weight: 700; color: var(--pm); } .tc-a em.up { color: var(--pu); } .tc-a em.dn { color: var(--pr); }
 .tc.dark .tc-v .tc-b i { filter: brightness(1.35); } .tc.dark .tc-a em.dn { color: #ff8a7d; }
 .tc-ordr { border-top: 1px solid var(--pi); padding: 6px 0 0 10px; display: flex; flex-direction: column; gap: 4px; }
@@ -819,10 +819,9 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
 .tc-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .tc-hint { font-size: 12px; color: var(--pm); }
 .tc-go { font: 900 15px "Noto Serif TC", var(--serif); letter-spacing: 2px; color: var(--pp); background: var(--pi); border: none; border-radius: 0; padding: 0 18px; min-height: 44px; cursor: pointer; }
-:lang(en) .tc-mast { font-size: 32px; letter-spacing: -.5px; padding-left: 0; }
+:lang(en) .tc-mast { font-size: 32px; letter-spacing: 0; padding-left: 0; }
 :lang(en) .tc-ear { letter-spacing: 0; }
 :lang(en) .tc-h { font-size: 26px; line-height: 1.1; } :lang(en) .tc-lbl, :lang(en) .tc-ordr .tc-lbl { letter-spacing: 1px; }
-:lang(en) .tc-v { grid-template-columns: minmax(2.9em, auto) minmax(0, 1fr) auto; }
 @keyframes tc-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes tc-rise { from { opacity: 0; transform: translateY(18px) scale(.94); } to { opacity: 1; transform: none; } }
 @keyframes tc-run { from { width: 0; } to { width: 100%; } }
@@ -852,7 +851,7 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
   .tc-vt { grid-column: 2; grid-row: 1; border: 0; padding: 0; gap: 8px; }
   .tc-v { grid-template-columns: 28px auto minmax(0, 1fr); grid-template-areas: "p n a" "p b b"; gap: 2px 8px; font-size: 14px; }
   .tc-pic { display: block; grid-area: p; width: 28px; height: 28px; border-radius: 50%; object-fit: cover; object-position: top; }
-  :lang(en) .tc-v { grid-template-columns: 28px auto minmax(0, 1fr); }
+
   .tc-n { font-size: 14px; } .tc-a { font-size: 14px; text-align: right; } .tc-b { height: 8px; }
   .tc-ordr { grid-column: 2; grid-row: 2; padding: 10px 0 0; margin-top: 12px; gap: 6px; }
   .tc-ordr .tc-lbl { letter-spacing: 3px; }

@@ -82,7 +82,7 @@ export default {
         weeks: "離投票日還有 {n} 週", today: "今天開票",
         initiative: "這回合{who}拿到主動權",
         order: "這回合票少的先：{order}",
-        headline: "上一回合的頭條", played: "{who}打出", triggered: "{who}觸發",
+        headline: "上一回合的頭條", 
         votes: "目前票數", unit: "萬",
         hint: "點任何地方繼續", start: "開始第 {n} 回合", label: "回合開場",
         debateMark: "政見發表會", voteMark: "投票",
