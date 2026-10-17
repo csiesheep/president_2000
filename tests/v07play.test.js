@@ -206,7 +206,17 @@ c60("候選人板的 data-luck 與字：行動階段是運氣、投票日是催�
   });
   let r = nonEmpty(act, "行動階段的候選人板"); if (r !== true) return r;
   r = nonEmpty(elect, "投票日的候選人板"); if (r !== true) return r;
-  return ok(true, `${act} 塊行動階段的板子寫運氣、${elect} 塊投票日的板子寫催票運氣，data-luck 都對`);
+  // A turn of 省府舊部, set up by hand: the random games above never reach one on a human screen (the checker on #61:
+  // writing 60 for 連 there turned nothing red). 省府舊部 is put among this turn's cards and the first screen is drawn.
+  for (const lang of LANGS) {
+    const s = S.advance(S.newSolo({ seat: 0, level: 1, seed: 3 }));
+    s.st = { ...s.st, active: [...(s.st.active || []), "provincial_staff"] };
+    const lien = panels(S.screen(s, lang)).find((p) => p.seat === 2);
+    if (!lien) return `${lang}：省府舊部的局面畫不出連的板子`;
+    const dl = (lien.html.match(/data-luck="(\d+)"/) || [])[1];
+    if (Number(dl) !== 50 || !text(lien.html).includes(`${WORD[lang].luck} 50%`)) return `${lang} 省府舊部那一回合：連的 data-luck 是 ${dl}、字是「${text(lien.html).slice(0, 80)}」（應為 50、「${WORD[lang].luck} 50%」）`;
+  }
+  return ok(true, `${act} 塊行動階段的板子寫運氣、${elect} 塊投票日的板子寫催票運氣，data-luck 都對；省府舊部那一回合連寫 50（中英，人為局面）`);
 });
 
 // The rules page describes the rules in play, v0.7 since #60: its card gallery (rules.js, 「全部的牌」) draws the same
