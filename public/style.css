@@ -224,20 +224,30 @@ button.btn.menub { width: 40px; height: 40px; padding: 0; justify-content: cente
 .helpable.on, .pl-m.on { color: var(--red); }
 .pl-bag:focus-visible, .pl-m:focus-visible { outline: 3px solid #ffd34d; outline-offset: 2px; }
 
-/* The issue slots (#29): three capsules, a round picture on the left (the slot's help is one tap away). */
-.t-track { order: 3; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-.slotsl { display: none; grid-column: 1 / -1; text-align: left; background: none; border: 0; padding: 0; cursor: pointer; min-height: 20px; font: 700 11px var(--sans); color: #e4d6b8; }
+/* The issue track (#65, design 乙 「黑底報眉」): three newspaper stories, the 頭條 wider. Each is a paper (square corners) with a flag
+   across its top (red for the 頭條, ink for the others), then the issue's name, who leads it and the cubes. */
+.t-track { order: 3; display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 6px; }
+.slotsl { display: none; grid-column: 1 / -1; justify-self: start; text-align: left; background: none; border: 0; padding: 0; cursor: pointer; min-height: 20px; font: 700 11px var(--sans); color: #e4d6b8; }
 .slotsl i, .hl i { display: inline-block; width: 13px; height: 13px; line-height: 11px; text-align: center; border: 1.5px solid currentColor; border-radius: 50%; font-style: normal; font-size: 9px; font-weight: 900; vertical-align: 1px; }
 .slotsl.on { color: #ffd34d; }
-.slot { position: relative; height: 50px; min-width: 0; padding: 0; border: 0; border-radius: 25px 6px 6px 25px; overflow: hidden; background: #f6efdd; box-shadow: 0 2px 0 var(--edge2); font: inherit; color: var(--ink); display: flex; align-items: center; text-align: left; cursor: pointer; }
-.slot.on { color: var(--ink); box-shadow: 0 2px 0 var(--edge2), 0 0 0 2px var(--red); }
-.slot .sp { flex: none; width: 50px; height: 50px; border: 2px solid var(--ink); border-radius: 50%; overflow: hidden; background: var(--grey); }
-.slot .sp img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.slot .sb { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; padding: 0 5px 0 6px; }
-.slot .sl { font-size: 9px; font-weight: 700; color: #6a5a48; line-height: 1.2; }
-.slot b { font: 900 12.5px/1.2 var(--serif); }
-.slot b:lang(en) { font-size: 11.5px; }
-.slot .cb { display: flex; gap: 2px; flex-wrap: wrap; min-height: 7px; }
+.slot { position: relative; height: 50px; min-width: 0; padding: 0; border: 0; border-radius: 0; overflow: hidden; background: #f4ecd8; box-shadow: 0 2px 0 #b9a885; font: inherit; color: #1f1a14; display: flex; flex-direction: column; text-align: left; cursor: pointer; }
+.slot.on { box-shadow: 0 2px 0 #b9a885, 0 0 0 2px var(--red); }
+.slot .hf { flex: none; height: 14px; display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 0 5px; background: #1f1a14; color: #f4ecd8; font: 400 9px/1 var(--sans); white-space: nowrap; overflow: hidden; }
+.slot.h1 .hf { background: #a8322a; color: #fff; }
+.slot .hf b { font-weight: 900; letter-spacing: 2px; }
+.slot .hf b:lang(en) { letter-spacing: 0; }
+.slot .hs { flex: 1; min-height: 0; display: flex; align-items: center; gap: 5px; padding: 0 5px 0 6px; }
+.slot .hs img { display: none; flex: none; width: 36px; height: 30px; object-fit: cover; border: 1px solid #1f1a14; border-radius: 0; }
+.slot.h1 .hs img { display: block; }
+.slot .hb { flex: 1; min-width: 0; }
+.slot .hn { display: block; font: 900 15px/1.1 var(--serif); white-space: nowrap; }
+.slot .hn:lang(en) { line-height: 1.05; }
+.slot .hr { display: block; font-size: 9px; line-height: 1.1; }
+.slot.h1 .hn { font-size: 16px; }
+.slot .hn:lang(en) { font-size: 14px; }
+.slot .hw { font: 700 9px/1.1 var(--sans); color: #5a4a3a; margin-right: 3px; }
+.slot .hw.w0 { color: #256538; } .slot .hw.w1 { color: #9a4508; } .slot .hw.w2 { color: #2456a6; }
+.slot .cb { display: inline-flex; gap: 2px; flex-wrap: nowrap; vertical-align: middle; align-items: center; }
 .slot .cb .b { width: 7px; height: 7px; border-radius: 1px; }
 .slot .cb em { font-style: normal; color: #aa9a78; font-size: 9px; line-height: 7px; }
 .help { margin: 0; padding: 7px 10px; font-size: 13px; line-height: 1.55; background: var(--yellow); border-left: 5px solid var(--red); border-radius: 2px; box-shadow: 0 3px 0 var(--edge2); }
@@ -607,7 +617,15 @@ html { scroll-padding-bottom: 190px; }
   .pl-t { padding: 7px 10px 0 0; gap: 2px; }
   .pl .pl-d { display: flex; border-radius: 0; border-left: 0; box-shadow: none; border-top: 1px dotted var(--edge); padding: 2px 10px; }
   .t-track { gap: 8px; }
-  .slot { height: 62px; border-radius: 31px 8px 8px 31px; } .slot .sp { width: 62px; height: 84px; } .slot b { font-size: 15px; } .slot .sl { font-size: 11px; } .slot .cb .b { width: 12px; height: 12px; } .slot .cb { gap: 3px; }
+  .t-track { grid-template-rows: 20px 62px auto; }
+  .slot { height: 62px; }
+  .slot .hf { height: 18px; padding: 0 8px; gap: 6px; font-size: 11px; } .slot .hf b { letter-spacing: 3px; } .slot .hf b:lang(en) { letter-spacing: 0; }
+  .slot .hs { gap: 7px; padding: 0 8px 0 5px; }
+  .slot .hs img { display: block; width: 36px; height: 36px; } .slot.h1 .hs img { width: 52px; height: 36px; }
+  .slot .hb { display: grid; grid-template-columns: auto 1fr; gap: 1px 0; align-items: center; } .slot .hr { display: contents; } .slot .hn { grid-column: 1 / -1; } .slot .hn, .slot.h1 .hn { font-size: 16px; } .slot.h1 .hn { font-size: 18px; } .slot .hn:lang(en) { font-size: 16px; } .slot.h1 .hn:lang(en) { font-size: 17px; }
+  .slot .hw { font-size: 11px; }
+  .slot .cb { gap: 3px; } .slot .cb .b { width: 9px; height: 9px; }
+  .slot.h1 .hn { grid-column: 1; } .slot.h1 .hw { grid-column: 2; grid-row: 1; margin: 0 0 0 .9em; } .slot.h1 .cb { grid-column: 1 / -1; grid-row: 2; }
   .wrap.game { padding-top: 8px; }
   .t-now { margin-top: 10px; transform: rotate(-1deg); padding: 12px 14px 11px; }
   .t-now li { font-size: 14px; }
