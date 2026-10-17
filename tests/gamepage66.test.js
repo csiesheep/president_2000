@@ -30,7 +30,7 @@
 //     earlier seat on a tie) and data-n="<that count>"; for every issue a rival's entry touched (k "issue") there is
 //     one [data-act-chip][data-issue="<issue>"][data-who]; and a one-line toast [data-act-toast] exists exactly when
 //     the rivals have entries in rec (it holds the record's words; what it says is the table's).
-// Before #66 lands no header has a record button: every row reports 尚未實作.
+// Since #66 landed (a90a346), a header without the record button is a failure (it reported 尚未實作 before).
 import test from "node:test";
 import assert from "node:assert/strict";
 import { R, section, check, ok, nonEmpty, summary } from "./harness.js";
@@ -83,7 +83,7 @@ const view = (p) => JSON.parse(JSON.stringify(S.screenView ? S.screenView(p.s) :
 
 const gate = (fn) => () => {
   const ne = nonEmpty(POOL.length, "牌桌的狀態"); if (ne !== true) return ne;
-  if (!POOL.some((p) => tags(S.screen(p.s, "zh-Hant"), "data-feed-toggle").length)) return "TODO: 上方還沒有紀錄按鈕（data-feed-toggle）——#66 還沒做";
+  if (!POOL.some((p) => tags(S.screen(p.s, "zh-Hant"), "data-feed-toggle").length)) return "上方沒有紀錄按鈕（data-feed-toggle）了（#66 已上線，這是退步，不是尚未實作）";
   return fn();
 };
 
