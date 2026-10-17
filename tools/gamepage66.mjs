@@ -154,7 +154,17 @@ try {
         rule(c.hand === "down" && !c.sheet, `${who}: the back button lowers the hand again (data-hand ${c.hand}, sheet ${c.sheet ? "still drawn" : "gone"})`);
       } else rule(true, `${who}: this decision picks no card (a sheet opened first); the tap not sampled here`);
       // the record
-      if (m.tog) {
+      // #74 (owner 2026-10-17 「Desktop 上，紀錄 預設展開在右邊」): on the desk the record may stand open from the start;
+      // then the first tap closes it and the second opens it again (tools/feeddock74.mjs measures where it stands).
+      const f0 = JSON.parse(await t.ev(FEED)), pre = dev === "desk" && f0.open === "1" && f0.drawn;
+      if (m.tog && pre) {
+        await t.tapAt(m.tog.x + m.tog.w / 2, m.tog.y + m.tog.h / 2); await sleep(400);
+        const g = JSON.parse(await t.ev(FEED));
+        rule(g.open === "0" && !g.drawn, `${who}: the record stands open from the start; a tap closes it (data-open ${g.open}, ${g.drawn ? "still drawn" : "gone"})`);
+        if (g.tog) { await t.tapAt(g.tog.x + g.tog.w / 2, g.tog.y + g.tog.h / 2); await sleep(400); }
+        const f = JSON.parse(await t.ev(FEED));
+        rule(f.open === "1" && f.drawn && inside(f.rect, f.ih) && f.lines > 0 && f.sh <= f.ih + 1, `${who}: a second tap opens it on screen again (data-open ${f.open}, ${f.lines} lines, ${f.rect ? `${Math.round(f.rect.y)}–${Math.round(f.rect.b)}` : "not drawn"}, scroll ${f.sh}/${f.ih})`);
+      } else if (m.tog) {
         await t.tapAt(m.tog.x + m.tog.w / 2, m.tog.y + m.tog.h / 2); await sleep(400);
         const f = JSON.parse(await t.ev(FEED));
         rule(f.open === "1" && f.drawn && inside(f.rect, f.ih) && f.lines > 0 && f.sh <= f.ih + 1, `${who}: the record opens on screen (data-open ${f.open}, ${f.lines} lines, ${f.rect ? `${Math.round(f.rect.y)}–${Math.round(f.rect.b)}` : "not drawn"}, scroll ${f.sh}/${f.ih})`);
