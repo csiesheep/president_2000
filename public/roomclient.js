@@ -309,7 +309,7 @@ export function screen(client, lang, opts = {}) {
     const wait = acting(view).filter((p) => p !== view.seat);
     const xb = bind(lang), rec = client.rec || [];
     const body = tableHTML(view, choices, lang, {
-      recent: recentLines(rec, view, xb), rec, result: resultBlock(client.mine, xb),
+      recent: recentLines(rec, view, xb), rec, mineActs: (client.mine && client.mine.lines) || [], result: resultBlock(client.mine, xb),
       changed: [...changedCounties(rec), ...changedCounties((client.mine && client.mine.lines) || [], true)],
       help: opts.help, moves: opts.moves, confirm: opts.confirm,
       feed: client.feed, wait: wait.length ? wait : [0, 1, 2].filter((p) => p !== view.seat),

@@ -395,9 +395,20 @@ export function taiwanMap(view, lang, opts = {}) {
   // The rivals' chips (#66): beside the paper, on its bottom-left edge (the top-right is the candidates', the bottom-right the endorsement
   // stamp's), kept inside the board. They sit in the page as HTML placed in % of the svg and take no taps.
   const pc = (n, of) => Math.round((n / of) * 100000) / 1000;
-  const chips = Object.entries(o.acts || {}).map(([k, a]) => {
-    const s = L.spots[k], x = Math.max(2, Math.min(m.w - 44, s.cx - s.w / 2)), y = Math.max(9, Math.min(m.h - 9, s.cy + s.h / 2));
-    return `<span class="act-chip s${a.who}" data-act-chip data-county="${k}" data-who="${SEATS[a.who]}" data-n="${a.n}" aria-hidden="true" style="left:${pc(x, m.w)}%;top:${pc(y, m.h)}%">${esc(cand(d, a.who).short)} ${a.n ? "+" + a.n : "▸"}</span>`;
+  // #72: a county's chips (one per candidate who acted there, the human's own too) stand in one stack under the paper, each with a mark per
+  // action in the record's order (+1 / 搶 / −1 / ✗ for a check that failed / ▸ for a walk). A stack on the right half hangs from the paper's
+  // right edge, on the left half from its left edge; one at the foot of the map stands above the paper instead.
+  const word = (e) => (e.k === "move" ? "▸" : !e.ok ? "✗" : e.k === "steal" ? (lang === "en" ? "⇆" : "搶") : e.k === "remove" ? "−1" : "+1");
+  const chips = Object.entries(o.marks || {}).map(([k, list]) => {
+    const s = L.spots[k], right = s.cx > m.w / 2, up = s.cy + s.h / 2 > m.h - 46 * list.length;
+    const edge = right ? `right:${pc(Math.max(2, m.w - (s.cx + s.w / 2)), m.w)}%` : `left:${pc(Math.max(2, s.cx - s.w / 2), m.w)}%`;
+    const at = up ? `bottom:${pc(m.h - (s.cy - s.h / 2) + 1, m.h)}%` : `top:${pc(s.cy + s.h / 2 - 1, m.h)}%`;
+    const inner = list.map((a) => {
+      const n = a.list.filter((e) => e.k !== "move" && e.ok).length;
+      return `<span class="act-chip s${a.who}${a.mine ? " mine" : ""}" data-act-chip data-county="${k}" data-who="${SEATS[a.who]}" data-n="${n}"${a.mine ? " data-mine" : ""} aria-hidden="true"><b>${esc(cand(d, a.who).short)}</b>` +
+        a.list.map((e) => `<i class="act-mark${e.k !== "move" && !e.ok ? " no" : ""}" data-act-mark data-k="${e.k}" data-ok="${e.k === "move" || e.ok ? 1 : 0}">${word(e)}</i>`).join("") + `</span>`;
+    }).join("");
+    return `<div class="act-stack${right ? " r" : ""}${up ? " up" : ""}" aria-hidden="true" style="${edge};${at}">${inner}</div>`;
   }).join("");
   return `<section class="t-map" aria-label="${esc(M.board)}"><h3 class="sr">${esc(M.board)}</h3>` +
     `<div class="tw-box" style="--aw:${m.w};--ah:${m.h}" title="${esc(M.hint)}">${svg}${pics.join("")}${chips}${key}${media}${o.floats || ""}${o.overlay || ""}</div><ul class="sr tw-keys">${keyList}</ul>${o.cover || ""}</section>`;
