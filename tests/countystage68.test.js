@@ -23,6 +23,7 @@
 //              (no card): 「這一步放不到這裡。可以放的縣市在地圖上亮著。」
 //     (in English: some words, not the old 「Nothing to do in this county right now.」);
 //   - on election day the line after a canvass still carries the chance of each check (「每次檢定約 N%」).
+// Since #68 landed (57f9205), a map with no lit county is a failure (it reported 尚未實作 before).
 import test from "node:test";
 import assert from "node:assert/strict";
 import { R, section, check, ok, nonEmpty, summary } from "./harness.js";
@@ -86,7 +87,7 @@ const award = (p) => v(p).phase === "debate" && !!(v(p).debate && v(p).debate.aw
 const LIT_ANY = POOL.some((p) => litIn(S.screen(p.s, "zh-Hant")).length);
 const gate = (fn) => () => {
   const ne = nonEmpty(POOL.length, "牌桌的狀態"); if (ne !== true) return ne;
-  if (!LIT_ANY) return "TODO: 地圖上還沒有亮起的縣市（.tw-c 沒有 data-can）";
+  if (!LIT_ANY) return "地圖上沒有亮起的縣市了（.tw-c 沒有 data-can；#68 已上線，這是退步，不是尚未實作）";
   return fn();
 };
 
