@@ -37,7 +37,8 @@ function hands() {
   return out;
 }
 const POOL = hands();
-const handCards = (html) => tags(html, "data-sel").concat(tags(html, "data-pick")).filter((t) => CARD[t.v]);
+// The hand's cards are the .hc buttons; since #67 the raised card's face in the sheet carries data-sel too and is not one.
+const handCards = (html) => tags(html, "data-sel").concat(tags(html, "data-pick")).filter((t) => CARD[t.v] && /\sclass="[^"]*\bhc\b/.test(t.tag));
 const gate = (fn) => () => {
   const ne = nonEmpty(POOL.length, "有手牌的局面"); if (ne !== true) return ne;
   if (!POOL.some((p) => handCards(S.screen(p.s, "zh-Hant")).some((t) => attr(t.tag, "data-camp")))) return "手牌又沒有 data-camp 了（#36 已上線，這是退步，不是尚未實作）";
