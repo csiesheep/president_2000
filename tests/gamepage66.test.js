@@ -198,6 +198,10 @@ check("對手的動作在地圖與頭條上：每個被動到的縣市一個 dat
       else if (e.k === "issue" && e.issue != null) { if (!issues.has(e.issue)) issues.set(e.issue, [0, 0, 0]); issues.get(e.issue)[e.seat]++; }
     }
     const got = tags(html, "data-act-chip");
+    // #72: the county chips hold one mark per action (failed checks and the human's own move too); their rule is
+    // tests/marks72.test.js's. Here they only have to be there; the issue chips and the toast stay #66's.
+    const m72 = /\sdata-act-mark(?=[\s>=])/.test(html);
+    if (m72) { chips += got.filter((t) => attr(t.tag, "data-county") != null).length; per.clear(); }
     for (const [k, cnt] of per) {
       const c = got.filter((t) => attr(t.tag, "data-county") === String(k));
       if (c.length !== 1) return `${p.where}（${name}）：縣市 ${k} 有 ${c.length} 個 chip`;
@@ -213,7 +217,7 @@ check("對手的動作在地圖與頭條上：每個被動到的縣市一個 dat
       if (attr(c[0].tag, "data-who") !== KEYS[cnt.indexOf(Math.max(...cnt))]) return `${p.where}（${name}）：議題 ${iss} 的 chip 是 ${attr(c[0].tag, "data-who")}`;
       issueChips++;
     }
-    const extra = got.filter((t) => (attr(t.tag, "data-county") != null && !per.has(Number(attr(t.tag, "data-county")))) || (attr(t.tag, "data-issue") != null && !issues.has(attr(t.tag, "data-issue"))));
+    const extra = got.filter((t) => (!m72 && attr(t.tag, "data-county") != null && !per.has(Number(attr(t.tag, "data-county")))) || (attr(t.tag, "data-issue") != null && !issues.has(attr(t.tag, "data-issue"))));
     if (extra.length) return `${p.where}（${name}）：多了 ${extra.length} 個沒人動過的 chip（${extra.map((t) => attr(t.tag, "data-county") ?? attr(t.tag, "data-issue")).join(",")}）`;
     const toast = tags(html, "data-act-toast");
     if (!!toast.length !== rec.length > 0) return `${p.where}（${name}）：rec 裡對手 ${rec.length} 筆，data-act-toast ${toast.length ? "有" : "沒有"}`;

@@ -100,13 +100,40 @@ const LOOK = `(() => {
     cut: [...document.querySelectorAll("[data-auto-note], [data-auto-note] *")].filter(vis).filter((e) => { const cs = getComputedStyle(e), clamp = cs.webkitLineClamp && cs.webkitLineClamp !== "none"; return (clamp || /hidden|clip/.test(cs.overflowY)) && e.scrollHeight > e.clientHeight + 1; }).length,
     over: (() => { const R = (e) => { const b = e.getBoundingClientRect(); return { x: b.left, y: b.top, r: b.right, b: b.bottom }; }; const notes = [...document.querySelectorAll(".t-notes > *, [data-auto-note]")].filter(vis).map(R);
       return [...document.querySelectorAll(".tw-c[data-county]")].map((g) => ({ k: g.dataset.county, ...R(g.querySelector("[data-paper]") || g) })).filter((c) => notes.some((n) => n.x < c.r - 1 && n.r > c.x + 1 && n.y < c.b - 1 && n.b > c.y + 1)).map((c) => c.k); })(),
-    undo: b ? { x: b.left + b.width / 2, y: b.top + b.height / 2 } : null });
+    undo: b ? { x: b.left + b.width / 2, y: b.top + b.height / 2 } : null,
+    // the floats over the map's foot (the notes stack and the issue totals line): no line of words partly shown (a box
+    // that clips shows whole lines only; one that does not clip keeps its words inside it), no two of them overlapping
+    stack: (() => {
+      const els = [...document.querySelectorAll(".t-notes > *, .t-lead")].filter(vis), bad = [];
+      const name = (e) => (e.getAttribute("class") || e.tagName) + " 「" + e.textContent.replace(/[ ]+/g, " ").trim().slice(0, 16) + "」";
+      for (const e of els) {
+        const b = e.getBoundingClientRect(), cs = getComputedStyle(e), clips = !/visible/.test(cs.overflowY) || (cs.webkitLineClamp && cs.webkitLineClamp !== "none");
+        const w = document.createTreeWalker(e, NodeFilter.SHOW_TEXT); let n;
+        while ((n = w.nextNode())) {
+          if (!n.textContent.trim()) continue;
+          const r = document.createRange(); r.selectNodeContents(n);
+          for (const q of r.getClientRects()) {
+            if (q.height < 2 || q.width < 1) continue;
+            const inside = q.top >= b.top - 2 && q.bottom <= b.bottom + 2, outside = q.bottom <= b.top + 2 || q.top >= b.bottom - 2;
+            if (clips ? !inside && !outside : !inside) { bad.push(name(e) + (clips ? " shows part of a line" : " has words outside its box")); break; }
+          }
+        }
+      }
+      const boxes = els.map((e) => ({ e, b: e.getBoundingClientRect() }));
+      for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+        const p = boxes[i], q = boxes[j];
+        if (p.e.contains(q.e) || q.e.contains(p.e)) continue;
+        const ox = Math.min(p.b.right, q.b.right) - Math.max(p.b.left, q.b.left), oy = Math.min(p.b.bottom, q.b.bottom) - Math.max(p.b.top, q.b.top);
+        if (ox > 1 && oy > 1) bad.push(name(p.e) + " overlaps " + name(q.e) + " by " + Math.round(oy) + " px");
+      }
+      return { n: els.length, bad };
+    })() });
 })()`;
 const fp = (s) => `${s.st.log.length}:${JSON.stringify(s.st.pending || null).length}:${s.st.phase}:${s.st.turn}`;
 
 const out = [];
 const rule = (ok, what) => out.push({ ok, what });
-const res = { made: [], stuck: [], noNote: [], undoOk: 0, undoBad: [], covers: [], cutNotes: [] };
+const res = { made: [], stuck: [], noNote: [], undoOk: 0, undoBad: [], covers: [], cutNotes: [], stack: [], stackN: 0 };
 const br = await launch();
 try {
   const t = await tab(br);
@@ -122,6 +149,22 @@ try {
       await sleep(150); m = JSON.parse(await t.ev(LOOK));
       if (!m.notes.some((n) => n.includes("只有一個選項，自動做了"))) res.noNote.push(`${kind}: ${m.notes.length ? "「" + m.notes[0].slice(0, 30) + "」" : "no note"}`);
       else { res.made.push(kind); if (m.over.length) res.covers.push(`${kind}: over ${m.over.join(",")}`); if (m.cut) res.cutNotes.push(kind); }
+      // and once the rivals have moved after it, their lines joining the stack (added after the third delivery, 75c9413)
+      const after = m.log; let m2 = m;
+      for (let i = 0; i < 12; i++) { await sleep(250); m2 = JSON.parse(await t.ev(LOOK)); if (m2.log !== after) break; }
+      await sleep(500); m2 = JSON.parse(await t.ev(LOOK));
+      for (const q of [m, m2]) { res.stackN += q.stack.n; if (q.stack.bad.length) res.stack.push(`zh ${kind}: ${q.stack.bad[0]}`); }
+    }
+    // the same floats in English (longer words)
+    for (const [kind, x] of ST.singles) {
+      await t.ev(`sessionStorage.setItem(${JSON.stringify(KEY)}, ${JSON.stringify(JSON.stringify(x.s))}); 1`); await t.go(`${base}?play&lang=en`);
+      let m = null;
+      for (let i = 0; i < 10; i++) { await sleep(250); m = JSON.parse(await t.ev(LOOK)); if (m.log && m.log !== fp(x.s)) break; }
+      await sleep(150); m = JSON.parse(await t.ev(LOOK));
+      const after = m.log; let m2 = m;
+      for (let i = 0; i < 12; i++) { await sleep(250); m2 = JSON.parse(await t.ev(LOOK)); if (m2.log !== after) break; }
+      await sleep(500); m2 = JSON.parse(await t.ev(LOOK));
+      for (const q of [m, m2]) { res.stackN += q.stack.n; if (q.stack.bad.length) res.stack.push(`en ${kind}: ${q.stack.bad[0]}`); }
     }
     for (const c of ST.chains) {
       await open(c.s2);
@@ -145,8 +188,10 @@ try {
 rule(ST.singles.length >= 4, `kinds of single-option states met: ${ST.singles.length} (${ST.singles.map(([k]) => k).join(", ")}; needs ≥ 4)`);
 rule(!res.stuck.length && res.made.length + res.noNote.length === ST.singles.length, `the page makes the only option within 2.5 s without a tap (${ST.singles.length - res.stuck.length} of ${ST.singles.length}${res.stuck.length ? "; still waiting: " + res.stuck.slice(0, 4).join(" | ") : ""})`);
 rule(res.made.length > 0 && !res.covers.length && !res.cutNotes.length, `the note and the notes stacked with it cover no county box, and its words are not cut (${res.made.length} notes${res.covers.length ? "; " + res.covers.slice(0, 4).join(" | ") : ""}${res.cutNotes.length ? "; words cut: " + res.cutNotes.slice(0, 4).join(", ") : ""})`);
+rule(res.stackN > 0 && !res.stack.length, `the floats at the map's foot (notes, the rivals' lines, the issue totals) show whole lines only and do not overlap, zh and en, right after the step and once the rivals have moved (${res.stackN} floats, ${res.stack.length} wrong${res.stack.length ? "; " + res.stack.slice(0, 4).join(" | ") : ""})`);
 rule(!res.noNote.length && res.made.length > 0, `each one leaves a note 「只有一個選項，自動做了 …」 (${res.made.length} with it${res.noNote.length ? "; without: " + res.noNote.slice(0, 3).join(" | ") : ""})`);
 rule(ST.chains.length > 0 && !res.undoBad.length, `undo right after an option made by itself goes back to before the human's move, no loop (${res.undoOk} of ${ST.chains.length}${res.undoBad.length ? "; " + res.undoBad.slice(0, 3).join(" | ") : ""})`);
+if (process.env.DUMP) for (const l of res.stack) console.log(l);
 for (const o of out) console.log(`${o.ok ? "✓" : "✗"} ${o.what}`);
 const bad = out.filter((o) => !o.ok).length;
 console.log(bad ? `FAIL: ${bad} of ${out.length} checks` : `PASS: ${out.length} checks`);

@@ -120,6 +120,8 @@ try {
       // #71 (owner 2026-10-17 「桌機版，把頭條移到左邊，候選人下方」): on the desk the three may stand one under the other in the
       // candidates' column (tools/headleft71.mjs measures where); then the track is that column's width and the 頭條 is not wider.
       const stacked = dev === "desk" && C.map((c) => c.slot).join() === "1,2,3" && C[0].b <= C[1].y + 1 && C[1].b <= C[2].y + 1;
+      // since #71 landed (e47ce84) the desk at 1280×800 has them in the left column; one row there again is a regression.
+      if (dev === "desk") rule(stacked, `${who}: on the desk the three stand one under the other in the left column (#71) (tops ${C.map((c) => Math.round(c.y)).join(" / ")})`);
       if (stacked) {
         rule(!!m.track && m.track.w <= 270 && m.track.h <= 280, `${who}: the track, stacked in the left column, keeps to it (${m.track ? `${Math.round(m.track.w)}×${Math.round(m.track.h)}` : "none"} ≤ 270×280)`);
         rule(Math.max(...C.map((c) => c.w)) - Math.min(...C.map((c) => c.w)) <= 2, `${who}: three headlines one under the other, as wide as each other (${C.map((c) => Math.round(c.w)).join(" / ")})`);
