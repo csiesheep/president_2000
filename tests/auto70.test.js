@@ -43,7 +43,7 @@ const POOL = states();
 
 const gate = (fn) => () => {
   const ne = nonEmpty(POOL.length, "牌桌的狀態"); if (ne !== true) return ne;
-  if (typeof S.autoChoice !== "function") return "TODO: solo.js 還沒有 autoChoice";
+  if (typeof S.autoChoice !== "function") return "solo.js 沒有 autoChoice（#70 已上線，1a54d50；這是退步，不是尚未實作）";
   return fn();
 };
 

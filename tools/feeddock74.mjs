@@ -15,6 +15,10 @@
 //   - at least three of its lines are wholly in view, and its newest line (the last of .t-feed ol, the record keeps its
 //     order) is in view and not covered (the topmost element at its centre is inside the record);
 //   - while the rivals move it stays open and its newest line stays in view;
+//   - inside it nothing is cut, on every screen measured (to act, a card up, the rivals moving): 「剛剛」 (.fd-now), when
+//     drawn, shows whole (its content fits its box), at least two whole lines of the list are in view, and its blocks
+//     (the header, 「剛剛」, the list) do not overlap (added after the first delivery, eb9e1ff: at 1366×657 with the
+//     rivals moving, 「剛剛」 and the list each showed half a line next to each other, read as one line over another);
 //   - with a card tapped up, the card's sheet ([data-sheet]) is wholly on screen, the record (still open) does not
 //     overlap it, and every play button in the sheet is free to tap (the raised hand may cover the record's foot);
 //   - while it stands open the record button shows no count of new lines (.nb), since they are on screen
@@ -107,6 +111,10 @@ const LOOK = `(() => {
     fresh: (() => { try { const x = JSON.parse(sessionStorage.getItem(${JSON.stringify(KEY)})); return (x.rec || []).filter((e) => e.seat != null && e.seat !== x.seat).length; } catch { return -1; } })(),
     log: (() => { try { return JSON.parse(sessionStorage.getItem(${JSON.stringify(KEY)})).st.log.length; } catch { return -1; } })(),
     olBox: (() => { const ol = f && f.querySelector("ol"); return ol ? { ch: ol.clientHeight, sh: ol.scrollHeight, st: Math.round(ol.scrollTop) } : null; })(),
+    clash: f && drawn(f) ? (() => { const kids = [...f.children].filter(drawn).map((e) => ({ n: (e.getAttribute("class") || e.tagName.toLowerCase()), b: e.getBoundingClientRect() })), out = [];
+      for (let i = 0; i < kids.length; i++) for (let j = i + 1; j < kids.length; j++) { const a = kids[i].b, c = kids[j].b, oy = Math.min(a.bottom, c.bottom) - Math.max(a.top, c.top), ox = Math.min(a.right, c.right) - Math.max(a.left, c.left); if (ox > 1 && oy > 1) out.push(kids[i].n + " and " + kids[j].n + " by " + Math.round(oy) + " px"); }
+      return out; })() : [],
+    nowCut: (() => { const n = f && f.querySelector(".fd-now"); return !!n && drawn(n) && n.scrollHeight > n.clientHeight + 1; })(),
     newestFree: lis.length ? (() => { const b = lis[lis.length - 1].getBoundingClientRect(), e = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2); return !!e && e.closest(".t-feed") === f; })() : false,
     playsFree: [...document.querySelectorAll("[data-sheet] button[data-move]")].filter(drawn).map((x) => { const b = x.getBoundingClientRect(), e = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2); return !!e && !!e.closest("[data-sheet]"); }),
     map: q(".tw-box"), top: q(".t-top"), players: q(".t-players"), track: q(".t-track"), hand: hand && drawn(hand) ? { ...R(hand), up: hand.dataset.hand === "up" } : null,
@@ -124,11 +132,14 @@ try {
   for (const [w, h, lang] of [[1280, 800, "zh"], [1440, 900, "zh"], [1100, 720, "zh"], [1366, 657, "zh"], [1280, 800, "en"]]) {
     if (!ST.decide || !ST.rivals) break;
     const who = `${w}×${h} ${lang}`;
+    const clash = []; let looked = 0;
+    const blocks = (q, where) => { if (!q.drawn) return; looked++; for (const x of q.clash || []) clash.push(where + ": " + x); if (q.nowCut) clash.push(where + ": 「剛剛」 is cut"); if (q.lines < Math.min(2, q.all)) clash.push(where + ": " + q.lines + " whole lines of the list in view"); };
     let t = await tab(br, w, h, false);
     try {
       // the human to act
       await load(t, ST.decide.s, lang);
       let m = await look(t);
+      blocks(m, "to act");
       const open = m.open === "1" && m.drawn && onScreen(m.feed, m);
       rule(open, `${who}: the record stands open on screen without a tap (data-open ${m.open}, ${m.feed ? `${Math.round(m.feed.x)}–${Math.round(m.feed.r)} × ${Math.round(m.feed.y)}–${Math.round(m.feed.b)}` : "not drawn"})`);
       const hits = [["the top row", m.top], ["the candidates", m.players], ["the headlines", m.track], ["the map", m.map], ["the hand", m.hand && !m.hand.up ? m.hand : null]].filter(([, b]) => meet(m.feed, b)).map(([n]) => n);
@@ -142,6 +153,7 @@ try {
       if (c) {
         await t.tapAt(c.x, c.y); await sleep(700);
         const k = await look(t);
+        blocks(k, "a card up");
         const free = k.playsFree.filter(Boolean).length;
         rule(!!k.sheet && onScreen(k.sheet, k) && k.open === "1" && k.drawn && !meet(k.sheet, k.feed) && k.playsFree.length > 0 && free === k.playsFree.length, `${who}: with a card up, its sheet on screen, the record open beside it and not over it, the plays free to tap (${k.sheet ? "sheet " + Math.round(k.sheet.y) + "–" + Math.round(k.sheet.b) : "no sheet"}, record ${k.drawn ? Math.round(k.feed.y) + "–" + Math.round(k.feed.b) : "not drawn"}${meet(k.sheet, k.feed) ? ", OVERLAPPING" : ""}, ${free} of ${k.playsFree.length} plays free)`);
       } else rule(false, `${who}: instrument: no playable card to tap`);
@@ -153,6 +165,7 @@ try {
       const a = await look(t);
       await sleep(3500);
       const b = await look(t);
+      blocks(a, "rivals to move"); blocks(b, "rivals moved");
       const moved = b.log > a.log, grew = b.newestText !== a.newestText;
       rule(moved && grew && b.open === "1" && b.drawn && b.newest && b.newestFree, `${who}: while the rivals move it stays open, its newest line in view (${moved ? `log ${a.log} → ${b.log}` : "the rivals did not move (instrument)"}, newest line ${grew ? "changed" : "the same as before"}, ${b.newest ? (b.newestFree ? "in view" : "in view but COVERED") : `NOT in view (list ${b.olBox ? `${b.olBox.ch} high of ${b.olBox.sh}, scrolled ${b.olBox.st}` : "-"})`}, data-open ${b.open})`);
       rule(b.fresh > 0 && b.open === "1" && !b.nb, `${who}: while it stands open the button shows no count of new lines (${b.fresh} new lines of the rivals, ${b.nb ? "a count IS drawn" : "no count"})`);
@@ -166,6 +179,7 @@ try {
         reopened = d.open === "1" && d.drawn && onScreen(d.feed, d) && !!d.map && d.feed.x >= d.map.r - 1;
         msg = `after the tap ${c1.drawn ? "still drawn" : "gone"}, 2.5 s later ${c2.drawn ? "drawn again" : "still gone"}; a second tap ${reopened ? "opens it right of the map again" : "does not open it where it was"}`;
       }
+      rule(looked > 0 && !clash.length, `${who}: inside the record nothing is cut: 「剛剛」 shows whole, at least two whole lines of the list, the blocks apart (${looked} screens${clash.length ? "; " + clash.slice(0, 2).join(" | ") : ""})`);
       rule(closedOk && reopened, `${who}: the button closes it, it stays closed, a second tap opens it (${msg})`);
     } catch (e) { rule(false, `${who}: broke off: ${e.message}`); } finally { t.close(); }
   }
