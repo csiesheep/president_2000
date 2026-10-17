@@ -1212,8 +1212,8 @@ export function tableHTML(view, choices, lang, opts = {}) {
   const sh = sheetFor(v, choices, x, o), up = !!(o.sel && sourceCards(v).includes(o.sel)) || !!o.raise;
   const sheet = sh ? `<section class="t-act mine" id="act" data-sheet${sh.card ? ` data-card="${esc(sh.card)}"` : ""}>${sh.html}</section>` : "";
   const next = !choices.length && o.botnext ? `<div class="t-bn"><button type="button" class="opt" data-botnext="1">${esc(o.botnext)}</button></div>` : ""; // step by step (#42)
-  return `<div class="tbl${up ? " hand-up" : ""}" data-phase="${esc(v.phase)}">${headerHTML(v, choices, x, o)}<div class="col cl">${playersHTML(v, x, o)}</div>` +
-    `<div class="col cc">${trackHTML(v, x, o, acts.issues)}${mapNow}</div>` +
+  return `<div class="tbl${up ? " hand-up" : ""}" data-phase="${esc(v.phase)}">${headerHTML(v, choices, x, o)}<div class="col cl">${playersHTML(v, x, o)}${trackHTML(v, x, o, acts.issues)}</div>` +
+    `<div class="col cc">${mapNow}</div>` +
     `<div class="col cr">${feedHTML(v, x, o, lines)}${sheet}</div>` +
     `${handHTML(v, choices, x, o)}${next}${o.turnCard ? turnCardHTML(v, x, o) : ""}</div>`;
 }

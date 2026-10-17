@@ -1240,3 +1240,45 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
   .cbar-c::-webkit-scrollbar { display: none; }
   .cbar-c .cchip { flex: none; white-space: nowrap; }
 }
+
+/* #71, the wide desk. The boards give up some height (English most of all: its strip wraps to two lines). */
+@media (min-width: 1100px) {
+  .tbl:not(.end) .t-players { gap: 6px; }
+  .tbl:not(.end) .pl-card { height: 84px; }
+  .tbl:not(.end) .pl .pl-d { gap: 0 10px; padding: 1px 10px; font-size: 11.5px; }
+  .tbl:not(.end) .pl .pl-bag, .tbl:not(.end) .pl .pl-m { min-height: 22px; font-size: 11.5px; gap: 3px; }
+  .tbl:not(.end) .pl .pl-m b { font-size: 13px; }
+  .tbl:not(.end) .t-map { justify-content: flex-start; }
+}
+/* 800 px high and up: the three headlines stand in the left column under the candidates, one under the other, each the
+   column's width; the middle column is the map's alone, its top level with the candidates'. The headlines' note opens
+   to the right of the column, over the map's top-left corner, so it is never pushed under the hand tray. */
+@media (min-width: 1100px) and (min-height: 800px) {
+  .tbl:not(.end) .col.cl { position: relative; z-index: 12; }
+  .tbl:not(.end) .t-track { position: static; grid-template-columns: minmax(0, 1fr); grid-template-rows: none; gap: 6px; flex: none; }
+  .tbl:not(.end) .t-track .slotsl { min-height: 16px; }
+  .tbl:not(.end) .t-track .help { left: calc(100% + 12px); right: auto; top: 0; width: 300px; max-height: calc(100dvh - 160px); overflow-y: auto; }
+  .tbl:not(.end) .slot, .tbl:not(.end) .slot.h1 { height: 54px; }
+}
+/* under 800 px high the left column cannot hold three boards and three headlines: the headlines go back to one row above the map */
+@media (min-width: 1100px) and (max-height: 799px) {
+  .tbl:not(.end) .col.cl, .tbl:not(.end) .col.cc { display: contents; }
+  .tbl:not(.end) { grid-template-rows: 46px auto minmax(0, 1fr); }
+  .tbl:not(.end) .t-players { grid-column: 1; grid-row: 2 / span 2; align-self: start; }
+  .tbl:not(.end) { row-gap: 3px; padding-bottom: calc(var(--trayd) + 2px); grid-template-rows: 42px auto minmax(0, 1fr); }
+  .tbl:not(.end) > .t-top { height: 42px; }
+  .tbl:not(.end) .t-track { grid-column: 2; grid-row: 2; position: relative; z-index: 10; grid-template-columns: 1.4fr 1fr 1fr; grid-template-rows: auto; gap: 6px; }
+  .tbl:not(.end) .t-track .slotsl { display: none; }
+  .tbl:not(.end) .t-map { grid-column: 2; grid-row: 3; flex: 1; }
+  .tbl:not(.end) .col.cr { grid-column: 3; grid-row: 2 / span 2; }
+  /* the phone's 48 px headline, for the same reason */
+  .tbl:not(.end) .slot, .tbl:not(.end) .slot.h1 { height: 48px; }
+  .tbl:not(.end) .slot .hf { height: 13px; padding: 0 6px; font-size: 9.5px; }
+  .tbl:not(.end) .slot .hs { gap: 6px; padding: 0 6px; }
+  .tbl:not(.end) .slot .hs img, .tbl:not(.end) .slot.h1 .hs img { width: 30px; height: 26px; }
+  .tbl:not(.end) .slot .hn, .tbl:not(.end) .slot.h1 .hn, .tbl:not(.end) .slot .hn:lang(en), .tbl:not(.end) .slot.h1 .hn:lang(en) { font-size: 14px; }
+  .tbl:not(.end) .slot .hw { font-size: 9.5px; } .tbl:not(.end) .slot .hr { font-size: 9.5px; }
+  .tbl:not(.end) .slot .cb .b { width: 7px; height: 7px; }
+  .tbl:not(.end) .slot .hb, .tbl:not(.end) .slot.h1 .hb { display: block; }
+  .tbl:not(.end) .slot .hr { display: block; } .tbl:not(.end) .slot .hw, .tbl:not(.end) .slot .cb { margin: 0 3px 0 0; }
+}
