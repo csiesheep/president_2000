@@ -80,7 +80,7 @@ export const EVENTS = [
   { id: "econ_cabinet", owner: "lien", deck: "early", cp: 2, icon: "econ", name: "經濟內閣", county: "新竹市", text: "經濟議題連 +1；連運氣 +10%" },
   { id: "kmt_anniversary", owner: "lien", deck: "early", cp: 2, icon: "cross", name: "國民黨黨慶", county: "台北縣", text: "連動能 +1；兩岸議題連 +1" },
   // 外力 (9)
-  { id: "poll_published", owner: "ext", deck: "early", cp: 2, icon: "clean", name: "民調公布", county: "台中市", text: "第一槽議題的領先者動能 +1" },
+  { id: "poll_published", owner: "ext", deck: "early", cp: 2, icon: "clean", name: "民調公布", county: "台中市", text: "頭條議題的領先者動能 +1" },
   { id: "strait_tension", owner: "ext", deck: "early", cp: 3, icon: "cross", name: "兩岸緊張", county: "澎湖縣", text: "兩岸議題上每人 −1；陳動能 +1" },
   { id: "white_paper", owner: "ext", deck: "late", cp: 3, icon: "cross", name: "中共白皮書", county: "苗栗縣", text: "兩岸議題陳 +1；陳動能 +1" },
   { id: "zhu_rongji", owner: "ext", deck: "late", cp: 4, icon: "cross", name: "朱鎔基「沒有好下場」", county: "屏東縣", text: "陳在任 3 個縣市各 +1 免檢定；陳動能 +1" },
