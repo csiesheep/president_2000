@@ -56,6 +56,7 @@ export function drawInto(root, html, state = {}) {
   fitBar(root);
   fitPop(root);
   keepToast(root);
+  feedToLast(root);
   const hs = root.querySelector(".hs");
   if (!hs) { lastAdvised = null; return; }
   const adv = hs.querySelector(".hc.adv");
@@ -69,6 +70,11 @@ export function drawInto(root, html, state = {}) {
 
 // The table does not scroll (#66), so the county's box must stay inside the free part of the screen, between the top row and the hand:
 // after each draw it is moved up or down (translate) by whatever it sticks out. The arrow keeps pointing at the county's column.
+// #74: an open record shows its newest line (the last one) whenever it is drawn: scroll its list to the foot.
+export function feedToLast(root) {
+  const ol = root.querySelector('.t-feed[data-open="1"] > ol');
+  if (ol) ol.scrollTop = ol.scrollHeight;
+}
 // The rivals' line over the map shows for about four seconds and fades (CSS); a redraw must not bring it back, so it is told how long it has been there
 // (a new line starts it again).
 let toastSig = null, toastAt = 0;
@@ -106,6 +112,8 @@ if (typeof window !== "undefined") window.addEventListener("resize", () => { fit
 // share: which screen size the map is drawn for, and the clicks and keys that open and close the box.
 
 const NARROW = "(max-width: 767px)";
+// #74: on the wide desk (the three-column table) the record stands open in the right column from the start.
+export const deskNow = () => typeof matchMedia === "function" && matchMedia("(min-width: 1100px)").matches;
 export const narrowNow = () => typeof matchMedia === "function" && matchMedia(NARROW).matches;
 // Calls fn(isNarrow) when the window crosses the phone breakpoint (the map is drawn differently on each side).
 export function watchNarrow(fn) {

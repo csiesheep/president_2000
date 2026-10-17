@@ -1211,7 +1211,7 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
   .tbl:not(.end).hand-up::after { top: 52px; }
   .tbl:not(.end) .t-bn { right: auto; left: 50%; transform: translateX(-50%); bottom: calc(var(--tray) + 14px); }
   /* the right column: the sheet and the record, both hung from its top */
-  .tbl:not(.end) .t-act { left: 0; right: 0; top: 0; bottom: auto; max-height: 100%; padding: 10px; }
+  .tbl:not(.end) .t-act { order: -1; position: relative; flex: none; left: auto; right: auto; top: auto; bottom: auto; max-height: 100%; padding: 10px; }
   .tbl:not(.end) .t-act .sheet { flex-direction: column; }
   .tbl:not(.end) .t-act .pc-hit, .tbl:not(.end) .t-act .pcard { width: 100%; }
   .tbl:not(.end) .t-act .pc-art { aspect-ratio: 2 / 1; }
@@ -1223,7 +1223,19 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
   .tbl:not(.end) .t-act .stub .st-row svg { width: 14px; height: 14px; }
   .tbl:not(.end) .t-act .stub .st-row small { font-size: 8.5px; min-width: 44px; }
   .tbl:not(.end) .t-act .stub .st-row b { font-size: 12.5px; } .tbl:not(.end) .t-act .stub .st-county b { font-size: 14px; }
-  .tbl:not(.end) .t-feed { left: 0; right: 0; top: 0; bottom: 0; max-height: none; }
+  /* #74: the record is a block in the column, under the sheet, and takes what is left of the column down to the tray */
+  .tbl:not(.end) .t-feed { position: relative; z-index: 1; left: auto; right: auto; top: auto; bottom: auto; max-height: none; flex: 1 1 0; min-height: 0; }
+  /* #74: on a short desk (a laptop) the sheet is drawn tighter, so the record under it keeps room for its newest lines */
+  @media (max-height: 700px) {
+    .tbl:not(.end) .t-act { padding: 8px; gap: 6px; }
+    .tbl:not(.end) .t-act .pc-art { aspect-ratio: 3 / 1; }
+    .tbl:not(.end) .t-act .pc-body { margin-top: -14px; padding: 0 10px 6px; }
+    .tbl:not(.end) .t-act .pcard .ttl { font-size: 17px; }
+    .tbl:not(.end) .t-act .opt { min-height: 36px; padding: 4px 10px; }
+    .tbl:not(.end) .t-feed .fd-h { padding: 0 10px; }
+    .tbl:not(.end) .t-feed .fd-x { min-height: 28px; }
+    .tbl:not(.end) .fd-now { max-height: 30%; }
+  }
   .tbl:not(.end) .t-debate { inset: 0; }
   .pop { max-height: calc(100dvh - 60px - var(--trayd, 90px) - 8px); }
 }
