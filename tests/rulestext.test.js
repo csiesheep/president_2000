@@ -179,7 +179,10 @@ check("沒有封鎖、地方大老、主動權、進位、議題交換、第一�
 // Slot 2 as a choice (v0.5): 「第二槽…或／自選／選獎勵」, "slot 2 … or / picks a reward / their choice". The words of the
 // v0.5 reward choice itself (its prompt, its two options, its lines and table talk: every key named *reward*) are only
 // shown by a v0.5 save. On main before #56: the tutorial's issue step, ui.solo.help.slot, the rules page (both languages).
-const SLOT2_CHOICE = { zh: /(第\s*(2|二)\s*槽)[^。；]{0,16}(或|自選|選獎勵|二選一)/, en: /(slot 2|second slot)[^.;]{0,60}(\bor\b|\bpicks?\b|choose|choice)/i };
+// #65 renames the slots 頭條／二條／三條 (and in English whatever words the track shows, kept at hdr.slot.1–3): the
+// second one is looked for by its old and its new name.
+const SLOT2_EN = String(en.ui.solo.hdr.slot[2]).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const SLOT2_CHOICE = { zh: /(第\s*(2|二)\s*槽|二條)[^。；]{0,16}(或|自選|選獎勵|二選一)/, en: new RegExp(`(slot 2|second slot|${SLOT2_EN})[^.;]{0,60}(\\bor\\b|\\bpicks?\\b|choose|choice)`, "i") };
 check("第二槽不再二選一：中英所有字串都沒寫第二槽是「動能或背書」（v0.5 的 reward 選項本身除外）", gate6(() => {
   const left = [];
   for (const [lang, d] of LANGS) for (const [k, v] of flat(d)) {
@@ -194,8 +197,8 @@ check("規則頁講 v0.6：順序照票數由少到多、議題槽隨機重排�
   const z = all(zh), e = all(en);
   if (!/票數[^。]{0,30}由少到多|由少到多[^。]{0,30}票數/.test(z)) return "zh 規則頁沒寫出行動順序照票數由少到多";
   if (!/議題[^。]{0,30}隨機|隨機[^。]{0,30}議題/.test(z)) return "zh 規則頁沒寫出議題槽隨機重排";
-  if (!/第二槽[^。]{0,20}背書/.test(z)) return "zh 規則頁沒寫出第二槽給背書";
-  if (/第二槽[^。]{0,30}(或|自選)/.test(z)) return "zh 規則頁的第二槽還是二選一";
+  if (!/(第二槽|二條)[^。]{0,20}背書/.test(z)) return "zh 規則頁沒寫出第二槽（二條）給背書";
+  if (/(第二槽|二條)[^。]{0,30}(或|自選)/.test(z)) return "zh 規則頁的第二槽（二條）還是二選一";
   if (!/fewest/i.test(e)) return "en 規則頁沒寫出 fewest votes first";
   if (!/random/i.test(e)) return "en 規則頁沒寫出議題槽隨機（random）";
   return ok(true, "中英都有票數由少到多、隨機重排、第二槽背書");

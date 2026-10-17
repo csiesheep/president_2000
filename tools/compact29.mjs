@@ -10,7 +10,9 @@
 //       "just now" panel ([data-now]) within 220 px (today: 121 and about 330);
 //     - the three candidate panels sit in one row, each at most 64 px high, with an <img> on the left
 //       (its left edge at the panel's, at least 35% of its width, at least 90% of its height);
-//     - the three issue slots ([data-issue]) sit in one row, each at most 56 px high, the picture round;
+//     - the three issue slots ([data-issue]) sit in one row, each at most 56 px high, the picture round — until #65
+//       (owner, 2026-10-17, design 乙 「黑底報眉」): once the slots carry data-hl-slot they are newspaper headlines,
+//       and the 頭條's picture is a photo with square corners (radius at most 2 px; 二條 and 三條 may have none);
 //     - the advisor switch ([data-advisor]) and a menu button ([data-menu], aria-expanded) are on screen
 //       in that top band; quitting (#quit) and the language link (#glang) are hidden until the menu
 //       opens, then on screen and on top where they are drawn; Escape closes the menu;
@@ -74,7 +76,9 @@ const MEASURE = `(()=>{
     return { seat: p.dataset.seat, ...pr, img: ir, stick }; });
   const issues = [...tbl.querySelectorAll("[data-issue]")].filter(vis).map((s) => { const im = s.querySelector("img"); let round = false;
     for (let e = im; e && e !== s.parentElement; e = e.parentElement) { const cs = getComputedStyle(e), rr = e.getBoundingClientRect(); const rad = parseFloat(cs.borderTopLeftRadius) || 0; if (cs.borderTopLeftRadius.endsWith("%") ? parseFloat(cs.borderTopLeftRadius) >= 50 : rad >= Math.min(rr.width, rr.height) / 2 - 1) { round = rr.width > 0 && Math.abs(rr.width - rr.height) <= 2; if (round) break; } }
-    return { ...R(s), round }; });
+    const chain = []; for (let e = im; e; e = e.parentElement) { chain.push(e); if (e === s) break; }
+    const sq = !!im && vis(im) && Math.max(...chain.map((e) => parseFloat(getComputedStyle(e).borderTopLeftRadius) || 0)) <= 2;
+    return { ...R(s), round, hl: s.dataset.hlSlot || null, sq }; });
   const now = document.querySelector("[data-now]");
   const cubes = [...document.querySelectorAll(".tw [data-slot]")].filter((e) => ["chen", "soong", "lien"].includes(e.dataset.slot)).map((e) => e.getBoundingClientRect().width);
   const picEls = [...document.querySelectorAll(".tw-box [data-pawn-pic], .tw [data-pawn] image")];
@@ -115,7 +119,8 @@ try {
     if (I.length !== 3) rule(false, `${tag}: ${I.length} issue slots on screen, not 3`);
     else {
       rule(Math.max(...I.map((s) => s.y)) - Math.min(...I.map((s) => s.y)) <= 1 && I.every((s) => s.h <= 56), `${tag}: issue slots in one row, ${I.map((s) => Math.round(s.h)).join("/")} px high (≤ 56)`);
-      rule(I.every((s) => s.round), `${tag}: issue pictures round (${I.map((s) => s.round).join(", ")})`);
+      if (I.some((s) => s.hl)) rule(I.filter((s) => s.hl === "1").length === 1 && I.find((s) => s.hl === "1").sq, `${tag}: the 頭條's picture a photo with square corners (#65; ${I.map((s) => `${s.hl}:${s.sq}`).join(", ")})`);
+      else rule(I.every((s) => s.round), `${tag}: issue pictures round (${I.map((s) => s.round).join(", ")})`);
     }
     rule(!!m.adv && m.adv.b <= 64, `${tag}: advisor switch on screen in the top band (${m.adv ? "bottom " + Math.round(m.adv.b) : "missing"})`);
     rule(!!m.menu && m.menu.b <= 64 && m.menu.exp === "false", `${tag}: menu button in the top band, closed (${m.menu ? "bottom " + Math.round(m.menu.b) + ", aria-expanded=" + m.menu.exp : "missing"})`);
