@@ -110,11 +110,19 @@ try {
       const m = JSON.parse(await t.ev(MEASURE));
       t.close();
       const who = `${dev} ${p.lang} ${p.name}`, maxH = maxHs[p.lang];
-      rule(!!m.track && m.track.w <= maxW + 1 && m.track.h <= maxH + 1, `${who}: the track keeps its space (${m.track ? `${Math.round(m.track.w)}×${Math.round(m.track.h)}` : "none"} ≤ ${maxW}×${maxH})`);
       const C = m.cards;
       if (C.length !== 3) { rule(false, `${who}: ${C.length} headlines drawn, not 3`); continue; }
-      rule(C.map((c) => c.slot).join() === "1,2,3" && Math.max(...C.map((c) => c.y)) - Math.min(...C.map((c) => c.y)) <= 1, `${who}: three headlines in one row (${C.map((c) => c.slot).join()})`);
-      rule(C[0].w >= 1.2 * Math.max(C[1].w, C[2].w) && Math.abs(C[1].w - C[2].w) <= 2, `${who}: the 頭條 wider (${C.map((c) => Math.round(c.w)).join(" / ")})`);
+      // #71 (owner 2026-10-17 「桌機版，把頭條移到左邊，候選人下方」): on the desk the three may stand one under the other in the
+      // candidates' column (tools/headleft71.mjs measures where); then the track is that column's width and the 頭條 is not wider.
+      const stacked = dev === "desk" && C.map((c) => c.slot).join() === "1,2,3" && C[0].b <= C[1].y + 1 && C[1].b <= C[2].y + 1;
+      if (stacked) {
+        rule(!!m.track && m.track.w <= 270 && m.track.h <= 280, `${who}: the track, stacked in the left column, keeps to it (${m.track ? `${Math.round(m.track.w)}×${Math.round(m.track.h)}` : "none"} ≤ 270×280)`);
+        rule(Math.max(...C.map((c) => c.w)) - Math.min(...C.map((c) => c.w)) <= 2, `${who}: three headlines one under the other, as wide as each other (${C.map((c) => Math.round(c.w)).join(" / ")})`);
+      } else {
+        rule(!!m.track && m.track.w <= maxW + 1 && m.track.h <= maxH + 1, `${who}: the track keeps its space (${m.track ? `${Math.round(m.track.w)}×${Math.round(m.track.h)}` : "none"} ≤ ${maxW}×${maxH})`);
+        rule(C.map((c) => c.slot).join() === "1,2,3" && Math.max(...C.map((c) => c.y)) - Math.min(...C.map((c) => c.y)) <= 1, `${who}: three headlines in one row (${C.map((c) => c.slot).join()})`);
+        rule(C[0].w >= 1.2 * Math.max(C[1].w, C[2].w) && Math.abs(C[1].w - C[2].w) <= 2, `${who}: the 頭條 wider (${C.map((c) => Math.round(c.w)).join(" / ")})`);
+      }
       const fl = C.map((c) => c.reward);
       rule(fl.every((f, i) => f && Math.abs(f.y - C[i].y) <= 2 && f.h >= 12 && f.h <= 20 && f.size >= 9), `${who}: a flag across each top (${fl.map((f, i) => (f ? `top +${Math.round(f.y - C[i].y)} h ${Math.round(f.h)} ${f.size}px` : "none")).join(" / ")})`);
       rule(fl.every(Boolean) && fl[0].bg !== fl[1].bg && fl[1].bg === fl[2].bg, `${who}: the 頭條's flag coloured apart (${fl.map((f) => (f ? f.bg : "-")).join(" / ")})`);

@@ -173,7 +173,8 @@ check("手牌：data-hand 選了牌是 up、否則 down；可以出牌時 data-p
     const canPick = ch.some((c) => c.move.card);
     const h1 = S.screen(p.s, lang), hand = tags(h1, "data-hand").filter((t) => /t-hand/.test(t.tag));
     if (hand.length !== 1) return `${p.where}（${name}）：${hand.length} 個 .t-hand[data-hand]`;
-    if (hand[0].v !== "down") return `${p.where}（${name}）：沒選牌時 data-hand 是 ${hand[0].v}`;
+    // (#69: keeping cards with a choice of sets raises the tray by itself; that rule is tests/labels69.test.js's)
+    if (hand[0].v !== "down" && !(v.phase === "save" && ch.length > 1)) return `${p.where}（${name}）：沒選牌時 data-hand 是 ${hand[0].v}`;
     if ((attr(hand[0].tag, "data-pick") === "1") !== canPick) return `${p.where}（${name}）：data-pick ${attr(hand[0].tag, "data-pick")}，${canPick ? "可以" : "不能"}出牌`;
     down++; if (canPick) pick++;
     if (cards[0]) {
