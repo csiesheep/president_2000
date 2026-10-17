@@ -17,7 +17,10 @@
 //     [data-hl-status] is drawn;
 //   - the cards are paper with square corners (radius at most 2 px); the 頭條 has a picture with square corners, and on
 //     the desk all three do;
-//   - nothing is cut: the label, flag, name and status stay inside their card and do not overflow their own box;
+//   - nothing is cut: the label, flag, name and status stay inside their card and do not overflow their own box; and
+//     nothing drawn inside a headline (the cubes, the picture, every part) spills out of it at any edge, the top included
+//     (added after #68's first delivery, c465799: the cubes row took the bar's class `cbar`, its cubes stacked and grew,
+//     and the issue's name rose over the flag; the old rule looked at the right, bottom and left edges of four parts);
 //   - the totals line ([data-issue-lead]) is drawn inside the track or, since #66, as a float inside the map box; the
 //     phone page never scrolls sideways. (#66 also widens the desk's middle column: the desk cap is 720×115 since.)
 import { spawn } from "node:child_process";
@@ -81,7 +84,9 @@ const MEASURE = `(() => {
     track: tr ? R(tr) : null,
     cards: cards.map((c) => { const img = c.querySelector("img");
       return { slot: c.dataset.hlSlot, ...R(c), rad: rad(c), img: drawn(img) ? { ...R(img), rad: Math.max(...chain(img, c).map(rad)) } : null,
-        label: part(c, "data-hl-label"), reward: part(c, "data-hl-reward"), name: part(c, "data-hl-name"), status: part(c, "data-hl-status") }; }),
+        label: part(c, "data-hl-label"), reward: part(c, "data-hl-reward"), name: part(c, "data-hl-name"), status: part(c, "data-hl-status"),
+        spill: (() => { const cr = R(c); return [...c.querySelectorAll("*")].filter((e) => drawn(e) && !e.matches("[data-act-chip]")).map((e) => ({ e, r: R(e) })).filter(({ r }) => r.w > 0 && r.h > 0 && (r.y < cr.y - 1 || r.b > cr.b + 1 || r.x < cr.x - 1 || r.r > cr.r + 1))
+          .map(({ e, r }) => (e.getAttribute("class") || e.tagName) + " " + Math.round(r.y - cr.y) + "/" + Math.round(r.b - cr.b)).slice(0, 4); })() }; }),
     lead: (() => { const e = document.querySelector("[data-issue-lead]"); return drawn(e) ? R(e) : null; })(),
     map: (() => { const e = document.querySelector(".tw-box"); return drawn(e) ? R(e) : null; })(),
     sw: document.documentElement.scrollWidth, iw: innerWidth,
@@ -133,6 +138,7 @@ try {
       rule(pics.every((c) => c.img && c.img.rad <= 2), `${who}: ${dev === "desk" ? "every headline has" : "the 頭條 has"} a square picture (${C.map((c) => (c.img ? `${Math.round(c.img.w)}×${Math.round(c.img.h)} r${c.img.rad}` : "none")).join(" / ")})`);
       const cut = [];
       for (const c of C) for (const k of ["label", "reward", "name", "status"]) { const e = c[k]; if (e && (e.over || e.r > c.r + 1 || e.b > c.b + 1 || e.x < c.x - 1)) cut.push(`${c.slot}.${k}「${e.txt}」`); }
+      for (const c of C) for (const sp of c.spill || []) cut.push(`${c.slot} spills: ${sp}`);
       rule(!cut.length, `${who}: nothing cut${cut.length ? ` (${cut.join(", ")})` : ""}`);
       // The totals line sits in the track, or (since #66, design 甲) as a small float inside the map box.
       const inMap = !!m.lead && !!m.map && m.lead.x >= m.map.x - 1 && m.lead.r <= m.map.r + 1 && m.lead.y >= m.map.y - 1 && m.lead.b <= m.map.b + 1;
