@@ -61,7 +61,7 @@ export default {
     },
     // 方向 C（#26）：首頁的盒蓋、玩家板、候選人牌
     look: {
-      home: { meta: "3 人 · 9 回合", sub: "宋楚瑜、連戰、陳水扁。把方塊放上 24 個縣市，搶到投票日。", play: "單人開打", playSub: "對三種難度的 AI", host: "開房", hostSub: "傳代碼給朋友", join: "加入", joinSub: "輸入 4 碼代碼", boxTitle: "盒子裡有什麼", box: "70 張事件牌 · 24 個縣市的地方牌 · 三個運氣標記 · 24 個縣市的棋盤 · 三個議題槽。打法跟實體桌遊一樣：出牌、放方塊、擲骰子檢定。", rules: "翻開規則書" },
+      home: { meta: "3 人 · 9 回合", sub: "宋楚瑜、連戰、陳水扁。把方塊放上 24 個縣市，搶到投票日。", play: "單人開打", playSub: "對三種難度的 AI", host: "開房", hostSub: "傳代碼給朋友", join: "加入", joinSub: "輸入 4 碼代碼", rules: "翻開規則書" },
       board: { label: "玩家板", cubes: "{n} 顆在盤上", mom: "動能", hand: "手牌 {n} · 已留 {k}", bag: "袋中 {n}", luck: "運氣 {n}%", luckW: "運氣", canvassW: "催票", votes: "0萬票", votesNone: "票" },
       card: { seal: "整局一次", used: "已用" },
     },
