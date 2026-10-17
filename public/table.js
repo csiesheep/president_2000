@@ -619,7 +619,7 @@ function trackHTML(v, x, o = {}, acts = {}) {
     return `<button type="button" class="slot hl h${i + 1} helpable${o.help === "slot" ? " on" : ""}" data-issue="${esc(iss.name)}" data-help="slot" data-hl-slot="${i + 1}"${act ? " data-changed" : ""} aria-expanded="${o.help === "slot"}" aria-label="${esc(x.tr("hdr.slotsL") + " · " + lab + " · " + x.issue(iss.name) + " · " + st)}">` +
       `<span class="hf" data-hl-reward><b data-hl-label>${esc(lab)}</b><span>${esc(x.tr("hl.reward." + (i + 1)))}</span></span>` +
       `<span class="hs">${issueImg(iss.name, x)}<span class="hb"><b class="hn" data-hl-name>${esc(x.issue(iss.name))}</b>` +
-      `<span class="hr"><span class="hw${mx > 0 && top.length === 1 ? " w" + top[0] : ""}" data-hl-status>${esc(st)}</span> <span class="cbar">${cubesRow(iss.cubes) || `<em>—</em>`}</span></span></span></span>${chip}</button>`;
+      `<span class="hr"><span class="hw${mx > 0 && top.length === 1 ? " w" + top[0] : ""}" data-hl-status>${esc(st)}</span> <span class="cb">${cubesRow(iss.cubes) || `<em>—</em>`}</span></span></span></span>${chip}</button>`;
   }).join("");
   return `<section class="t-track" data-issues="1" aria-label="${esc(x.tr("hdr.slotsL"))}"><button type="button" class="slotsl helpable${o.help === "slot" ? " on" : ""}" data-help="slot" aria-expanded="${o.help === "slot"}" aria-label="${esc(x.tr("hdr.slotsL") + " · " + x.tr("hdr.tap"))}">${esc(x.tr("hdr.slotsL"))} <i aria-hidden="true">?</i></button>${slots}${helpHTML(x, o)}</section>`;
 }
