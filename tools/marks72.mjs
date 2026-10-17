@@ -12,6 +12,9 @@
 //     box, and its centre is within 40 px of its county's box;
 //   - its words are not cut: the chip's content fits (scrollWidth, scrollHeight within its client size) and it is
 //     wholly on screen;
+//   - it covers no other county's box (rect[data-paper]) by more than 2 px each way (added after the first delivery,
+//     78b54ec: stacked chips hid the boxes below them, 27 times on the phone in Chinese, 42 in English, 23 on the desk,
+//     against 0 / 1 / 0 for the single chips before #72);
 //   - the marks on screen match the actions: the number of marks in the chips equals the number of the rivals' county
 //     actions in the record plus the human's own last move's (counted in node), and the failed ones show 「✗」 in Chinese.
 import { spawn } from "node:child_process";
@@ -81,6 +84,7 @@ const MEASURE = `(() => {
     const r = R(c), g = document.querySelector('.tw-c[data-county="' + c.dataset.county + '"] [data-paper]'), gr = g ? R(g) : null, cx = r.x + r.w / 2, cy = r.y + r.h / 2;
     return { k: c.dataset.county, marks: c.querySelectorAll("[data-act-mark]").length, fails: [...c.querySelectorAll('[data-act-mark][data-ok="0"]')].map((m) => m.textContent.trim()),
       inBox: !!bb && r.x >= bb.x - 1 && r.r <= bb.r + 1 && r.y >= bb.y - 1 && r.b <= bb.b + 1, near: !!gr && cx >= gr.x - 40 && cx <= gr.r + 40 && cy >= gr.y - 40 && cy <= gr.b + 40,
+      over: [...document.querySelectorAll("rect[data-paper]")].filter((p) => p.getAttribute("data-paper") !== c.dataset.county).filter((p) => { const b = p.getBoundingClientRect(); return Math.min(r.r, b.right) - Math.max(r.x, b.left) > 2 && Math.min(r.b, b.bottom) - Math.max(r.y, b.top) > 2; }).map((p) => p.getAttribute("data-paper")),
       cut: c.scrollWidth > c.clientWidth + 1 || c.scrollHeight > c.clientHeight + 1, onScreen: r.x >= 0 && r.y >= 0 && r.r <= innerWidth && r.b <= innerHeight };
   });
   return JSON.stringify({ chips, turncard: !!document.querySelector("[data-turncard]") });
@@ -92,7 +96,7 @@ if (!ST.some((x) => x.where.startsWith("mine")) || ST.filter((x) => x.where.star
 const br = await launch();
 try {
   for (const [dev, w, h, mobile, lang] of [["phone", 390, 664, true, "zh"], ["phone", 390, 664, true, "en"], ["desk", 1280, 800, false, "zh"]]) {
-    const who = `${dev} ${lang}`, bad = { empty: [], where: [], cut: [], count: [], words: [] };
+    const who = `${dev} ${lang}`, bad = { empty: [], where: [], cut: [], count: [], words: [], cover: [] };
     let chipsN = 0;
     const t = await tab(br, w, h, mobile);
     try {
@@ -107,6 +111,7 @@ try {
           chipsN++;
           if (!c.marks) bad.empty.push(`${x.where}: county ${c.k}`);
           if (!c.inBox || !c.near) bad.where.push(`${x.where}: county ${c.k}${c.inBox ? "" : " outside the map"}${c.near ? "" : " far from its box"}`);
+          if (c.over.length) bad.cover.push(`${x.where}: county ${c.k}'s chip over ${c.over.join(",")}`);
           if (c.cut || !c.onScreen) bad.cut.push(`${x.where}: county ${c.k}${c.cut ? " words cut" : ""}${c.onScreen ? "" : " off screen"}`);
           if (lang === "zh" && c.fails.some((f) => f !== "✗")) bad.words.push(`${x.where}: county ${c.k} 「${c.fails.join("")}」`);
         }
@@ -117,6 +122,7 @@ try {
     finally { t.close(); }
     rule(chipsN > 0 && !bad.empty.length && !bad.count.length, `${who}: a mark per action (${chipsN} chips${bad.count.length || bad.empty.length ? "; " + [...bad.count, ...bad.empty.map((s) => "empty chip " + s)].slice(0, 3).join(" | ") : ", the counts match the record"})`);
     rule(chipsN > 0 && !bad.where.length, `${who}: every chip inside the map and within 40 px of its county (${bad.where.length ? bad.where.slice(0, 3).join(" | ") : "all"})`);
+    rule(chipsN > 0 && !bad.cover.length, `${who}: no chip covers another county's box (${bad.cover.length ? bad.cover.length + " chips; " + bad.cover.slice(0, 3).join(" | ") : "none"})`);
     rule(chipsN > 0 && !bad.cut.length, `${who}: no chip's words cut, all on screen (${bad.cut.length ? bad.cut.slice(0, 3).join(" | ") : "all"})`);
     if (lang === "zh") rule(chipsN > 0 && !bad.words.length, `${who}: a failed check reads 「✗」 (${bad.words.length ? bad.words.slice(0, 3).join(" | ") : "all"})`);
   }
