@@ -227,7 +227,7 @@ export function mount({ T, lang, qs, store, $ }) {
     if (!t) return;
     const d = t.dataset;
     if (d.msg) { const m = JSON.parse(d.msg); ui.sel = null; ui.raise = false; ui.picks = []; send(m); if (m.t === "move") window.scrollTo({ top: 0 }); }
-    else if (d.confirm && d.move) { ui.confirm = d.move; ui.sel = null; draw(); }
+    else if (d.confirm && d.move) { ui.confirm = d.move; ui.sel = null; ui.county = null; draw(); }
     else if (d.move) { ui.sel = null; ui.raise = false; ui.picks = []; ui.moves = false; ui.confirm = null; ui.county = null; send({ t: "move", move: JSON.parse(d.move) }); if (d.pop == null) window.scrollTo({ top: 0 }); }
     else if (d.cancel) { ui.confirm = null; draw(); }
     else if (d.help != null) { ui.help = d.help && ui.help !== d.help ? d.help : null; draw(); }

@@ -253,7 +253,7 @@ if (typeof document !== "undefined") {
         save(); draw();
       } else if (d.confirm && d.move) {
         // The candidate card is once a game: ask first (the table draws the question).
-        ui.confirm = d.move; ui.sel = null; draw();
+        ui.confirm = d.move; ui.sel = null; ui.county = null; draw(); // (the county's box closes while the question is asked, #69)
       } else if (d.undo) {
         if (!session.tut && Solo.canUndo(session)) {
           session = Solo.undo(session);
