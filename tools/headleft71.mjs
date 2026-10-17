@@ -6,14 +6,22 @@
 //
 // Owner, 2026-10-17: 「桌機版，把頭條移到左邊，候選人下方」. Tables of solo games played by this tree's own rules in node
 // (the start of turn 4, a campaign with its bar, election day), put in the page's session store and opened (?play), at
-// 1280×800 and 1440×900, Chinese and English:
+// 1280×800, 1440×900, 1280×720 and 1366×657 (a 1366×768 laptop with its browser bars), Chinese and English:
 //   - the three headlines ([data-hl-slot] 1, 2, 3) sit in the candidates' column (.t-players): each within its left and
-//     right edges (±2 px), the first below the candidates, the three one under the other in that order;
+//     right edges (±2 px), the first below the candidates, the three one under the other in that order; on a screen less
+//     than 800 high they may instead stand as before #71, in one row above the map (orchestrator 裁決, #71: the left
+//     column cannot always hold three boards and three headlines over a 657-high screen without taking words away);
 //   - each headline is wholly on screen and free: the element at its centre is inside it (the hand tray, the bar, the
 //     floats leave it alone); its flag, name and who-leads line are not cut (no hidden overflow);
-//   - the map (.tw-box) is right of the headlines, at least 640 wide, and its top no more than 16 px below the
-//     candidates' top (the middle column is the map's alone; it is not left hanging lower);
-//   - the page does not scroll.
+//   - the map (.tw-box) is right of the headlines, at least 640 wide, and — when the headlines are in the left column —
+//     its top no more than 16 px below the candidates' top (the middle column is the map's alone; it is not left hanging
+//     lower);
+//   - the page does not scroll;
+//   - a real tap on the 頭條 opens the track's note (.help, the words that explain the headlines): it is wholly on screen
+//     and free — the element at its centre and just above its bottom edge is inside it (not the hand tray), and the
+//     page still does not scroll.
+// (Added after the first delivery, 5bbc031: on 1280×800 in English the note ran from 679 to 866, under the tray and off
+// the screen; on 1366×657 the 二條 and 三條 sat under the tray.)
 // The phone is not to change: tools/issuehl65.mjs and tools/gamepage66.mjs keep measuring it.
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
@@ -63,7 +71,8 @@ async function tab(br, w, h) {
   await send("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: 1, mobile: false });
   const ev = async (expr) => { const r = await send("Runtime.evaluate", { expression: expr, awaitPromise: true, returnByValue: true }); return r.result ? r.result.value : undefined; };
   const go = async (url) => { await send("Page.navigate", { url }); await sleep(1300); await ev("document.fonts.ready.then(()=>1)"); };
-  return { ev, go, close: () => { try { ws.close(); } catch { /* closed */ } } };
+  const tapAt = async (x, y) => { for (const type of ["mousePressed", "mouseReleased"]) await send("Input.dispatchMouseEvent", { type, x, y, button: "left", clickCount: 1 }); };
+  return { ev, go, tapAt, close: () => { try { ws.close(); } catch { /* closed */ } } };
 }
 const MEASURE = `(() => {
   const R = (e) => { const b = e.getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height, r: b.right, b: b.bottom }; };
@@ -79,12 +88,20 @@ const MEASURE = `(() => {
   return JSON.stringify({ players: drawn(pl) ? R(pl) : null, map: drawn(map) ? R(map) : null, slots, sh: document.documentElement.scrollHeight, ih: innerHeight, turncard: !!q("[data-turncard]") });
 })()`;
 
+const HELP = `(() => {
+  const e = [...document.querySelectorAll(".help")].find((x) => x.getClientRects().length && x.getBoundingClientRect().width > 0);
+  if (!e) return JSON.stringify({ box: null, ih: innerHeight, sh: document.documentElement.scrollHeight });
+  const b = e.getBoundingClientRect(), pts = [[b.left + b.width / 2, b.top + b.height / 2], [b.left + b.width / 2, b.bottom - 4]];
+  let free = true, under = "";
+  for (const [x, y] of pts) { const h = y >= 0 && y <= innerHeight ? document.elementFromPoint(x, y) : null; if (!h || !e.contains(h)) { free = false; under = h ? (h.closest(".t-hand") ? "the hand" : (h.className && h.className.baseVal != null ? h.className.baseVal : h.className) || h.tagName) : "off screen"; } }
+  return JSON.stringify({ box: { x: b.left, y: b.top, w: b.width, b: b.bottom }, free, under, ih: innerHeight, sh: document.documentElement.scrollHeight });
+})()`;
 const out = [];
 const rule = (ok, what) => out.push({ ok, what });
 if (TABLES.length < 3) rule(false, `only ${TABLES.length} of 3 tables reached (${TABLES.map(([n]) => n).join(", ")})`);
 const br = await launch();
 try {
-  for (const [w, h] of [[1280, 800], [1440, 900]]) for (const lang of ["zh", "en"]) {
+  for (const [w, h] of [[1280, 800], [1440, 900], [1280, 720], [1366, 657]]) for (const lang of ["zh", "en"]) {
     const t = await tab(br, w, h);
     try {
       await t.go(base); await t.ev(`localStorage.setItem("p2000.speed", "fast"); 1`);
@@ -98,11 +115,17 @@ try {
         const P = m.players, C = m.slots;
         if (!P || C.length !== 3) { rule(false, `${who}: ${P ? "" : "no candidates; "}${C.length} headlines drawn`); continue; }
         const inCol = C.every((c) => c.x >= P.x - 2 && c.r <= P.r + 2), below = C[0].y >= P.b - 1, stacked = C[0].b <= C[1].y + 1 && C[1].b <= C[2].y + 1 && C.map((c) => c.slot).join() === "1,2,3";
-        rule(inCol && below && stacked, `${who}: the headlines in the candidates' column, under them, one under the other (${C.map((c) => `${c.slot}: x ${Math.round(c.x)}–${Math.round(c.r)} y ${Math.round(c.y)}–${Math.round(c.b)}`).join("; ")}; candidates x ${Math.round(P.x)}–${Math.round(P.r)} end at ${Math.round(P.b)})`);
+        const left = inCol && below && stacked, row = h < 800 && !!m.map && Math.max(...C.map((c) => c.y)) - Math.min(...C.map((c) => c.y)) <= 1 && Math.max(...C.map((c) => c.b)) <= m.map.y + 1 && C.every((c) => c.x >= P.r - 1);
+        rule(left || row, `${who}: the headlines in the candidates' column, under them, one under the other${h < 800 ? " (or, under 800 high, one row above the map)" : ""} (${C.map((c) => `${c.slot}: x ${Math.round(c.x)}–${Math.round(c.r)} y ${Math.round(c.y)}–${Math.round(c.b)}`).join("; ")}; candidates x ${Math.round(P.x)}–${Math.round(P.r)} end at ${Math.round(P.b)}${row ? "; one row above the map" : ""})`);
         rule(C.every((c) => c.b <= m.ih && c.free), `${who}: each headline on screen and free (${C.map((c) => `${c.slot}${c.b > m.ih ? " below the screen" : c.free ? "" : " under " + c.under}`).join(", ")})`);
         rule(C.every((c) => !c.cut.length), `${who}: nothing cut in the headlines (${C.filter((c) => c.cut.length).map((c) => `${c.slot}: ${c.cut.join("/")}`).join("; ") || "clear"})`);
-        rule(!!m.map && m.map.x >= Math.max(...C.map((c) => c.r)) - 1 && m.map.w >= 640 && m.map.y <= P.y + 16, `${who}: the map right of the headlines, ≥ 640 wide, its top within 16 px of the candidates' top (${m.map ? `x ${Math.round(m.map.x)}, ${Math.round(m.map.w)} wide, top ${Math.round(m.map.y)} vs ${Math.round(P.y)}` : "no map"})`);
+        rule(!!m.map && (row ? m.map.w >= 640 : m.map.x >= Math.max(...C.map((c) => c.r)) - 1 && m.map.w >= 640 && m.map.y <= P.y + 16), `${who}: the map right of the headlines, ≥ 640 wide, its top within 16 px of the candidates' top (${m.map ? `x ${Math.round(m.map.x)}, ${Math.round(m.map.w)} wide, top ${Math.round(m.map.y)} vs ${Math.round(P.y)}` : "no map"})`);
         rule(m.sh <= m.ih + 1, `${who}: the page does not scroll (${m.sh} ≤ ${m.ih})`);
+        if (name === "turn4") {
+          await t.tapAt(C[0].x + C[0].w / 2, C[0].y + C[0].h / 2); await sleep(450);
+          const hp = JSON.parse(await t.ev(HELP));
+          rule(!!hp.box && hp.box.y >= 0 && hp.box.b <= hp.ih && hp.free && hp.sh <= hp.ih + 1, `${who}: the 頭條's note on screen and free (${hp.box ? `${Math.round(hp.box.y)}–${Math.round(hp.box.b)} of ${hp.ih}${hp.free ? "" : ", under " + hp.under}` : "no note opened"}${hp.sh > hp.ih + 1 ? `, the page scrolls ${hp.sh}/${hp.ih}` : ""})`);
+        }
       }
     } catch (e) { rule(false, `${w}×${h} ${lang}: broke off: ${e.message}`); }
     finally { t.close(); }
