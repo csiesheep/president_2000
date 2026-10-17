@@ -8,7 +8,7 @@ import * as Tut from "./tutorial.js";
 import * as Sound from "./sound.js";
 import * as Replay from "./replay.js";
 import { mount as mountRoom } from "./roompage.js";
-import { drawInto, narrowNow, watchNarrow, bindCounty, bindSeat, bindMenu, placeTutorial } from "./drawing.js";
+import { drawInto, deskNow, narrowNow, watchNarrow, bindCounty, bindSeat, bindMenu, placeTutorial } from "./drawing.js";
 
 if (typeof document !== "undefined") {
   const qs = new URLSearchParams(location.search);
@@ -70,7 +70,7 @@ if (typeof document !== "undefined") {
       gLang.href = "?" + (tutorialUrl ? "tutorial" : "play") + (other ? "&lang=en" : "");
     };
     syncUrl();
-    let ui = { feed: false, raise: false, sel: null, picks: [], help: null, moves: false, confirm: null, county: null, seat: null, narrow: narrowNow() };
+    let ui = { feed: deskNow() && !(session && session.tut), raise: false, sel: null, picks: [], help: null, moves: false, confirm: null, county: null, seat: null, narrow: narrowNow() };
     let timer = null;
     const save = () => store.set(KEY, session);
     // A line that shows for a moment and goes (#43: "went back one step").
@@ -261,7 +261,7 @@ if (typeof document !== "undefined") {
         const p = store.get(SETUP) || { seat: 0, level: 2 };
         const seed = crypto.getRandomValues(new Uint32Array(1))[0];
         session = Solo.setAdvisor(Solo.advance(Solo.newSolo({ seat: p.seat, level: p.level, seed })), store.get(ADV) === true);
-        ui = { feed: false, raise: false, sel: null, picks: [], help: null, moves: false, confirm: null, county: null, seat: null, narrow: narrowNow() };
+        ui = { feed: deskNow(), raise: false, sel: null, picks: [], help: null, moves: false, confirm: null, county: null, seat: null, narrow: narrowNow() };
         save(); pump(); window.scrollTo(0, 0);
       } else if (d.advisor != null) {
         session = Solo.setAdvisor(session, d.advisor === "on"); store.set(ADV, session.advisor);

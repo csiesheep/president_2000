@@ -12,7 +12,7 @@ import * as RC from "./roomclient.js";
 import * as Sound from "./sound.js";
 import * as Replay from "./replay.js";
 import { esc } from "./table.js";
-import { drawInto, narrowNow, watchNarrow, bindCounty, bindSeat, bindMenu } from "./drawing.js";
+import { drawInto, deskNow, narrowNow, watchNarrow, bindCounty, bindSeat, bindMenu } from "./drawing.js";
 
 const ADV_KEY = "p2000.advisor", NAME_KEY = "p2000.room.name", LEVEL_KEY = "p2000.room.level", roomKey = (code) => "p2000.room." + code;
 const BACKOFF_MAX = 30; // seconds: 1, 2, 4, 8, 16, 30, 30, …
@@ -69,7 +69,7 @@ export function mount({ T, lang, qs, store, $ }) {
 
   // ---- the room
   let roomCode = null, name = "", client = RC.setAdvisor(RC.newClient(), store.get(ADV_KEY) === true), sock = null, attempts = 0, retry = null, tick = null, terminal = false, gone = false;
-  let ui = { feed: false, raise: false, county: null, seat: null, narrow: narrowNow(), sel: null, picks: [], help: null, moves: false, confirm: null, draft: "", level: [1, 2, 3].includes(store.get(LEVEL_KEY)) ? store.get(LEVEL_KEY) : 2 };
+  let ui = { feed: deskNow(), raise: false, county: null, seat: null, narrow: narrowNow(), sel: null, picks: [], help: null, moves: false, confirm: null, draft: "", level: [1, 2, 3].includes(store.get(LEVEL_KEY)) ? store.get(LEVEL_KEY) : 2 };
 
   const say = (text) => { banner.textContent = text || ""; banner.hidden = !text; };
   // The turn card (#44): every player's own screen opens each turn with it, once (the turn it was shown for is kept in this
