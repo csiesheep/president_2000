@@ -1234,8 +1234,9 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
     .tbl:not(.end) .t-act .opt { min-height: 36px; padding: 4px 10px; }
     .tbl:not(.end) .t-feed .fd-h { padding: 0 10px; }
     .tbl:not(.end) .t-feed .fd-x { min-height: 28px; }
-    .tbl:not(.end) .fd-now { max-height: 30%; }
   }
+  /* #74: docked, the record is the whole list already scrolled to its newest lines, so "just now" (the same lines, grouped) is not drawn: it would take the list's room and show half lines */
+  .tbl:not(.end) .t-feed .fd-now { display: none; }
   .tbl:not(.end) .t-debate { inset: 0; }
   .pop { max-height: calc(100dvh - 60px - var(--trayd, 90px) - 8px); }
 }
