@@ -74,13 +74,15 @@ export default {
       },
       // 回合開場卡（#44）
       tc: {
+        paper: "選戰日報", ear1: "第 {n} 回合", earSep: " · ", ear2: "共 9 回合", ordL: "票少的先",
+        titlePlays: "{who}打出{card}", titleTriggers: "{who}觸發{card}", cap: "{card}（{who}的 {cp} CP 牌）：{text}",
         turn: "第 {n} 回合 · 共 9 回合", special: "第 {n} 回合 · {name}",
         months: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"],
         early: "{y} 年 {m} 月上旬", mid: "{y} 年 {m} 月中旬", late: "{y} 年 {m} 月下旬", day: "{y} 年 {m} 月 {d} 日",
         weeks: "離投票日還有 {n} 週", today: "今天開票",
         initiative: "這回合{who}拿到主動權",
         order: "這回合票少的先：{order}",
-        headline: "上一回合的頭條", played: "{who}打出", triggered: "{who}觸發",
+        headline: "上一回合的頭條", 
         votes: "目前票數", unit: "萬",
         hint: "點任何地方繼續", start: "開始第 {n} 回合", label: "回合開場",
         debateMark: "政見發表會", voteMark: "投票",

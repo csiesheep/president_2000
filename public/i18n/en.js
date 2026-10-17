@@ -75,13 +75,15 @@ export default {
       },
       // The turn card (#44)
       tc: {
+        paper: "Campaign Daily", ear1: "Turn {n}", earSep: " ", ear2: "of 9", ordL: "Fewest first",
+        titlePlays: "{who} plays {card}", titleTriggers: "{who} triggers {card}", cap: "{card} ({who}'s {cp} CP card): {text}",
         turn: "Turn {n} of 9", special: "Turn {n} · {name}",
         months: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
         early: "Early {m} {y}", mid: "Mid {m} {y}", late: "Late {m} {y}", day: "{d} {m} {y}",
         weeks: "{n} weeks to election day", today: "Election day",
         initiative: "{who} holds the initiative this turn",
         order: "Fewest votes first this turn: {order}",
-        headline: "Last turn's headline", played: "Played by {who}", triggered: "Triggered by {who}",
+        headline: "Last turn's headline", 
         votes: "Votes now", unit: "M",
         hint: "Tap anywhere to go on", start: "Start turn {n}", label: "Start of turn",
         debateMark: "Debate", voteMark: "Vote",
