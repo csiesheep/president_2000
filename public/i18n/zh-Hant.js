@@ -110,7 +110,7 @@ export default {
         stamp: "背", endorseKey: "章的顏色 = 該區背書持有者", endorsedBy: "{region}由{who}背書",
         endorseNote: "{county} · {region}由{who}背書：這裡空著的無色塊 {free} 塊，投票日一半（捨去）→ {here}。全區合計{who} +{all} 塊。",
         legendEmpty: "空的游離塊", legendGrey: "沒投票的無色塊", changed: "剛剛有變動",
-        you: "你", board: "台灣地圖", hint: "點縣市看票塊，在框裡下指令。", popNone: "這個縣市現在沒有可以做的事。", popGrey: "無色 {n}", popClose: "關閉", islands: "外島", legendPawn: "圓標是候選人所在的縣市", legendCubes: "陳宋連的方塊", popMove: "移到這裡 · 移動後剩 {left} CP",
+        you: "你", board: "台灣地圖", hint: "點縣市看票塊，在框裡下指令。", popNone: "這個縣市現在沒有可以做的事。", popWait: "對手行動中，等一下就輪到你。先看看他們在哪裡放了方塊。", popPick: "先點下面的手牌，選要用幾 CP，再回來這裡放方塊。", popHere: "這張牌這回合放不到這裡。可以放的縣市在地圖上亮著。", popHereAward: "這一步放不到這裡。可以放的縣市在地圖上亮著。", popGrey: "無色 {n}", popClose: "關閉", islands: "外島", legendPawn: "圓標是候選人所在的縣市", legendCubes: "陳宋連的方塊", popMove: "移到這裡 · 移動後剩 {left} CP",
         short: {
           "台北市": "台北市", "台北縣": "台北縣", "基隆市": "基隆市", "桃園縣": "桃園",
           "新竹縣": "新竹", "新竹市": "新竹市", "苗栗縣": "苗栗", "台中縣": "台中",
@@ -153,6 +153,7 @@ export default {
       card: { local: "地方牌", cand: "候選人牌" },
       p: {
         candConfirm: "候選人牌整局只能用一次。現在就用嗎？", candYes: "確定使用", candNo: "先不要",
+        barCampaign: "競選", barCp: "剩 {cp} CP", barCanvass: "催票成功：{county}。", barCanvassLeft: "選一件事（這張還剩 {left} 次檢定）。", moveElse: "移到別處…",
         listCounties: "各縣市的選項", movesOpen: "移到別的縣市…", movesShut: "收起移動", moveHint: "要移動的話，得在放第一塊之前。", eg: "空綠 {n}", eb: "空藍 {n}",
         c: {
           fill: "填 1 塊", cross: "跨營填 1 塊", steal: "搶{who} 1 顆（{kind}）", grey: "填 1 塊無色塊", remove: "移除{who} 1 顆（{kind}）",

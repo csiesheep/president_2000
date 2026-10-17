@@ -4,7 +4,8 @@
 //   opts.changed   county indexes that changed just now (data-changed, a red dashed paper)
 //   opts.selected  the county whose box is open (data-selected, a pale yellow paper)
 //   opts.narrow    true on a phone: every county is a small colour bar instead of a full paper
-//   opts.overlay   html placed inside the map's box (the county box, drawn by table.js)
+//   opts.can       (#68) county indexes the human may place a cube in now (data-can: a pale yellow paper, a red frame, a red plus)
+//   opts.overlay  html placed inside the map's box (the county box, drawn by table.js)
 //   opts.acts      (#66) what the rivals just did, { "<county>": { who, n } } (n = the cubes they put there, 0 = only walked
 //                  in): the county's paper gets a halo in that candidate's colour and a chip [data-act-chip] is laid over
 //                  the map beside it (an HTML element placed in % of the svg, like the candidates' pictures)
@@ -235,8 +236,8 @@ function labelOf(v, k, d, lang) {
 
 // The county's wrapper: one focusable element carrying the flags. `inner` is its paper and its candidates.
 function county(v, k, d, lang, o, inner) {
-  const chg = (o.changed || []).includes(k), sel = o.selected === k;
-  return `<g class="tw-c" data-county="${k}" tabindex="0" role="button" aria-label="${esc(labelOf(v, k, d, lang))}"${chg ? " data-changed" : ""}${sel ? " data-selected" : ""}>${inner}</g>`;
+  const chg = (o.changed || []).includes(k), sel = o.selected === k, can = (o.can || []).includes(k);
+  return `<g class="tw-c" data-county="${k}" tabindex="0" role="button" aria-label="${esc(labelOf(v, k, d, lang))}"${chg ? " data-changed" : ""}${sel ? " data-selected" : ""}${can ? " data-can" : ""}>${inner}</g>`;
 }
 
 function paper(v, k, d, lang, o, mode, s, m, pics) {
@@ -254,6 +255,8 @@ function paper(v, k, d, lang, o, mode, s, m, pics) {
   t += pw.svg; pics.push(pw.pics);
   const h = holderOf(v, k);
   if (h >= 0) t += stamp(h, x0 + s.w, y0 + s.h, d);
+  // #68: a county the human may place a cube in now: a small red round plus on the paper's top-left corner (the paper itself turns pale yellow in CSS)
+  if ((o.can || []).includes(k)) t += `<g class="tw-plus" aria-hidden="true" pointer-events="none"><circle cx="${f1(x0 + 1)}" cy="${f1(y0 + 1)}" r="5.2" fill="#a8322a" stroke="${PAPER}" stroke-width="1.2"/><path d="M${f1(x0 - 1.4)} ${f1(y0 + 1)}h4.8M${f1(x0 + 1)} ${f1(y0 - 1.4)}v4.8" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></g>`;
   t += `<rect class="tw-ring" x="${f1(x0 - 2)}" y="${f1(y0 - 2)}" width="${f1(s.w + 4)}" height="${f1(s.h + 4)}" rx="4" fill="none"/>`;
   return county(v, k, d, lang, o, t);
 }

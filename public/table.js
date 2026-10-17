@@ -446,6 +446,16 @@ const btn = (c, cls = "", x = null, label = null) => {
 
 // ---------------------------------------------------------------- the board
 
+// #68: why a county's box has nothing in it. wait: the rivals are moving; here: other counties are lit (the card, or the policy forum's award,
+// cannot be placed in this one); pick: the action phase still wants a card; none: a step that is not played on the map.
+function popWhy(v, ch) {
+  if (v.phase === "end") return { k: "none", key: "map.popNone" };
+  if (!ch.length) return { k: "wait", key: "map.popWait" };
+  if (ch.some(isPlace)) return { k: "here", key: v.phase === "debate" && v.debate && v.debate.award ? "map.popHereAward" : "map.popHere" };
+  if (v.phase === "action" && ch.every((c) => c.move.type === "candidate" || (c.move.card && ["play", "reveal", "canvass"].includes(c.move.type)))) return { k: "pick", key: "map.popPick" };
+  return { k: "none", key: "map.popNone" };
+}
+
 // The county's box (#25): what stands in county k, then every option that acts on it. Each button is the
 // same legal move the decision panel offers (data-move), plus data-choice (its index in `ch`) and data-pop.
 function popHTML(v, ch, x, k, narrow) {
@@ -485,7 +495,7 @@ function popHTML(v, ch, x, k, narrow) {
     `<button type="button" class="pop-x" data-pop-close="1" aria-label="${esc(tr("map.popClose"))}">×</button></div>` +
     `<div class="pop-h"><b>${esc(x.county(k))} · ${esc(tr("map.blocks", { n: blocks.length, m: (blocks.length / 10).toFixed(1) }))}</b></div>` +
     `<div class="pop-b"><span class="pbs">${cubes}</span><span class="pbn">${[...own, ...rest.map((s) => `<span>${esc(s)}</span>`)].join("")}</span></div>` + note +
-    (rows.length ? `<div class="pop-o">${rows.map(opt).join("")}</div>` : `<p class="ct">${esc(tr("map.popNone"))}</p>`) + `</div>`;
+    (rows.length ? `<div class="pop-o">${rows.map(opt).join("")}</div>` : (() => { const w = popWhy(v, ch); return `<p class="ct" data-pop-empty="${w.k}">${esc(tr(w.key))}</p>`; })()) + `</div>`;
 }
 
 // ---------------------------------------------------------------- what the rivals just did (#66)
@@ -609,7 +619,7 @@ function trackHTML(v, x, o = {}, acts = {}) {
     return `<button type="button" class="slot hl h${i + 1} helpable${o.help === "slot" ? " on" : ""}" data-issue="${esc(iss.name)}" data-help="slot" data-hl-slot="${i + 1}"${act ? " data-changed" : ""} aria-expanded="${o.help === "slot"}" aria-label="${esc(x.tr("hdr.slotsL") + " · " + lab + " · " + x.issue(iss.name) + " · " + st)}">` +
       `<span class="hf" data-hl-reward><b data-hl-label>${esc(lab)}</b><span>${esc(x.tr("hl.reward." + (i + 1)))}</span></span>` +
       `<span class="hs">${issueImg(iss.name, x)}<span class="hb"><b class="hn" data-hl-name>${esc(x.issue(iss.name))}</b>` +
-      `<span class="hr"><span class="hw${mx > 0 && top.length === 1 ? " w" + top[0] : ""}" data-hl-status>${esc(st)}</span> <span class="cb">${cubesRow(iss.cubes) || `<em>—</em>`}</span></span></span></span>${chip}</button>`;
+      `<span class="hr"><span class="hw${mx > 0 && top.length === 1 ? " w" + top[0] : ""}" data-hl-status>${esc(st)}</span> <span class="cbar">${cubesRow(iss.cubes) || `<em>—</em>`}</span></span></span></span>${chip}</button>`;
   }).join("");
   return `<section class="t-track" data-issues="1" aria-label="${esc(x.tr("hdr.slotsL"))}"><button type="button" class="slotsl helpable${o.help === "slot" ? " on" : ""}" data-help="slot" aria-expanded="${o.help === "slot"}" aria-label="${esc(x.tr("hdr.slotsL") + " · " + x.tr("hdr.tap"))}">${esc(x.tr("hdr.slotsL"))} <i aria-hidden="true">?</i></button>${slots}${helpHTML(x, o)}</section>`;
 }
@@ -665,6 +675,42 @@ function groupedList(v, ch, x, o) {
   if (lists.length) out.push(`<details class="cgs" data-keep="cgs${v.turn}.${v.step}.${v.phase}.${v.pending ? v.pending.stage : ""}"><summary>${esc(x.tr("p.listCounties"))}</summary>${lists.join("")}</details>`);
   if (done.length) out.push(`<div class="opts">${done.map((c) => btn(c, "ghost", x)).join("")}</div>`);
   return out.join("");
+}
+
+// #68: the sheet while there is a cube to place. The first row: what to do (the card and the step in bold, the numbers on a line of their own)
+// and "end the action" as a small dashed button at its right; the second row: one chip for each county that is lit on the map (it opens that
+// county's box, like a tap on the map), then "move elsewhere…". No placement button is here: those are in the county's box.
+function barPrompt(v, x) {
+  const t = (k, vars) => esc(x.tr(k, vars)), pd = v.pending;
+  if (v.phase === "action" && pd && pd.stage === "campaign") {
+    const head = pd.card === "candidate" ? x.tr("card.cand") : x.card(pd.card);
+    return `<p class="pr"><b>${esc(head)}</b> · ${t("p.barCampaign")} · ${t("p.barCp", { cp: pd.cp })}</p>`;
+  }
+  if (v.phase === "election" && v.election.choose) {
+    const e = v.election, r = isV07(v) ? Math.round(luckNow(v, v.seat)) : bagRate(v, v.seat);
+    return `<p class="pr"><b>${esc(x.card(e.card))}</b> · ${t("p.barCanvass", { county: x.county(e.county) })}</p><p class="pn">${t("p.barCanvassLeft", { left: e.left })}${r != null ? " " + t("p.canvassRate", { p: r }) : ""}</p>`;
+  }
+  return null;
+}
+function countyBar(v, ch, x, o) {
+  const done = ch.filter((c) => END_T.has(c.move.type)), moves = ch.filter((c) => c.move.type === "move");
+  const plain = ch.filter((c) => !done.includes(c) && !moves.includes(c) && !isPlace(c));
+  const ks = [...new Set(ch.filter(isPlace).map((c) => c.move.county))];
+  const head = barPrompt(v, x) || prompt(v, ch, x);
+  const chips = ks.map((k) => `<button type="button" class="cchip" data-open-county="${k}"><i aria-hidden="true">＋</i>${esc(x.county(k))}</button>`).join("");
+  const open = !!o.moves;
+  const more = moves.length ? `<button type="button" class="cchip weak more${open ? " on" : ""}" data-toggle="moves" aria-expanded="${open}">${esc(x.tr("p.moveElse"))}</button>` : "";
+  let list = "";
+  if (open) {
+    for (let r = 0; r < REGIONS.length; r++) {
+      const items = moves.filter((c) => REGION_OF[c.move.to] === r).sort((a, b) => a.move.to - b.move.to);
+      if (items.length) list += `<h4 class="t-gh">${esc(x.region(r))}</h4><div class="opts two">${items.map((c) => btn(c, "", x, shortOpt(v, c.move, x))).join("")}</div>`;
+    }
+    list = `<div class="cbar-m"><p class="ct">${esc(x.tr("p.moveHint"))}</p>${list}</div>`;
+  }
+  return `<div class="cbar"><div class="cbar-h"><div class="cbar-t">${head}</div>${done.length ? `<div class="cbar-end">${done.map((c) => btn(c, "ghost", x)).join("")}</div>` : ""}</div>` +
+    (plain.length ? `<div class="opts cbar-o">${plain.map((c) => btn(c, "", x)).join("")}</div>` : "") +
+    `<div class="cbar-c">${chips}${more}</div>${list}</div>`;
 }
 
 function fxPrompt(v, x) {
@@ -772,6 +818,7 @@ function sheetFor(v, ch, x, o) {
   if (v.phase === "action" && v.pending && v.pending.stage === "trigger" && CARD[v.pending.card]) { // your card, played by a rival for CP: trigger it?
     return wrap(prompt(v, ch, x) + `<div class="sheet">${cardFace(v.pending.card, x)}<div class="sh-r">${groupedList(v, ch, x, o)}</div></div>`);
   }
+  if (ch.some(isPlace)) return wrap(countyBar(v, ch, x, o));
   return wrap(prompt(v, ch, x) + groupedList(v, ch, x, o));
 }
 
@@ -1161,7 +1208,7 @@ export function tableHTML(view, choices, lang, opts = {}) {
   const toast = riv.length ? `<p class="t-toast s${said && said.seat != null ? said.seat : riv[riv.length - 1].seat}" data-act-toast>${esc(said ? said.text : feedLine(riv[riv.length - 1], v, x) || x.tr("hdr.feed"))}</p>` : "";
   const notes = toast + resultHTML(o, x) + (choices.length ? adviceLine(x, o) : "");
   const floats = (notes ? `<div class="t-notes">${notes}</div>` : "") + leadHTML(v, x) + (o.undo ? `<div class="t-undo">${undoHTML(o, x)}</div>` : "");
-  const mapNow = taiwanMap(v, lang, { changed, selected: o.county, narrow: o.narrow, acts: acts.counties, floats, overlay: o.county != null ? popHTML(v, choices, x, o.county, o.narrow) : "", cover: v.phase === "debate" ? debateHTML(v, x) : "" });
+  const mapNow = taiwanMap(v, lang, { changed, selected: o.county, narrow: o.narrow, can: [...new Set(choices.filter(isPlace).map((c) => c.move.county))], acts: acts.counties, floats, overlay: o.county != null ? popHTML(v, choices, x, o.county, o.narrow) : "", cover: v.phase === "debate" ? debateHTML(v, x) : "" });
   const sh = sheetFor(v, choices, x, o), up = !!(o.sel && sourceCards(v).includes(o.sel)) || !!o.raise;
   const sheet = sh ? `<section class="t-act mine" id="act" data-sheet${sh.card ? ` data-card="${esc(sh.card)}"` : ""}>${sh.html}</section>` : "";
   const next = !choices.length && o.botnext ? `<div class="t-bn"><button type="button" class="opt" data-botnext="1">${esc(o.botnext)}</button></div>` : ""; // step by step (#42)
