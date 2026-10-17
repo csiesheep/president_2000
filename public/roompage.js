@@ -11,7 +11,7 @@
 import * as RC from "./roomclient.js";
 import * as Sound from "./sound.js";
 import * as Replay from "./replay.js";
-import { esc } from "./table.js";
+import { esc, turnSeat } from "./table.js";
 import { drawInto, deskNow, narrowNow, watchNarrow, bindCounty, bindSeat, bindMenu } from "./drawing.js";
 
 const ADV_KEY = "p2000.advisor", NAME_KEY = "p2000.room.name", LEVEL_KEY = "p2000.room.level", roomKey = (code) => "p2000.room." + code;
@@ -88,6 +88,19 @@ export function mount({ T, lang, qs, store, $ }) {
   };
   // The rivals' moves shown big (#47): the server runs the computer in one go, so the cards and stamps come from the log entries
   // a state adds. The map is already the last picture; the stamps sit beside the card. A decision the player makes skips the rest.
+  // The handoff card (#73 乙): when the seat the game waits for changes (the server has already run the computer), a small card over
+  // the map names it for about a second. It holds nothing back: the move clock keeps running. A tap closes it.
+  const HAND_HOLD = 600, HAND_FADE = 150;
+  let hoff = null, handSeen = null;
+  const handView = () => { const v = client.state && client.state.view; return v && v.phase !== "end" ? v : null; };
+  const closeHand = (tapped) => {
+    if (!hoff || hoff.out) return;
+    hoff.out = true; clearTimeout(hoff.hold);
+    if (tapped) Sound.play("tap");
+    const el = stage.querySelector("[data-handoff]");
+    if (el) el.classList.add("out");
+    hoff.gone = setTimeout(() => { hoff = null; draw(); }, HAND_FADE);
+  };
   const rep = Replay.createReplay({ labels: { hit: T.ui.solo.replay.hit, miss: T.ui.solo.replay.miss, next: T.ui.solo.menu.next }, lang, rules: () => client && client.state && client.state.view && client.state.view.rules, onIdle: () => draw(), ready: () => !card });
   // The sounds of a state (#42): plays, cubes put on / taken off (read off the two views), hit / miss. The turn sound is the turn card's.
   const hearState = (before, view, from) => {
@@ -101,7 +114,7 @@ export function mount({ T, lang, qs, store, $ }) {
     rep.push(beats);
   };
   Replay.bindTaps({ active: () => rep.active(), onStep: () => { rep.skipStep(); }, onAll: () => { rep.skipAll(); draw(); },
-    ignore: "[data-menu], [data-menu-top], #rmenu, .mset, [data-turncard], [data-rp-next], a, input, textarea, form, .t-chat" });
+    ignore: "[data-menu], [data-menu-top], #rmenu, .mset, [data-turncard], [data-handoff], [data-rp-next], a, input, textarea, form, .t-chat" });
   addEventListener("p2000:settings", () => { if (Sound.getSpeed() !== "step") rep.skipStep(); });
   const draw = () => {
     if (gone) {
@@ -117,10 +130,16 @@ export function mount({ T, lang, qs, store, $ }) {
       card.hold = setTimeout(() => closeCard(false), CARD_HOLD);
       Sound.play("turn");
     }
+    const hv = handView(), ha = hv ? turnSeat(hv) : null;
+    if (!hoff && !card && ha != null && ha !== handSeen && !rep.running()) {
+      handSeen = ha;
+      hoff = { seat: ha, t0: performance.now(), out: false };
+      hoff.hold = setTimeout(() => closeHand(false), HAND_HOLD);
+    }
     // A redraw replaces the chat box: keep what is typed, and the caret if the box had focus.
     const box = $("#chatin"), had = box && document.activeElement === box, caret = had ? [box.selectionStart, box.selectionEnd] : null;
     const log = stage.querySelector(".chatlog"), pinned = !log || log.scrollHeight - log.scrollTop - log.clientHeight < 40;
-    drawInto(stage, RC.screen(client, lang, { feedOpen: ui.feed, raise: ui.raise, level: ui.level, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow, sel: ui.sel, picks: ui.picks, draft: ui.draft, help: ui.help, moves: ui.moves, confirm: ui.confirm, turnCard: !!card && !card.out && !!cv, cardAge: card ? performance.now() - card.t0 : 0 }), { seat: ui.seat, menu: menu.isOpen() });
+    drawInto(stage, RC.screen(client, lang, { feedOpen: ui.feed, raise: ui.raise, level: ui.level, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow, sel: ui.sel, picks: ui.picks, draft: ui.draft, help: ui.help, moves: ui.moves, confirm: ui.confirm, turnCard: !!card && !card.out && !!cv, cardAge: card ? performance.now() - card.t0 : 0, handoff: hoff && !hoff.out && !!hv ? hoff.seat : undefined, handoffAge: hoff ? performance.now() - hoff.t0 : 0 }), { seat: ui.seat, menu: menu.isOpen() });
     // At the table the top row has its own menu button, so the page's top bar steps aside.
     $("#room").classList.toggle("intable", !!stage.querySelector(".tbl"));
     const nb = $("#chatin");
@@ -239,7 +258,12 @@ export function mount({ T, lang, qs, store, $ }) {
     ev.stopImmediatePropagation(); ev.stopPropagation();
     closeCard(true);
   });
-  addEventListener("keydown", (ev) => { if (ev.key === "Escape" && card && !card.out) closeCard(true); });
+  stage.addEventListener("click", (ev) => { // the handoff card: the same
+    if (!ev.target.closest("[data-handoff]")) return;
+    ev.stopImmediatePropagation(); ev.stopPropagation();
+    closeHand(true);
+  });
+  addEventListener("keydown", (ev) => { if (ev.key === "Escape" && card && !card.out) closeCard(true); else if (ev.key === "Escape" && hoff && !hoff.out) closeHand(true); });
   // (#66: the table is one screen that never scrolls, so a tapped card or a question no longer scrolls to the decision)
   stage.addEventListener("click", (ev) => {
     const t = ev.target.closest("button, a");

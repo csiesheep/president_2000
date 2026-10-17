@@ -9,6 +9,7 @@ import { COUNTIES, REGIONS, REGION_EDGES, SEATS, BOSS_THRESHOLD, ISSUES } from "
 import { EVENTS, localCards, CANDIDATE_CARDS } from "./shared/cards.js";
 import { taiwanMap, popPlace } from "./map.js";
 import { stubHTML } from "./stub.js";
+import { mustAct } from "./shared/engine.js";
 
 const CARD = Object.fromEntries(EVENTS.concat(localCards()).map((c) => [c.id, c]));
 const NO = [5, 1, 2]; // the ballot numbers on the 1999 flags: 陳 5, 宋 1, 連 2
@@ -67,6 +68,32 @@ export function bind(lang) {
     return lang === "en" ? d.cards[id].text : c.text;
   };
   return { d, S, tr, county, region, issue, short, full, card, cardText, lang };
+}
+
+// ---------------------------------------------------------------- whose turn it is (#73)
+// The seat the game waits for: mustAct with exactly one seat (the actor; or whoever answers a card's choice); null when it waits
+// for several (keeping cards, the debate) or the game is over. It reads a view as well as a state.
+export function turnSeat(v) {
+  if (!v || v.phase === "end") return null;
+  try {
+    // (in a view the other seats' saved piles are counts, not arrays, which is what mustAct's debate reads)
+    const d = v.debate, m = v.phase === "debate" && d && !d.award ? [0, 1, 2].filter((p) => (Array.isArray(v.savedDebate[p]) ? v.savedDebate[p].length : v.savedDebate[p]) && !d.picks[p]) : mustAct(v);
+    return m.length === 1 ? m[0] : null;
+  } catch { return null; }
+}
+
+// 乙, the handoff card: over the map each time the turn passes. Who, which turn, the turn's order with him marked.
+function handoffHTML(v, x, o) {
+  const a = o.handoff;
+  if (a == null || a < 0 || v.phase === "end") return "";
+  const key = SEATS[a], W = x.S.hdr.who, ord = Array.isArray(v.order) && v.order.length === 3 ? v.order : [0, 1, 2];
+  const age = Math.max(0, Math.round(o.handoffAge || 0));
+  const says = a === v.seat ? W.you : fill(W.card, { name: x.full(a) });
+  return `<div class="ho s${a}${age ? "" : " fresh"}" data-handoff="${key}" role="status" aria-live="polite"><div class="ho-card">` +
+    `<img class="ho-pic" src="art/candidates/${key}.webp" alt="" width="48" height="64">` +
+    `<div class="ho-t"><b class="ho-n">${esc(says)}</b><span class="ho-r">${esc(x.tr("hdr.turn", { n: v.turn }))}</span></div>` +
+    `<ol class="ho-ord" aria-label="${esc(W.order)}">` + ord.map((p) => `<li class="s${p}${p === a ? " now" : ""}" data-order="${SEATS[p]}">${esc(x.short(p))}</li>`).join("") + `</ol>` +
+    `<p class="ho-hint">${esc(W.hint)}</p></div></div>`;
 }
 
 // ---------------------------------------------------------------- facts read from a view
@@ -637,6 +664,7 @@ function playersHTML(v, x, o = {}) {
   const first = (p) => (isV06(v) ? v.order[0] === p : v.initiative === p) && v.phase !== "end";
   const flag = x.tr(isV06(v) ? "hdr.first" : "hdr.star");
   const v7 = isV07(v), leadP = hasLead(v) && v.phase !== "end" ? issueTotals(v).who : -1;
+  const ts = turnSeat(v); // 甲 (#73): the board of whoever is to act is lit and wears a tag
   const boards = orderOf(v).map((p) => {
     const mom = v.mom[p], n = onBoard(p);
     const big = n ? (x.lang === "en" ? (n / 10).toFixed(1) : String(n)) : "0";
@@ -648,8 +676,8 @@ function playersHTML(v, x, o = {}) {
       const elect = v.phase === "election" && v.election, prov = !elect && q === 2 && (v.active || []).includes("provincial_staff");
       return `<span class="pl-lk${prov ? " prov" : ""}${elect ? " elect" : ""}"><small>${esc(elect ? L.canvassW : L.luckW)}</small> <b>${luckNow(v, q)}%</b></span>`;
     };
-    return `<article class="pl s${p}${p === v.seat ? " me" : ""}${first(p) ? " first" : ""}">` +
-      `<div class="pl-card" data-seat="${p}"${v7 ? ` data-luck="${luckNow(v, p)}"` : ""}><button type="button" class="pl-tap" data-detail="${p}" aria-expanded="false" aria-label="${esc(`${x.full(p)} · ${fill(L.cubes, { n })} · ${L.mom} ${mom}`)}">` +
+    return `<article class="pl s${p}${p === v.seat ? " me" : ""}${first(p) ? " first" : ""}"${ts === p ? ` data-turn="${SEATS[p]}"` : ""}>` +
+      `<div class="pl-card" data-seat="${p}"${v7 ? ` data-luck="${luckNow(v, p)}"` : ""}>${ts === p ? `<b class="pl-tag" data-turn-tag>${esc(p === v.seat ? x.S.hdr.who.you : fill(x.S.hdr.who.acting, { who: x.short(p) }))}</b>` : ""}<button type="button" class="pl-tap" data-detail="${p}" aria-expanded="false" aria-label="${esc(`${x.full(p)} · ${fill(L.cubes, { n })} · ${L.mom} ${mom}`)}">` +
       `<span class="pl-pic"><img src="art/candidates/${SEATS[p]}.webp" alt="${esc(x.full(p))}" width="480" height="640" loading="lazy" decoding="async"></span><b class="no">${NO[p]}</b>${p === leadP ? `<i class="pl-lead">${esc(x.d.ui.look.board.leadTag)}</i>` : ""}` +
       `<span class="pl-t"><span class="pl-n">${first(p) ? `<i class="flag-i" role="img" aria-label="${esc(flag)}" title="${esc(flag)}">⚑</i>` : ""}${esc(x.lang === "en" ? x.short(p) : x.full(p))}</span>` +
       `<span class="pl-v">${votes}</span><span class="pl-mm">${esc(L.mom)} ${dots}</span>${v7 ? lk(p) : ""}</span></button></div>` +
@@ -659,7 +687,7 @@ function playersHTML(v, x, o = {}) {
         : `<button type="button" class="pl-bag helpable${o.help === "bag" ? " on" : ""}" data-help="bag" aria-expanded="${o.help === "bag"}" aria-label="${esc(x.tr("hdr.bag") + " · " + x.tr("hdr.tap"))}">${esc(fill(L.bag, { n: v.bag[p] }))}</button>`) +
       `<button type="button" class="pl-m helpable${o.help === "mom" ? " on" : ""}" data-help="mom" aria-expanded="${o.help === "mom"}" aria-label="${esc(x.tr("hdr.momL") + " " + mom + " · " + x.tr("hdr.tap"))}">${esc(L.mom)} <b>${mom}</b></button></div></article>`;
   }).join("");
-  return `<section class="t-players" aria-label="${esc(L.label)}">${boards}</section>`;
+  return `<section class="t-players${ts != null ? " lit" : ""}" aria-label="${esc(L.label)}">${boards}</section>`;
 }
 
 // The one-line explanation under the header, for whichever small label was tapped (o.help).
@@ -1289,7 +1317,7 @@ export function tableHTML(view, choices, lang, opts = {}) {
   const floats = (notes ? `<div class="t-notes">${notes}</div>` : "") + leadHTML(v, x) + (sh ? "" : undoBox);
   // #69: while the candidate card asks "sure?", the county's box is closed (two layers would stand on the map).
   const boxK = sh && sh.sure ? null : o.county;
-  const mapNow = taiwanMap(v, lang, { changed, selected: boxK, narrow: o.narrow, can: [...new Set(choices.filter(isPlace).map((c) => c.move.county))], acts: acts.counties, marks, floats, legendInLead: hasLead(v), overlay: boxK != null ? popHTML(v, choices, x, boxK, o.narrow) : "", cover: v.phase === "debate" ? debateHTML(v, x) : "" });
+  const mapNow = taiwanMap(v, lang, { changed, selected: boxK, narrow: o.narrow, can: [...new Set(choices.filter(isPlace).map((c) => c.move.county))], acts: acts.counties, marks, floats, legendInLead: hasLead(v), turn: turnSeat(v) ?? undefined, overlay: boxK != null ? popHTML(v, choices, x, boxK, o.narrow) : "", cover: v.phase === "debate" ? debateHTML(v, x) : "", handoff: handoffHTML(v, x, o) });
   // #69: keeping cards with a choice raises the tray by itself, so the cards to tap are in view.
   const up = !!(o.sel && sourceCards(v).includes(o.sel)) || !!o.raise || (v.phase === "save" && choices.length > 1);
   const sheet = sh ? `<section class="t-act mine" id="act" data-sheet${sh.card ? ` data-card="${esc(sh.card)}"` : ""}>${undoBox}${sh.html}</section>` : "";

@@ -188,13 +188,14 @@ function mask(holes) {
   }).join(",");
   return `-webkit-mask-image:${g};mask-image:${g}`;
 }
-function pawns(v, k, d, right, top, m) {
+function pawns(v, k, d, right, top, m, turn) {
   let s = "", pics = "";
   const here = standing(v, k);
   here.forEach((p, j) => {
     const cx = right - 1 - STEP * j, cy = top, me = p === v.seat;
     const bx = cx + R * 0.78, by = cy + R * 0.72;
-    s += `<g data-pawn="${SEATS[p]}" data-of="${k}"${me ? " data-me" : ""} aria-hidden="true">` +
+    s += `<g data-pawn="${SEATS[p]}" data-of="${k}"${me ? " data-me" : ""}${turn === p ? ` data-turn="${SEATS[p]}"` : ""} aria-hidden="true">` +
+      (turn === p ? `<circle class="tw-turnring" cx="${f1(cx)}" cy="${f1(cy)}" r="${R + 6.5}" fill="none" stroke="#ffd34d" stroke-width="3.4"/>` : "") +
       `<ellipse cx="${f1(cx + 1)}" cy="${f1(cy + R + 2)}" rx="${f1(R * 0.9)}" ry="2.6" fill="rgba(43,33,24,.35)"/>` +
       `<circle cx="${f1(cx)}" cy="${f1(cy)}" r="${R + 2.6}" fill="${SEAT_COL[p]}" stroke="${PAPER}" stroke-width="1.4"/>` +
       `<circle cx="${f1(bx)}" cy="${f1(by)}" r="5.6" fill="${SEAT_COL[p]}" stroke="${PAPER}" stroke-width="1.2"/>` +
@@ -251,7 +252,7 @@ function paper(v, k, d, lang, o, mode, s, m, pics) {
   if (act) t += `<rect class="tw-glow" data-glow="${SEATS[act.who]}" x="${f1(x0 - 1.5)}" y="${f1(y0 - 1.5)}" width="${f1(s.w + 3)}" height="${f1(s.h + 3)}" rx="4" fill="none" stroke="${SEAT_COL[act.who]}" stroke-width="2.4" pointer-events="none"/>`;
   t += `<text x="${f1(x0 + 4)}" y="${f1(y0 + font + 1)}" font-family="'Noto Serif TC', serif" font-size="${font}" font-weight="900" fill="${INK}">${esc(label)}</text>`;
   sl.forEach((kind, i) => { t += slotRect(kind, k, x0 + 4 + (i % c) * (sz + gap), y0 + font + 4 + Math.floor(i / c) * (sz + gap), sz); });
-  const pw = pawns(v, k, d, x0 + s.w, y0, m);
+  const pw = pawns(v, k, d, x0 + s.w, y0, m, o.turn);
   t += pw.svg; pics.push(pw.pics);
   const h = holderOf(v, k);
   if (h >= 0) t += stamp(h, x0 + s.w, y0 + s.h, d);
@@ -456,5 +457,5 @@ export function taiwanMap(view, lang, opts = {}) {
     return `<div class="act-stack${right ? " r" : ""}${best.dir === "row" ? " row" : ""}${best.tight ? " sm" + best.tight : ""}" aria-hidden="true" style="${edge};${at}">${inner}</div>`;
   }).join("");
   return `<section class="t-map" aria-label="${esc(M.board)}"><h3 class="sr">${esc(M.board)}</h3>` +
-    `<div class="tw-box" style="--aw:${m.w};--ah:${m.h}" title="${esc(M.hint)}">${svg}${pics.join("")}${chips}${key}${media}${o.floats || ""}${o.overlay || ""}</div><ul class="sr tw-keys">${keyList}</ul>${o.cover || ""}</section>`;
+    `<div class="tw-box" style="--aw:${m.w};--ah:${m.h}" title="${esc(M.hint)}">${svg}${pics.join("")}${chips}${key}${media}${o.floats || ""}${o.overlay || ""}${o.handoff || ""}</div><ul class="sr tw-keys">${keyList}</ul>${o.cover || ""}</section>`;
 }

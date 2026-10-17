@@ -102,6 +102,7 @@ export default {
       hdr: {
         ph: { action: "Action {n}/4", order: "Order", momentum: "Momentum", save: "Set aside", debate: "Forum", election: "Election day", end: "The count" },
         turn: "Turn {n}", endDate: "18 March", initiative: "Initiative: {who}", order: "{who} first", first: "Acts first", star: "Initiative", mom: "Momentum", bag: "Bag", luck: "Luck", feed: "Record", feedNew: "Record, {n} new", feedClose: "Close ×", momL: "Momentum", slotsL: "Issue headlines", issueTotal: "Issue totals", leadIs: "Issue leader: {who}", leadNone: "Issue leader: nobody (tied)", tap: "Tap for an explanation",
+        who: { you: "Your move", acting: "{who} acting", card: "{name}'s move", order: "Order this turn", hint: "Tap to close" },
         yourTurn: "Your move", busy: "{who} is acting…", waitHint: "The bots are acting. You can look through your hand meanwhile.",
         slot: { 1: "Lead story", 2: "Page two", 3: "Page three" },
         phase: { action: "Action phase {n} / 4", order: "Pick your place in the order", momentum: "Momentum phase", save: "Set aside", debate: "The Policy Forum", election: "Election day · canvassing", end: "The count" },
