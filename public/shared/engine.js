@@ -100,6 +100,12 @@ const ISSUE_LUCK = ["lead"], LUCK_PER_LEAD = 10, LUCK_LEAD_MAX = 95;
 // "never": nobody triggers. Without them a v0.7 state has no momentum / trigger field and is today's, byte for byte.
 const MOMENTUM = ["none"], TRIGGER = ["always", "never"];
 const noMomentum = (st) => st.momentum === "none";
+// #77 (owner, 2026-10-17: 「4張空牌改成士氣」; the amounts are orchestrator 裁決 #77), under momentum "none" only.
+// opts.moraleCards true: the four cards that had only momentum give 士氣 (st.luck) instead, LUCK_CARD each, within
+// LUCK_MIN–LUCK_MAX: 政黨輪替 陳; 民調領先 宋 (turns 1–3 as before); 民調公布 the headline issue's leader (a tie is
+// nobody); TVBS 民調 the lowest 士氣 (a tie: the player picks among them, even when the pick cannot go up). The state
+// says st.moraleCards === true; without the option it has no such field and is #75's, byte for byte.
+const moraleCards = (st) => st.moraleCards === true;
 const LIEN_CANDIDATE_CP_V07 = 4; // 細節 6: 連's candidate card, 3 CP and 2 rest cubes in v0.6
 
 // opts.startTurn (裁決 16): the same opening board, starting at that turn
@@ -127,6 +133,7 @@ export function createGame(seed, opts = {}) {
   if ((opts.momentum != null || opts.trigger != null) && rules !== "v0.7") throw new Error("createGame: momentum and trigger are v0.7 options");
   if (opts.momentum != null && !MOMENTUM.includes(opts.momentum)) throw new Error("createGame: momentum must be one of " + MOMENTUM.join("/"));
   if (opts.trigger != null && !TRIGGER.includes(opts.trigger)) throw new Error("createGame: trigger must be one of " + TRIGGER.join("/"));
+  if (opts.moraleCards != null && opts.moraleCards !== false && !(opts.moraleCards === true && rules === "v0.7" && opts.momentum === "none")) throw new Error("createGame: moraleCards is true, with v0.7 and momentum none"); // #77
   const rng = makeRng(seed);
   const counties = COUNTIES.map(([name, region, G, B, N, init]) => {
     const blocks = [];
@@ -188,6 +195,7 @@ export function createGame(seed, opts = {}) {
     if (rules === "v0.7" && opts.issueLuck != null) st.issueLuck = opts.issueLuck; // #58: option 丙
     if (rules === "v0.7" && opts.momentum != null) { st.momentum = opts.momentum; st.mom = [0, 0, 0]; } // #75
     if (rules === "v0.7" && opts.trigger != null) st.trigger = opts.trigger; // #75
+    if (opts.moraleCards === true) st.moraleCards = true; // #77 (checked above: v0.7, momentum none)
     delete st.media; // v0.5 二、3.2: no media cubes, no national media box
     issueCubes(st, "econ")[LIEN] = V05_START_ECON; // v0.5 四.5、十三: 連 opens with 2 on 經濟民生
   }
@@ -394,18 +402,18 @@ const addMom = (st, p, n) => { if (noMomentum(st)) return; st.mom[p] = Math.max(
 
 // §14.3: the 16 effects that need no choice (#1 §三). `−1` never goes below 0.
 const EFFECTS = {
-  alternation: (st) => addMom(st, CHEN, 2),
+  alternation: (st) => (moraleCards(st) ? addLuck(st, CHEN, LUCK_CARD) : addMom(st, CHEN, 2)), // #77: 陳士氣 +10
   sweep_black_gold: (st) => { addIssue(st, "clean", CHEN, 2); addIssue(st, "clean", LIEN, -1); },
   no_nuke4: (st) => { addIssue(st, "econ", CHEN, 1); addIssue(st, "econ", LIEN, -1); addMom(st, SOONG, 1); },
   lin_chairman: (st) => { addIssue(st, "clean", CHEN, 1); addMom(st, CHEN, 1); },
-  poll_lead: (st) => addMom(st, SOONG, 2),
+  poll_lead: (st) => (moraleCards(st) ? addLuck(st, SOONG, LUCK_CARD) : addMom(st, SOONG, 2)), // #77: 宋士氣 +10
   million_signatures: (st) => { addBag(st, SOONG, 3); addMom(st, SOONG, 1); },
   lien_siew: (st) => addIssue(st, "econ", LIEN, 2),
   hand_in_hand: (st) => { addMom(st, LIEN, 1); addIssue(st, "econ", LIEN, 1); },
   stability: (st) => addIssue(st, "cross", LIEN, 2),
   local_factions: (st) => { addBag(st, LIEN, 4); },
   party_congress: (st) => { addBag(st, LIEN, 4); addMom(st, LIEN, 1); },
-  poll_published: (st) => { const p = leader(st.issues[0].cubes); if (p >= 0) addMom(st, p, 1); },
+  poll_published: (st) => { const p = leader(st.issues[0].cubes); if (p >= 0) { if (moraleCards(st)) addLuck(st, p, LUCK_CARD); else addMom(st, p, 1); } }, // #77: 士氣 +10
   // 外力: 新中間路線 shields 陳's cubes this turn (#5 裁決 7); the momentum still moves.
   strait_tension: (st) => { for (let p = 0; p < 3; p++) if (!extShielded(st, p)) addIssue(st, "cross", p, -1); addMom(st, CHEN, 1); },
   white_paper: (st) => { addIssue(st, "cross", CHEN, 1); addMom(st, CHEN, 1); },
@@ -583,7 +591,11 @@ const PROGRAMS_V07 = {
 // #75 momentum "none": TVBS 民調 (「動能最少者 +1」) has nothing to give, so it asks nobody (its tie would otherwise be
 // a three-way pick of a momentum nobody gets).
 const PROGRAMS_NO_MOM = { tvbs_poll: () => [] };
-const programOf = (st, id) => (noMomentum(st) && PROGRAMS_NO_MOM[id]) || (V07(st) && PROGRAMS_V07[id]) || (V05(st) && PROGRAMS_V05[id]) || PROGRAMS[id];
+// #77 moraleCards: TVBS 民調 is 「士氣最低者 +10%（平手由出牌者選）」, the same step read on st.luck (tvbsTrack, tvbsGive).
+const PROGRAMS_MORALE = { tvbs_poll: (by) => [step("tvbs", by, 1)] };
+const tvbsTrack = (st) => (moraleCards(st) ? st.luck : st.mom);
+const tvbsGive = (st, p) => (moraleCards(st) ? addLuck(st, p, LUCK_CARD) : addMom(st, p, 1));
+const programOf = (st, id) => (moraleCards(st) && PROGRAMS_MORALE[id]) || (noMomentum(st) && PROGRAMS_NO_MOM[id]) || (V07(st) && PROGRAMS_V07[id]) || (V05(st) && PROGRAMS_V05[id]) || PROGRAMS[id];
 
 // 棄連保扁、棄連保宋、黨內整合: in one county, the target −1 (checked, Q5
 // default) and then the player +1 (§8.1). With no target cube anywhere the
@@ -615,8 +627,8 @@ function stepMoves(st, s) {
       } else if (emptyOf(st, k, "N")) out.push({ type: "convert", county: k });
     }
   } else if (s.op === "tvbs") {
-    const min = Math.min(...st.mom);
-    for (let p = 0; p < 3; p++) if (st.mom[p] === min) out.push({ type: "pick", seat: p });
+    const track = tvbsTrack(st), min = Math.min(...track);
+    for (let p = 0; p < 3; p++) if (track[p] === min) out.push({ type: "pick", seat: p });
   }
   return out;
 }
@@ -648,7 +660,7 @@ function runProgram(st) {
     if (s.op === "issueTo") { issueCubes(st, s.name)[s.p] = s.v; q.shift(); continue; }
     if (s.left <= 0) { q.shift(); continue; }
     const ms = stepMoves(st, s);
-    if (s.op === "tvbs" && ms.length === 1) { addMom(st, ms[0].seat, 1); q.shift(); continue; }
+    if (s.op === "tvbs" && ms.length === 1) { tvbsGive(st, ms[0].seat); q.shift(); continue; }
     if (!ms.length) { q.shift(); if (!s.picked && s.fallback) q.unshift(...s.fallback); continue; }
     return true;
   }
@@ -678,7 +690,7 @@ function applyEffect(st, seat, m) {
     key = m.county;
     st.counties[key].blocks.find((b) => b.o < 0 && b.t === "N").t = "G";
   } else if (s.op === "tvbs") {
-    addMom(st, m.seat, 1);
+    tvbsGive(st, m.seat);
   } else if (s.op === "anyIssue") {
     key = m.issue;
     if (s.target < 0) addIssue(st, m.issue, s.p, s.n); else addIssue(st, m.issue, s.target, -s.n);

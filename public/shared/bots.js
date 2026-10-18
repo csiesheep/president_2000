@@ -203,6 +203,7 @@ function see(st) {
     luck: Array.isArray(st.luck) ? st.luck.slice() : null,
     issueLuck: st.issueLuck || null, // #58: option 丙
     momentum: st.momentum || null, trigger: st.trigger || null, // #75: momentum "none", trigger "always" / "never"
+    moraleCards: st.moraleCards === true, // #77: the four momentum-only cards give 士氣
     // #49: a v0.5 game (ads and media folded into the issues) has no media at all.
     // #54: a v0.6 game is a v0.5 game plus the simplifications (no 地方大老: fill "candidate" or "free"; ties by st.order).
     // #55: a v0.7 game is a v0.6 game (fill "candidate") with luck instead of the bag.
@@ -696,7 +697,7 @@ class Bot {
   eventVec(id, by = this.p) {
     const c = CARD[id];
     if (c.owner === "local") { const k = ci(c.county); const b = this.bestIn(by, k, { steal: false }); return b ? add3([0, 0, 0], b.d, b.opt.p) : [0, 0, 0]; }
-    const f = (this.v.v07 && EV_V07[id]) || (this.v.v05 && EV_V05[id]) || EV[id];
+    const f = (this.v.moraleCards && EV_MORALE[id]) || (this.v.v07 && EV_V07[id]) || (this.v.v05 && EV_V05[id]) || EV[id];
     return f ? f(this, by) : [0, 0, 0];
   }
   ownEventAllowed(q, c) {
@@ -1268,6 +1269,15 @@ const EV_V07 = {
   },
   lee_authorized: (b) => sum(b.vPlace(SOONG, 2), b.vIssue(["clean", SOONG, 1])),
   shifting_story: (b) => sum(b.vRemove(LIEN, SOONG, 2, { pick: "free" }), b.vMom(LIEN, 1)),
+};
+
+// #77 (st.moraleCards, under momentum "none"): the four cards that had only momentum give +10 士氣 (engine.js EFFECTS,
+// PROGRAMS_MORALE), valued as every other +10 士氣 card is (vLuck, the same as vBag in v0.7).
+const EV_MORALE = {
+  alternation: (b) => b.vLuck(CHEN, V07_LUCK_CARD),
+  poll_lead: (b) => b.vLuck(SOONG, V07_LUCK_CARD),
+  poll_published: (b) => { const l = leaderOf(b.v.issues[0].cubes); return l >= 0 ? b.vLuck(l, V07_LUCK_CARD) : [0, 0, 0]; },
+  tvbs_poll: (b, by) => { const min = Math.min(...b.v.luck); const lows = [0, 1, 2].filter((q) => b.v.luck[q] === min); const q = lows.includes(by) ? by : lows[0]; return b.vLuck(q, V07_LUCK_CARD); },
 };
 
 // ------------------------------------------------------------------ entry
