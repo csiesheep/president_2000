@@ -19,7 +19,9 @@ export function beatsOf(log, from, me) {
   let cur = null;
   for (const e of (log || []).slice(from)) {
     if ((e.t === "play" && e.card) || e.t === "trigger") {
-      if (e.seat === me) { cur = null; continue; }
+      // your own plays and triggers are your decisions, not shown back; but a rival's CP play that triggers your event for you by
+      // itself (v0.8, e.auto) is not your decision: it is shown like any other card, before the choice it hands you (#82)
+      if (e.seat === me && !(e.t === "trigger" && e.auto)) { cur = null; continue; }
       cur = { id: e.card === "candidate" ? "candidate" : e.card, seat: e.seat, kind: e.t, checks: [], cubes: [], sounds: [] };
       out.push(cur);
     } else if (e.t === "check" && e.seat !== me) {
