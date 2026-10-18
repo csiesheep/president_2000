@@ -117,15 +117,18 @@ const moraleFull = (st) => st.moraleCards === "full";
 // "leader": the headline issue's unique leader (a tie is nobody); "lowest": the lowest 士氣 (a tie: the player resolving
 // the card picks among them, even when the pick cannot go up; a card with a program only, not an EFFECTS one).
 // Only the momentum is here: what a card already gives as 士氣 stays (the 「袋中 +n」 of 張俊雄邱義仁、百萬人連署、
-// 全代會, +LUCK_CARD each, addBag), so 張俊雄邱義仁 is 陳 +10 +5 in all. The default is 5 per momentum; 楊吉雄爆料
-// (「宋動能歸零」) and 說法反覆 (「連動能 +1」, 宋's own story turning on him) are orchestrator's special cases.
+// 全代會, +LUCK_CARD each, addBag), so 張俊雄邱義仁 is 陳 +10 +5 in all. #79's proposal was 5 per momentum, with 楊吉雄爆料
+// (「宋動能歸零」) and 說法反覆 (「連動能 +1」, 宋's own story turning on him) as orchestrator's special cases.
+// V10（#80）(owner, 2026-10-17, to 「要把表改成 V10 嗎？」: 「Yes」; 起始士氣 stays 50/50/50, owner: 「等一下，不要調起始士氣」):
+// the orchestrator's tuning toward 39/35/25, eleven cards changed from #79 (marked V10 below). A card at 0 moves no 士氣
+// and stays in the table, so its momentum steps are still taken out.
 // Change a number here and the engine and the bots (bots.js reads this table) both follow.
 export const MORALE_FULL = {
   // 陳
-  alternation: [[CHEN, 10]], // 政黨輪替: 陳動能 +2
+  alternation: [[CHEN, 5]], // 政黨輪替: 陳動能 +2; V10（#80）: 陳 +5 (#79: +10)
   no_nuke4: [[SOONG, 5]], // 宋動能 +1
   lin_chairman: [[CHEN, 5]],
-  lee_yuan_tseh: [[CHEN, 10]], // 陳動能 +2
+  lee_yuan_tseh: [[CHEN, 5]], // 陳動能 +2; V10（#80）: 陳 +5 (#79: +10)
   million_rally: [[CHEN, 5]],
   chang_chiu: [[CHEN, 5]], // and its own 士氣 +10 (袋中): 陳 +15 in all
   // 宋
@@ -136,20 +139,20 @@ export const MORALE_FULL = {
   hsu_hsin_liang: [[SOONG, 5]],
   // 連
   expel_soong: [[SOONG, 5]], // 宋動能 +1
-  yang_exposes: [[SOONG, -20]], // 楊吉雄爆料 (興票案): 「宋動能歸零」
+  yang_exposes: [[SOONG, -30]], // 楊吉雄爆料 (興票案): 「宋動能歸零」; V10（#80）: 宋 −30 (#79: −20)
   shifting_story: [[SOONG, -10]], // 說法反覆: 「連動能 +1」
-  hand_in_hand: [[LIEN, 5]],
-  lee_attacks_soong: [[SOONG, 5]], // 宋動能 +1
+  hand_in_hand: [[LIEN, 10]], // V10（#80）: 連 +10 (#79: +5)
+  lee_attacks_soong: [[SOONG, 10]], // 宋動能 +1; V10（#80）: 宋 +10 (#79: +5)
   ma_leaks_polls: [[SOONG, 5], [CHEN, 5]], // after its placements
-  party_congress: [[LIEN, 5]], // and its own 士氣 +10: 連 +15 in all
-  kmt_anniversary: [[LIEN, 5]],
+  party_congress: [[LIEN, 10]], // and its own 士氣 +10: 連 +20 in all; V10（#80）: +10 here (#79: +5, 連 +15 in all)
+  kmt_anniversary: [[LIEN, 10]], // V10（#80）: 連 +10 (#79: +5)
   // 外力
   poll_published: [["leader", 5]], // 民調公布: 頭條領先者動能 +1
-  strait_tension: [[CHEN, 5]],
-  white_paper: [[CHEN, 5]],
-  zhu_rongji: [[CHEN, 5]],
+  strait_tension: [[CHEN, 0]], // V10（#80）: no 士氣 (#79: 陳 +5)
+  white_paper: [[CHEN, 0]], // V10（#80）: no 士氣 (#79: 陳 +5)
+  zhu_rongji: [[CHEN, 0]], // V10（#80）: no 士氣 (#79: 陳 +5)
   stock_crash: [["all", -5]], // 所有人動能 −1
-  lee_secret_help: [[LIEN, -5]],
+  lee_secret_help: [[LIEN, 0]], // V10（#80）: no 士氣 (#79: 連 −5)
   tvbs_poll: [["lowest", 5]], // TVBS 民調: 動能最少者 +1 → 士氣最低者
   pla_drill_rumor: [[CHEN, -5]],
 };
