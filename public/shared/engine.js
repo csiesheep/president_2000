@@ -91,6 +91,15 @@ const LUCK_PER_MOM = 10, LUCK_ELECTION_MAX = 80; // 細節 7: election day, per 
 // issue a seat leads at the conversion (most cubes on that card, a tie is nobody) adds LUCK_PER_LEAD to its canvassing
 // luck, outside LUCK_ELECTION_MAX, at most LUCK_LEAD_MAX: min(95, min(80, luck + 10 × momentum) + 10 × issues led).
 const ISSUE_LUCK = ["lead"], LUCK_PER_LEAD = 10, LUCK_LEAD_MAX = 95;
+// #75 (owner, 2026-10-17: 「想要移除動能點；敵人事件一定觸發/去除動能變催票運氣；模擬一下對勝率的影響」; the two options are
+// orchestrator 裁決 #75), v0.7 only. opts.momentum "none": no momentum the whole game (st.mom stays [0, 0, 0]: no card,
+// issue reward or debate adds any, and 政黨輪替、民調領先、民調公布、TVBS 民調 do nothing as events); election-day luck is then
+// min(80, luck) + the 丙 leads (luckOf), and the ties that read momentum fall through to their next rule. opts.trigger
+// "always": an opponent's event played for CP that its owner could play as an event now resolves for the owner after
+// the CP action (the owner makes the choices), free and asked of nobody, logged { t: "trigger", seat, card, auto: true };
+// "never": nobody triggers. Without them a v0.7 state has no momentum / trigger field and is today's, byte for byte.
+const MOMENTUM = ["none"], TRIGGER = ["always", "never"];
+const noMomentum = (st) => st.momentum === "none";
 const LIEN_CANDIDATE_CP_V07 = 4; // 細節 6: 連's candidate card, 3 CP and 2 rest cubes in v0.6
 
 // opts.startTurn (裁決 16): the same opening board, starting at that turn
@@ -115,6 +124,9 @@ export function createGame(seed, opts = {}) {
   if ((opts.luck != null || opts.issueLuck != null) && rules !== "v0.7") throw new Error("createGame: luck and issueLuck are v0.7 options");
   if (opts.luck != null && !(Array.isArray(opts.luck) && opts.luck.length === 3 && opts.luck.every((x) => Number.isInteger(x) && x >= LUCK_MIN && x <= LUCK_MAX))) throw new Error(`createGame: luck must be three whole numbers ${LUCK_MIN}–${LUCK_MAX}`);
   if (opts.issueLuck != null && !ISSUE_LUCK.includes(opts.issueLuck)) throw new Error("createGame: issueLuck must be one of " + ISSUE_LUCK.join("/"));
+  if ((opts.momentum != null || opts.trigger != null) && rules !== "v0.7") throw new Error("createGame: momentum and trigger are v0.7 options");
+  if (opts.momentum != null && !MOMENTUM.includes(opts.momentum)) throw new Error("createGame: momentum must be one of " + MOMENTUM.join("/"));
+  if (opts.trigger != null && !TRIGGER.includes(opts.trigger)) throw new Error("createGame: trigger must be one of " + TRIGGER.join("/"));
   const rng = makeRng(seed);
   const counties = COUNTIES.map(([name, region, G, B, N, init]) => {
     const blocks = [];
@@ -174,6 +186,8 @@ export function createGame(seed, opts = {}) {
     if (rules === "v0.6" || rules === "v0.7") st.fill = fill; // v0.6 4 (#54): 4a "candidate" or 4b "free"; v0.7: 4a
     if (rules === "v0.7") { st.luck = (opts.luck ?? LUCK_START).slice(); delete st.bag; delete st.rest; } // #55: luck, no bag, no rest
     if (rules === "v0.7" && opts.issueLuck != null) st.issueLuck = opts.issueLuck; // #58: option 丙
+    if (rules === "v0.7" && opts.momentum != null) { st.momentum = opts.momentum; st.mom = [0, 0, 0]; } // #75
+    if (rules === "v0.7" && opts.trigger != null) st.trigger = opts.trigger; // #75
     delete st.media; // v0.5 二、3.2: no media cubes, no national media box
     issueCubes(st, "econ")[LIEN] = V05_START_ECON; // v0.5 四.5、十三: 連 opens with 2 on 經濟民生
   }
@@ -375,7 +389,8 @@ function restFor(st, seat, cp) { return REST_CUBES[cp] + (seat === LIEN && !acti
 
 const issueCubes = (st, name) => st.issues.find((i) => i.name === name).cubes;
 const addIssue = (st, name, p, n) => { const c = issueCubes(st, name); c[p] = Math.max(0, c[p] + n); };
-const addMom = (st, p, n) => { st.mom[p] = Math.max(0, st.mom[p] + n); };
+// #75 momentum "none": a card's (or the debate's) momentum does nothing.
+const addMom = (st, p, n) => { if (noMomentum(st)) return; st.mom[p] = Math.max(0, st.mom[p] + n); };
 
 // §14.3: the 16 effects that need no choice (#1 §三). `−1` never goes below 0.
 const EFFECTS = {
@@ -565,7 +580,10 @@ const PROGRAMS_V07 = {
   lee_authorized: () => [place(SOONG, 2), iss("clean", SOONG, 1)],
   shifting_story: () => [removeFrom(LIEN, SOONG, 2, { pick: "free" }), mom(LIEN, 1)],
 };
-const programOf = (st, id) => (V07(st) && PROGRAMS_V07[id]) || (V05(st) && PROGRAMS_V05[id]) || PROGRAMS[id];
+// #75 momentum "none": TVBS 民調 (「動能最少者 +1」) has nothing to give, so it asks nobody (its tie would otherwise be
+// a three-way pick of a momentum nobody gets).
+const PROGRAMS_NO_MOM = { tvbs_poll: () => [] };
+const programOf = (st, id) => (noMomentum(st) && PROGRAMS_NO_MOM[id]) || (V07(st) && PROGRAMS_V07[id]) || (V05(st) && PROGRAMS_V05[id]) || PROGRAMS[id];
 
 // 棄連保扁、棄連保宋、黨內整合: in one county, the target −1 (checked, Q5
 // default) and then the player +1 (§8.1). With no target cube anywhere the
@@ -1035,13 +1053,24 @@ function endAction(st) {
     if (resolveEffect(st, pd.card, ownerSeat(pd.card), "finish")) return;
     return finishPlay(st);
   }
-  if (pd.mode === "cp" && pd.card !== "candidate" && !pd.blocked) {
+  if (pd.mode === "cp" && pd.card !== "candidate" && !pd.blocked && st.trigger !== "never") { // #75 "never": no window
     const c = CARD[pd.card], q = ownerSeat(pd.card);
+    if (q >= 0 && q !== pd.seat && !c.must && st.trigger === "always" && ownEventAllowed(st, q, c)) return autoTrigger(st, q);
     if (q >= 0 && q !== pd.seat && !c.must && st.mom[q] >= 1 && ownEventAllowed(st, q, c)) {
       pd.stage = "trigger";
       return;
     }
   }
+  finishPlay(st);
+}
+
+// #75 trigger "always": the event resolves for its owner q at once, free of momentum, without asking; the owner makes
+// the choices (§6.2), and the card leaves the game as a triggered one does (裁決 10).
+function autoTrigger(st, q) {
+  const pd = st.pending;
+  st.log.push({ t: "trigger", seat: q, card: pd.card, auto: true });
+  pd.triggered = true;
+  if (resolveEffect(st, pd.card, q, "finish")) return;
   finishPlay(st);
 }
 
@@ -1081,7 +1110,8 @@ function startMomentum(st) {
   // point is halved only at the next turn's end (orchestrator 裁決, #34); a tie is nobody.
   // v0.5 5.3 (#49): the 議題總領先者 takes both steps, at the same moment, logged step "lead".
   const nat = V05(st) ? issueLeader(st) : nationalMediaLeader(st);
-  if (nat >= 0) { st.mom[nat] += 1; st.log.push({ t: "momentum", step: V05(st) ? "lead" : "media", seat: nat, mom: st.mom.slice() }); }
+  // #75 momentum "none": the 議題總領先者 gets nothing (and v0.7 has no swap).
+  if (nat >= 0 && !noMomentum(st)) { st.mom[nat] += 1; st.log.push({ t: "momentum", step: V05(st) ? "lead" : "media", seat: nat, mom: st.mom.slice() }); }
   // (3) the media leader (v0.5: the 議題總領先者) may swap two adjacent slots (v0.6 5, #54: nobody swaps)
   if (nat >= 0 && !V06(st)) { st.mstep = "swap"; st.pending = { stage: "swap", seat: nat }; return; }
   momentumRewards(st);
@@ -1097,10 +1127,11 @@ function momentumRewards(st) {
 
 function momentumFinish(st) {
   const first = leader(st.issues[0].cubes);
-  if (first >= 0) { st.mom[first] += 1; endorse(st, first); }
+  // #75 momentum "none": the headline leader draws only the endorsement, slot 3's leader gets nothing.
+  if (first >= 0) { if (!noMomentum(st)) st.mom[first] += 1; endorse(st, first); }
   if (V06(st)) { const second = leader(st.issues[1].cubes); if (second >= 0) endorse(st, second); }
   const third = leader(st.issues[2].cubes);
-  if (third >= 0) st.mom[third] += 1;
+  if (third >= 0 && !noMomentum(st)) st.mom[third] += 1;
   for (const i of st.issues) { const p = leader(i.cubes); if (p >= 0) i.cubes[p] -= 1; }
   // v0.6 5 (#54, orchestrator 細節 1): last, after the decay, the three issue cards take a random slot order (the
   // engine's RNG), their cubes with them; it may be the order they had.

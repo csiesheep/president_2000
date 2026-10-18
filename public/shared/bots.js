@@ -202,6 +202,7 @@ function see(st) {
     bag: Array.isArray(st.bag) ? st.bag.slice() : [0, 0, 0], rest: Array.isArray(st.rest) ? st.rest.slice() : [0, 0, 0],
     luck: Array.isArray(st.luck) ? st.luck.slice() : null,
     issueLuck: st.issueLuck || null, // #58: option 丙
+    momentum: st.momentum || null, trigger: st.trigger || null, // #75: momentum "none", trigger "always" / "never"
     // #49: a v0.5 game (ads and media folded into the issues) has no media at all.
     // #54: a v0.6 game is a v0.5 game plus the simplifications (no 地方大老: fill "candidate" or "free"; ties by st.order).
     // #55: a v0.7 game is a v0.6 game (fill "candidate") with luck instead of the bag.
@@ -232,6 +233,10 @@ class Bot {
     this.v = see(view);
     this.p = view.seat; this.lv = level; this.rng = rng;
     this.MOMV = this.v.v07 ? V07_MOMV[this.p] + this.momCanvass() : this.v.v06 ? V06_MOMV[this.p] : MOMV; // #54, #55
+    // #75: with momentum "none" a momentum is worth nothing (nobody has or gets any). With trigger "always" / "never"
+    // it no longer buys a trigger, so only its canvassing luck is left (V07_MOMV is the trigger part).
+    if (this.v.momentum === "none") this.MOMV = 0;
+    else if (this.v.v07 && this.v.trigger) this.MOMV = this.momCanvass();
     const t = this.v.turn;
     this.flow = level === 1 ? null : level >= 3 && t >= 9 ? EXACT : level >= 3 && t >= 7 ? SHARP : SOFT;
     this.pc = this.v.counties.map((_, k) => this.projCounty(k));
@@ -702,8 +707,11 @@ class Bot {
     return true;
   }
   // Would q trigger its card if someone played it for CP now?
+  // #75: with trigger "always" it certainly happens (whatever it does to q), with "never" it certainly does not.
   wouldTrigger(q, id) {
     const c = CARD[id];
+    if (this.v.trigger === "never") return false;
+    if (this.v.trigger === "always") return !c.must && this.ownEventAllowed(q, c);
     if (c.must || this.v.mom[q] < 1 || !this.ownEventAllowed(q, c)) return false;
     return this.rel(this.eventVec(id, q), q) - this.MOMV >= 0.3;
   }
@@ -793,7 +801,8 @@ class Bot {
         // an opponent's card, for CP
         const q = SEATS.indexOf(c.owner);
         const trig = this.wouldTrigger(q, m.card);
-        const harm = trig ? this.rel(add3(this.eventVec(m.card, q), this.vMom(q, -1))) : 0;
+        // #75 trigger "always": the owner spends no momentum on it.
+        const harm = trig ? this.rel(v.trigger === "always" ? this.eventVec(m.card, q) : add3(this.eventVec(m.card, q), this.vMom(q, -1))) : 0;
         // 總幹事 picks the card by its CP alone, then blocks it if it is a big
         // one its owner would trigger; 操盤手 weighs the harm or the block's
         // cost into the choice of card itself.
