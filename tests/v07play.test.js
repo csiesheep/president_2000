@@ -21,6 +21,9 @@
 //   - on election day, the first screen the human sees after the conversion has, in "just now" (S.recent), a line with
 //     each seat's canvassing luck: min(95, min(80, luck + 10 × momentum) + 10 × issues led) — 陳 … N%, 宋 … N%, 連 … N%.
 // Every check reported 尚未實作 until S.newSolo started a v0.7 丙 game; since #60 landed, that is a failure.
+// #82 (owner, 2026-10-17: 「yes, go ahead」): new games become v0.8, still st.rules "v0.7" with option 丙, with no momentum,
+// triggers always, the cards' morale ("full") and 士氣 50/50/50 (tests/v08play.test.js). Once S.newSolo starts one, the first
+// row wants that; the other rows hold for it as they are (its momentum is 0, so the canvassing formula is the same).
 import test from "node:test";
 import assert from "node:assert/strict";
 import { R, section, check, eq, ok, nonEmpty, summary } from "./harness.js";
@@ -42,7 +45,8 @@ const LUCKW = { "zh-Hant": (n) => [`運氣 ${n}%`, `士氣 ${n}%`], en: (n) => [
 const hasAny = (html, list) => list.some((w) => html.includes(w));
 const text = (html) => (html.replace(/<[^>]+>/g, " ") + " " + [...html.matchAll(/\b(?:aria-label|title|alt)="([^"]*)"/g)].map((m) => m[1]).join(" ")).replace(/\s+/g, " ");
 const V7 = (st) => `${st.rules} ${st.issueLuck} ${st.luck}`;
-const WANT = "v0.7 lead 50,50,60";
+const V08NEW = (() => { try { return S.newSolo({ seat: 0, level: 1, seed: 1 }).st.moraleCards === "full"; } catch { return false; } })();
+const WANT = V08NEW ? "v0.7 lead 50,50,50" : "v0.7 lead 50,50,60";
 
 function walk(session, lang, seed, each) {
   const Rn = D.rng(seed); let s = S.advance(session);
@@ -71,7 +75,7 @@ function tutorial(lang) {
 const panels = (html) => { const at = [...html.matchAll(/class="pl-card[^"]*" data-seat="(\d)"/g)]; return at.map((m, i) => ({ seat: +m[1], html: html.slice(m.index, i + 1 < at.length ? at[i + 1].index : m.index + 4000) })); };
 
 section("60 v0.7 上場");
-c60("新開的單人、新開的房間、房間的再來一局、教學都是 v0.7 丙，運氣 50/50/60", () => {
+c60(V08NEW ? "新開的單人、新開的房間、房間的再來一局、教學都是 v0.7 丙，士氣 50/50/50（v0.8，#82）" : "新開的單人、新開的房間、房間的再來一局、教學都是 v0.7 丙，運氣 50/50/60", () => {
   for (const seed of [1, 2, 3]) { const st = S.newSolo({ seat: 0, level: 2, seed }).st; if (V7(st) !== WANT) return `單人 seed ${seed}：${V7(st)}`; }
   let room = RC.newRoom({ code: "ABCD", seed: 11, now: 0 });
   const h = (ev) => { room = RC.handle(room, ev, 0).room; };
@@ -80,7 +84,7 @@ c60("新開的單人、新開的房間、房間的再來一局、教學都是 v0
   room.st = { ...room.st, phase: "end" }; h({ type: "msg", conn: "A", data: { t: "rematch" } });
   r = eq(`${V7(room.st)} ${room.st.turn}`, `${WANT} 1`, "房主按再來一局"); if (r !== true) return r;
   r = eq(V7(T.newTutorial().st), WANT, "教學"); if (r !== true) return r;
-  return ok(true, "單人 3 個種子、房間、再來一局、教學都是 v0.7 丙、50/50/60");
+  return ok(true, `單人 3 個種子、房間、再來一局、教學都是 v0.7 丙、${WANT.split(" ").pop().split(",").join("/")}`);
 });
 c60("切換前存的 v0.6 單人照常能玩：每個畫面都畫得出來、每個選項都有字（中英）", () => {
   let screens = 0;

@@ -128,7 +128,9 @@ c53("議題總領先者 +1 動能時，「剛剛」那幾行寫出「議題總�
   let leads = 0, said = 0;
   for (const seed of [51, 52, 53]) {
     let seen = 0;
-    walk(S.newSolo({ seat: 0, level: 2, seed }), "zh-Hant", seed + 7, (s) => {
+    // #82: new games have no momentum (v0.8); a game saved on v0.7 with momentum still gives the +1, and still says so.
+    const s0 = S.newSolo({ seat: 0, level: 2, seed }); s0.st = E.createGame(seed, { rules: "v0.7", issueLuck: "lead" });
+    walk(s0, "zh-Hant", seed + 7, (s) => {
       const now = s.st.log.filter((e) => e.t === "momentum" && e.step === "lead").length;
       if (now > seen) { leads += now - seen; seen = now; if (S.recent(s, "zh-Hant").some((l) => /議題總領先者/.test(l))) said++; }
     });
