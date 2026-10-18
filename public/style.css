@@ -1220,6 +1220,9 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
   .tbl:not(.end) .t-hand .hc .ha { height: 28%; border-radius: 8px 8px 0 0; }
   .tbl:not(.end) .t-hand .hc:not(.candc) .ha { height: 28%; }
   .tbl:not(.end) .t-hand .hc:not(.candc) .hb { top: 25%; }
+  /* #89: the hand only peeks up from the tray here (about 73 px of a 232 px card), and the candidate's name stood at 44% - under the screen's edge. Name first, just under the CP tab, the kind line after it. */
+  .tbl:not(.end) .t-hand .hc.candc .hb { top: 22%; gap: 1px; }
+  .tbl:not(.end) .t-hand .hc.candc .cc-n { order: -1; font-size: 16px; line-height: 1.15; }
   .tbl:not(.end) .t-hand .hc.sel { transform: none; }
   @media (hover: hover) { .tbl:not(.end) .t-hand .hc:hover:not(:disabled):not(.sel), .tbl:not(.end) .t-hand .hc:focus-visible:not(.sel) { translate: 0 -96px; scale: 1.03; } }
   .tbl:not(.end).hand-up::after { top: 52px; }
@@ -1400,5 +1403,29 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
   }
   @media (min-width: 1100px) {
     .tbl:not(.end) .tw-box { height: 100%; width: auto; max-width: 100%; }
+  }
+}
+
+/* #89: the phone's county bar gives the map its room. An English event with a long line (a rival's CP play that triggers your card: 4 lines of text) made the bar
+   135 px high and the map 269x385; tightened, the map keeps 290 wide. */
+@media (max-width: 1099px) {
+  .tbl:not(.end) .t-act:has(.cbar) { padding-top: 4px; padding-bottom: calc(3px + env(safe-area-inset-bottom, 0px)); }
+  .tbl:not(.end) .t-act .cbar { gap: 2px; }
+  .tbl:not(.end) .t-act .cbar-t .pr { font-size: 12.5px; line-height: 1.2; }
+  .cbar-t .ct { margin-top: 0; font-size: 10.5px; line-height: 1.2; }
+  .cbar-c .cchip { min-height: 28px; padding-top: 2px; padding-bottom: 2px; }
+}
+/* #89: the floats at the map's foot (the toast, the notes, the issue totals) follow the map's frame: the frame is the container, 1 u is 1 px on a 340 px wide
+   map and shrinks with it, never grows past the px written above. A phone with a sheet up draws the map as small as 290 wide; fixed px put the toast on
+   Taitung and the totals on Kaohsiung and Pingtung. Without container units (Safari 15) the px above stand. */
+@supports (width: 1cqw) {
+  @media (max-width: 1099px) {
+    .tbl:not(.end) .tw-box { container-type: inline-size; --u: .2941cqw; }
+    .tbl:not(.end) .t-notes { right: min(6px, calc(6 * var(--u))); bottom: min(71px, calc(78 * var(--u))); gap: min(3px, calc(3 * var(--u))); }
+    .t-toast { font-size: max(8px, min(9.5px, calc(9.5 * var(--u)))); padding-left: min(7px, calc(7 * var(--u))); padding-right: min(7px, calc(7 * var(--u))); }
+    .tbl:not(.end) .t-notes .res, .tbl:not(.end) .t-notes .autonote { font-size: max(8.5px, min(10.5px, calc(10.5 * var(--u)))); padding-left: min(7px, calc(7 * var(--u))); padding-right: min(7px, calc(7 * var(--u))); }
+    .tbl:not(.end) .t-notes .advice { font-size: max(8.5px, min(10px, calc(10 * var(--u)))); }
+    .tbl:not(.end) .t-notes [data-auto-note] { font-size: max(8px, min(9px, calc(9 * var(--u)))); }
+    .tbl:not(.end) .t-lead { right: min(6px, calc(6 * var(--u))); bottom: min(26px, calc(26 * var(--u))); font-size: max(8px, min(9px, calc(9 * var(--u)))); padding: min(2px, calc(2 * var(--u))) min(6px, calc(6 * var(--u))); }
   }
 }
