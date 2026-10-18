@@ -14,6 +14,8 @@
 //     that order from top to bottom, inside the panel;
 //   - the page does not scroll sideways.
 // The desk layout is left as it is (tools/compact29.mjs keeps measuring it).
+// #82 (v0.8, no momentum): when the game in the page has no momentum (its session's st.momentum is "none"), the right side
+// is votes · morale, top to bottom, and no momentum is drawn on the panel; a game with momentum keeps the three.
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 
@@ -70,7 +72,8 @@ const MEASURE = (lang) => `(() => {
     out.push({ seat, P, name: name && { ...R(name), t: name.textContent.trim(), cut: cut(name) }, votes: votes && R(votes), mom: mom && R(mom),
       luck: luck && { ...R(luck), t: luck.textContent.trim() } });
   }
-  return JSON.stringify({ panels: out, sw: document.documentElement.scrollWidth, iw: innerWidth });
+  let noMom = null; try { const ss = JSON.parse(sessionStorage.getItem("p2000.solo.session")); noMom = !!(ss && ss.st && ss.st.momentum === "none"); } catch (e) { noMom = null; }
+  return JSON.stringify({ panels: out, sw: document.documentElement.scrollWidth, iw: innerWidth, noMom });
 })()`;
 
 const out = [];
@@ -88,6 +91,12 @@ try {
       const who = `${lang} seat ${p.seat}`, w = p.P.w;
       const n = p.name;
       rule(!!n && n.x < p.P.x + 0.35 * w && n.b >= p.P.b - 14 && !n.cut, `${who}: the name at the left foot, not cut (${n ? `「${n.t}」 x ${n.x - p.P.x}/${w}, bottom ${p.P.b - n.b} px above the panel's, ${n.cut ? "CUT" : "whole"}` : "not found"})`);
+      if (m.noMom) { // #82: v0.8
+        const parts = [["votes", p.votes], ["luck", p.luck]], missing = parts.filter(([, r]) => !r).map(([k]) => k);
+        const right = parts.every(([, r]) => r && r.x >= p.P.x + 0.4 * w && r.r <= p.P.r + 1 && r.b <= p.P.b + 1);
+        rule(!missing.length && right && p.votes.y < p.luck.y && !p.mom, `${who} (no momentum): on the right, top to bottom, votes · morale, without a tap, and no momentum drawn (${missing.length ? `missing ${missing.join(", ")}` : `tops ${p.votes.y - p.P.y}/${p.luck.y - p.P.y}, lefts ${p.votes.x - p.P.x}/${p.luck.x - p.P.x} of ${w}`}${p.mom ? "; momentum drawn" : ""})`);
+        continue;
+      }
       const parts = [["votes", p.votes], ["momentum", p.mom], ["luck", p.luck]];
       const missing = parts.filter(([, r]) => !r).map(([k]) => k);
       const right = parts.every(([, r]) => r && r.x >= p.P.x + 0.4 * w && r.r <= p.P.r + 1 && r.b <= p.P.b + 1);

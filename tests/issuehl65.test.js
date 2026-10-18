@@ -35,6 +35,8 @@ import * as C from "../public/shared/cards.js";
 const SHORT_ZH = ["陳", "宋", "連"], SHORT_EN = ["Chen", "Soong", "Lien"];
 const LABEL_ZH = ["頭條", "二條", "三條"];
 const REWARD_ZH = ["+1 動能、抽背書", "抽背書", "+1 動能"];
+// #82 (v0.8, no momentum): a game with no momentum (st.momentum "none") pays endorsements only: 頭條 and 二條 「抽背書」, 三條
+// nothing (no 背書, no 動能); English endorse, endorse, neither. A game saved with momentum keeps the three above.
 
 // Tables along three solo games, every 9th step (the track moves with every cube placed).
 function tables() {
@@ -109,6 +111,11 @@ check("報眉的獎勵：中文頭條「+1 動能、抽背書」、二條「抽�
     for (const [i, s] of slots(S.screen(p.s, lang)).entries()) {
       const r = text(element(s.html, "data-hl-reward"));
       if (r == null) return `${p.where}（${name}）：第 ${i + 1} 條沒有 data-hl-reward`;
+      if (p.s.st.momentum === "none") { // #82
+        const mo = lang === "zh-Hant" ? /動能/.test(r) : /\bmom(entum|\.)/i.test(r), es = lang === "zh-Hant" ? /背書/.test(r) : /endorse/i.test(r);
+        if (mo || es !== (i < 2)) return `${p.where}（${name}，沒有動能的局）：第 ${i + 1} 條的獎勵是「${r}」，應為${i < 2 ? "背書" : "沒有獎勵"}、不提動能`;
+        continue;
+      }
       if (lang === "zh-Hant") { if (!squash(r).includes(squash(REWARD_ZH[i])) || (i === 1 && /動能/.test(r)) || (i === 2 && /背書/.test(r))) return `${p.where}：第 ${i + 1} 條的獎勵是「${r}」，應為「${REWARD_ZH[i]}」`; }
       else {
         // English may shorten momentum to "mom." (orchestrator ruling #65-2: the full words do not fit a phone flag).

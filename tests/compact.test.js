@@ -385,14 +385,16 @@ check("票數：候選人板寫盤上方塊換成的票，中文 n 接 0萬票�
 // #76: 運氣 is renamed 士氣 (Luck → Morale); either word, until it lands.
 const luckOn = (lang, n) => (lang === "en" ? [`Luck ${n}%`, `Morale ${n}%`] : [`運氣 ${n}%`, `士氣 ${n}%`]);
 check("動能、手牌、袋子（v0.7：運氣）還在：每塊候選人板有 動能/Momentum 與動能數，手牌 · 已留、袋中的字跟現在一樣（v0.7 是運氣 N%）", panelGate(() => {
-  let n = 0, nBag = 0, nLuck = 0;
+  let n = 0, nBag = 0, nLuck = 0, noMom = 0;
   for (const p of POOL.filter((x, i) => i % 3 === 0)) {
     const html = tableHTML(p.v, p.ch, p.lang, {});
     const L = (p.lang === "en" ? en : zh).ui.look.board;
     for (const s of [0, 1, 2]) {
       const seg = panelOf(html, s) || "";
       const hay = seg.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ") + " " + labels(seg);
-      if (!new RegExp(`${L.mom}\\s*${p.v.mom[s]}(\\D|$)`).test(hay)) return `${p.where}：${SEAT[s]} 板上找不到「${L.mom} ${p.v.mom[s]}」`;
+      // #82 (v0.8): a game with no momentum draws none on its panels; a game with momentum still shows it.
+      if (p.v.momentum === "none") { if (/動能|momentum/i.test(hay)) return `${p.where}：沒有動能的局，${SEAT[s]} 板上還寫著動能：「${hay.slice(0, 80)}」`; noMom++; }
+      else if (!new RegExp(`${L.mom}\\s*${p.v.mom[s]}(\\D|$)`).test(hay)) return `${p.where}：${SEAT[s]} 板上找不到「${L.mom} ${p.v.mom[s]}」`;
       const inHand = Array.isArray(p.v.hands[s]) ? p.v.hands[s].length : p.v.hands[s];
       const keptA = p.v.turn <= 5 ? p.v.savedDebate[s] : p.v.savedElection[s], kept = Array.isArray(keptA) ? keptA.length : keptA;
       const hand = L.hand.replace("{n}", inHand).replace("{k}", kept);
@@ -412,7 +414,7 @@ check("動能、手牌、袋子（v0.7：運氣）還在：每塊候選人板有
       n++;
     }
   }
-  return ok(true, `${n} 塊候選人板都有動能、手牌，以及袋子（${nBag}）或運氣（${nLuck}）`);
+  return ok(true, `${n} 塊候選人板都有手牌，以及袋子（${nBag}）或運氣（${nLuck}）；動能：${n - noMom} 塊有動能的局寫著，${noMom} 塊沒有動能的局（v0.8，#82）沒寫`);
 }));
 
 test("compact", () => {
