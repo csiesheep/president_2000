@@ -23,6 +23,19 @@
 //     - the candidate panels start within 80 px of the top (today 131), the candidate pictures on the map
 //       are at least 20 px, quitting and the language link can be reached (on screen, or one menu away);
 //   the tutorial at 390: its box ([data-tutorial]) is on screen and inside the width.
+//
+// Fixed games (2026-10-18, after #87): 「開始選戰」 seeds a solo game with crypto.getRandomValues (public/app.js), so every
+// run was a different game and some rows went red one run in a few (the checker's 「4 issue slots」 at c8b3489, which
+// the orchestrator could not reproduce). Before the start button is pressed the page's crypto.getRandomValues is
+// replaced by one that returns a fixed seed, and sessionStorage p2000.solo.setup picks seat 0 and the level; the saved
+// session is read back to check the game really has that seed and level. Two rounds, every row prefixed with its own:
+//   (a) 總幹事 (level 2), seed P2000_SEED_A (default 2): the level every run used before #87 made 新手 the default;
+//   (b) 新手 (level 0), seed P2000_SEED_B (default 10): the level a first visit now gets; this game opens with 連's chip
+//       on the 頭條.
+// The tutorial is one fixed game of its own and runs once. Also since then: the issue slots are the [data-issue]
+// headlines only. The chip a rival's issue move leaves on a headline (#66, [data-act-chip][data-issue], inside the slot)
+// is not a fourth slot: it was what the checker's 「4 issue slots on screen, not 3」 counted (seeds 7, 10, 21, 27 and 57
+// at level 0 open with one chip, 22 and 47 with two).
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 
@@ -60,6 +73,21 @@ async function tab(br, url, w, h, mobile) {
   return { ev, key, close: () => { try { ws.close(); } catch { /* closed */ } } };
 }
 const START = `(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.offsetParent&&/開始選戰|Start/.test(x.textContent)); if(b){b.click();return 1;} return 0;})()`;
+// The two rounds (see the head of this file): the level and the seed the start button gets, and a check that it got them.
+const ROUNDS = [
+  { tag: "a 總幹事", level: 2, seed: Number(process.env.P2000_SEED_A || 2) >>> 0 },
+  { tag: "b 新手", level: 0, seed: Number(process.env.P2000_SEED_B || 10) >>> 0 },
+];
+const FIX = (r) => `(()=>{ sessionStorage.setItem("p2000.solo.setup", JSON.stringify({ seat: 0, level: ${r.level} })); crypto.getRandomValues = (a) => { a[0] = ${r.seed}; return a; }; return 1; })()`;
+const GOT = `(()=>{ try { const s = JSON.parse(sessionStorage.getItem("p2000.solo.session")); return s ? s.seed + "/" + s.level : "no game"; } catch { return "no game"; } })()`;
+async function begin(t, r, tag) {
+  await t.ev(FIX(r));
+  if (!(await t.ev(START))) { rule(false, `${tag}: no start button found`); return false; }
+  await sleep(150);
+  const got = await t.ev(GOT);
+  if (got !== `${r.seed}/${r.level}`) { rule(false, `${tag}: instrument — the game did not start with seed ${r.seed}, level ${r.level} (got ${got})`); return false; }
+  return true;
+}
 
 // Everything measured in the page in one go; returns plain numbers and short notes.
 const MEASURE = `(()=>{
@@ -74,7 +102,8 @@ const MEASURE = `(()=>{
     let stick = null;
     for (const el of p.querySelectorAll("*")) { if (!vis(el) || !el.childNodes.length || ![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) continue; const r = R(el); if (r.r > pr.r + 1 || r.x < pr.x - 1 || r.b > pr.b + 1) { stick = el.textContent.trim().slice(0, 20); break; } }
     return { seat: p.dataset.seat, ...pr, img: ir, stick }; });
-  const issues = [...tbl.querySelectorAll("[data-issue]")].filter(vis).map((s) => { const im = s.querySelector("img"); let round = false;
+  // (the headlines only: a rival's chip on one, [data-act-chip][data-issue] since #66, is not a slot)
+  const issues = [...tbl.querySelectorAll("[data-issue]:not([data-act-chip])")].filter(vis).map((s) => { const im = s.querySelector("img"); let round = false;
     for (let e = im; e && e !== s.parentElement; e = e.parentElement) { const cs = getComputedStyle(e), rr = e.getBoundingClientRect(); const rad = parseFloat(cs.borderTopLeftRadius) || 0; if (cs.borderTopLeftRadius.endsWith("%") ? parseFloat(cs.borderTopLeftRadius) >= 50 : rad >= Math.min(rr.width, rr.height) / 2 - 1) { round = rr.width > 0 && Math.abs(rr.width - rr.height) <= 2; if (round) break; } }
     const chain = []; for (let e = im; e; e = e.parentElement) { chain.push(e); if (e === s) break; }
     const sq = !!im && vis(im) && Math.max(...chain.map((e) => parseFloat(getComputedStyle(e).borderTopLeftRadius) || 0)) <= 2;
@@ -100,66 +129,73 @@ const out = [];
 const rule = (ok, what) => out.push({ ok, what });
 const br = await launch();
 try {
-  for (const lang of ["zh", "en"]) {
-    const t = await tab(br, `${base}?play${lang === "en" ? "&lang=en" : ""}`, 390, 844, true);
-    if (!(await t.ev(START))) rule(false, `phone ${lang}: no start button found`);
-    await sleep(8000);
-    const m = JSON.parse(await t.ev(MEASURE));
-    const P = m.panels, I = m.issues, tag = `phone ${lang}`;
-    if (P.length !== 3) rule(false, `${tag}: ${P.length} candidate panels on screen, not 3`);
-    else {
-      const top = Math.min(...P.map((p) => p.y));
-      rule(top <= 60, `${tag}: first candidate panel starts at ${Math.round(top)} px (≤ 60)`);
-      rule(Math.max(...P.map((p) => p.y)) - top <= 1, `${tag}: candidate panels in one row (tops ${P.map((p) => Math.round(p.y)).join(", ")})`);
-      rule(P.every((p) => p.h <= 64), `${tag}: candidate panels ${P.map((p) => Math.round(p.h)).join("/")} px high (≤ 64)`);
-      rule(P.every((p) => p.img && Math.abs(p.img.x - p.x) <= 2 && p.img.w >= 0.35 * p.w && p.img.h >= 0.9 * p.h), `${tag}: picture on the left of each panel (${P.map((p) => (p.img ? `${Math.round(p.img.x - p.x)}/${Math.round((100 * p.img.w) / p.w)}%w/${Math.round((100 * p.img.h) / p.h)}%h` : "none")).join(", ")})`);
-      rule(P.every((p) => !p.stick), `${tag}: nothing sticks out of a candidate panel${P.some((p) => p.stick) ? " (「" + P.find((p) => p.stick).stick + "」)" : ""}`);
+  for (const rd of ROUNDS) {
+    const R0 = `[${rd.tag} seed ${rd.seed}]`;
+    for (const lang of ["zh", "en"]) {
+      const t = await tab(br, `${base}?play${lang === "en" ? "&lang=en" : ""}`, 390, 844, true);
+      const tag = `${R0} phone ${lang}`;
+      if (!(await begin(t, rd, tag))) { t.close(); continue; }
+      await sleep(8000);
+      const m = JSON.parse(await t.ev(MEASURE));
+      const P = m.panels, I = m.issues;
+      if (P.length !== 3) rule(false, `${tag}: ${P.length} candidate panels on screen, not 3`);
+      else {
+        const top = Math.min(...P.map((p) => p.y));
+        rule(top <= 60, `${tag}: first candidate panel starts at ${Math.round(top)} px (≤ 60)`);
+        rule(Math.max(...P.map((p) => p.y)) - top <= 1, `${tag}: candidate panels in one row (tops ${P.map((p) => Math.round(p.y)).join(", ")})`);
+        rule(P.every((p) => p.h <= 64), `${tag}: candidate panels ${P.map((p) => Math.round(p.h)).join("/")} px high (≤ 64)`);
+        rule(P.every((p) => p.img && Math.abs(p.img.x - p.x) <= 2 && p.img.w >= 0.35 * p.w && p.img.h >= 0.9 * p.h), `${tag}: picture on the left of each panel (${P.map((p) => (p.img ? `${Math.round(p.img.x - p.x)}/${Math.round((100 * p.img.w) / p.w)}%w/${Math.round((100 * p.img.h) / p.h)}%h` : "none")).join(", ")})`);
+        rule(P.every((p) => !p.stick), `${tag}: nothing sticks out of a candidate panel${P.some((p) => p.stick) ? " (「" + P.find((p) => p.stick).stick + "」)" : ""}`);
+      }
+      // #66 (design 甲) takes the 「剛剛」 block away: without one the row has nothing to measure and passes saying so.
+      if (!m.hasNow) rule(true, `${tag}: no "just now" block (#66)`);
+      else rule(m.now != null && m.now <= 220, `${tag}: "just now" starts at ${m.now == null ? "—" : Math.round(m.now)} px (≤ 220)`);
+      if (I.length !== 3) rule(false, `${tag}: ${I.length} issue slots on screen, not 3`);
+      else {
+        rule(Math.max(...I.map((s) => s.y)) - Math.min(...I.map((s) => s.y)) <= 1 && I.every((s) => s.h <= 56), `${tag}: issue slots in one row, ${I.map((s) => Math.round(s.h)).join("/")} px high (≤ 56)`);
+        if (I.some((s) => s.hl)) rule(I.filter((s) => s.hl === "1").length === 1 && I.find((s) => s.hl === "1").sq, `${tag}: the 頭條's picture a photo with square corners (#65; ${I.map((s) => `${s.hl}:${s.sq}`).join(", ")})`);
+        else rule(I.every((s) => s.round), `${tag}: issue pictures round (${I.map((s) => s.round).join(", ")})`);
+      }
+      rule(!!m.adv && m.adv.b <= 64, `${tag}: advisor switch on screen in the top band (${m.adv ? "bottom " + Math.round(m.adv.b) : "missing"})`);
+      rule(!!m.menu && m.menu.b <= 64 && m.menu.exp === "false", `${tag}: menu button in the top band, closed (${m.menu ? "bottom " + Math.round(m.menu.b) + ", aria-expanded=" + m.menu.exp : "missing"})`);
+      rule(!m.quitVis && !m.langVis, `${tag}: quit and language hidden before the menu opens (quit ${m.quitVis}, lang ${m.langVis})`);
+      if (m.menu) {
+        await t.ev(`document.querySelector("[data-menu]").click()`); await sleep(400);
+        const o = JSON.parse(await t.ev(MEASURE));
+        rule(o.menu && o.menu.exp === "true" && o.quitTop && o.langTop, `${tag}: menu open → quit and language on screen and on top (expanded ${o.menu && o.menu.exp}, quit ${o.quitTop}, lang ${o.langTop})`);
+        await t.key("Escape", "Escape"); await sleep(300);
+        const c = JSON.parse(await t.ev(MEASURE));
+        rule(c.menu && c.menu.exp === "false" && !c.quitVis, `${tag}: Escape closes the menu (expanded ${c.menu && c.menu.exp}, quit visible ${c.quitVis})`);
+      }
+      rule(!!m.cubes && m.cubes[0] >= 6 && m.cubes[1] - m.cubes[0] <= 1.5, `${tag}: map cubes ${m.cubes ? m.cubes.map((n) => n.toFixed(1)).join("…") : "none"} px (≥ 6, one size)`);
+      rule(m.pics.length === 3 && m.pics.every((w) => w >= 20), `${tag}: candidate pictures on the map ${m.pics.map((w) => w.toFixed(1)).join("/") || "none"} px (3, ≥ 20)`);
+      rule(m.taps.length === 3 && m.taps.every((x) => x.ok), `${tag}: a tap on a candidate's picture reaches its county (${m.taps.map((x) => (x.ok ? "✓" : "hits " + x.hit)).join(", ") || "none"})`);
+      rule(m.sw <= m.iw, `${tag}: no sideways scroll (${m.sw} ≤ ${m.iw})`);
+      t.close();
     }
-    // #66 (design 甲) takes the 「剛剛」 block away: without one the row has nothing to measure and passes saying so.
-    if (!m.hasNow) rule(true, `${tag}: no "just now" block (#66)`);
-    else rule(m.now != null && m.now <= 220, `${tag}: "just now" starts at ${m.now == null ? "—" : Math.round(m.now)} px (≤ 220)`);
-    if (I.length !== 3) rule(false, `${tag}: ${I.length} issue slots on screen, not 3`);
-    else {
-      rule(Math.max(...I.map((s) => s.y)) - Math.min(...I.map((s) => s.y)) <= 1 && I.every((s) => s.h <= 56), `${tag}: issue slots in one row, ${I.map((s) => Math.round(s.h)).join("/")} px high (≤ 56)`);
-      if (I.some((s) => s.hl)) rule(I.filter((s) => s.hl === "1").length === 1 && I.find((s) => s.hl === "1").sq, `${tag}: the 頭條's picture a photo with square corners (#65; ${I.map((s) => `${s.hl}:${s.sq}`).join(", ")})`);
-      else rule(I.every((s) => s.round), `${tag}: issue pictures round (${I.map((s) => s.round).join(", ")})`);
+    {
+      const t = await tab(br, `${base}?play`, 1440, 900, false);
+      const tag = `${R0} desk`;
+      if (await begin(t, rd, tag)) {
+        await sleep(8000);
+        const m = JSON.parse(await t.ev(MEASURE));
+        const top = m.panels.length ? Math.min(...m.panels.map((p) => p.y)) : null;
+        rule(top != null && top <= 80, `${tag}: candidate panels start at ${top == null ? "—" : Math.round(top)} px (≤ 80)`);
+        rule(m.pics.length === 3 && m.pics.every((w) => w >= 20), `${tag}: candidate pictures on the map ${m.pics.map((w) => w.toFixed(1)).join("/") || "none"} px (3, ≥ 20)`);
+        rule(m.taps.length === 3 && m.taps.every((x) => x.ok), `${tag}: a tap on a candidate's picture reaches its county (${m.taps.map((x) => (x.ok ? "✓" : "hits " + x.hit)).join(", ") || "none"})`);
+        let reach = m.quitTop && m.langTop;
+        if (!reach && m.menu) { await t.ev(`document.querySelector("[data-menu]").click()`); await sleep(400); const o = JSON.parse(await t.ev(MEASURE)); reach = o.quitTop && o.langTop; }
+        rule(!!reach, `${tag}: quit and language reachable (on screen, or one menu away)`);
+        rule(m.sw <= m.iw, `${tag}: no sideways scroll (${m.sw} ≤ ${m.iw})`);
+      }
+      t.close();
     }
-    rule(!!m.adv && m.adv.b <= 64, `${tag}: advisor switch on screen in the top band (${m.adv ? "bottom " + Math.round(m.adv.b) : "missing"})`);
-    rule(!!m.menu && m.menu.b <= 64 && m.menu.exp === "false", `${tag}: menu button in the top band, closed (${m.menu ? "bottom " + Math.round(m.menu.b) + ", aria-expanded=" + m.menu.exp : "missing"})`);
-    rule(!m.quitVis && !m.langVis, `${tag}: quit and language hidden before the menu opens (quit ${m.quitVis}, lang ${m.langVis})`);
-    if (m.menu) {
-      await t.ev(`document.querySelector("[data-menu]").click()`); await sleep(400);
-      const o = JSON.parse(await t.ev(MEASURE));
-      rule(o.menu && o.menu.exp === "true" && o.quitTop && o.langTop, `${tag}: menu open → quit and language on screen and on top (expanded ${o.menu && o.menu.exp}, quit ${o.quitTop}, lang ${o.langTop})`);
-      await t.key("Escape", "Escape"); await sleep(300);
-      const c = JSON.parse(await t.ev(MEASURE));
-      rule(c.menu && c.menu.exp === "false" && !c.quitVis, `${tag}: Escape closes the menu (expanded ${c.menu && c.menu.exp}, quit visible ${c.quitVis})`);
-    }
-    rule(!!m.cubes && m.cubes[0] >= 6 && m.cubes[1] - m.cubes[0] <= 1.5, `${tag}: map cubes ${m.cubes ? m.cubes.map((n) => n.toFixed(1)).join("…") : "none"} px (≥ 6, one size)`);
-    rule(m.pics.length === 3 && m.pics.every((w) => w >= 20), `${tag}: candidate pictures on the map ${m.pics.map((w) => w.toFixed(1)).join("/") || "none"} px (3, ≥ 20)`);
-    rule(m.taps.length === 3 && m.taps.every((x) => x.ok), `${tag}: a tap on a candidate's picture reaches its county (${m.taps.map((x) => (x.ok ? "✓" : "hits " + x.hit)).join(", ") || "none"})`);
-    rule(m.sw <= m.iw, `${tag}: no sideways scroll (${m.sw} ≤ ${m.iw})`);
-    t.close();
-  }
-  {
-    const t = await tab(br, `${base}?play`, 1440, 900, false);
-    await t.ev(START); await sleep(8000);
-    const m = JSON.parse(await t.ev(MEASURE));
-    const top = m.panels.length ? Math.min(...m.panels.map((p) => p.y)) : null;
-    rule(top != null && top <= 80, `desk: candidate panels start at ${top == null ? "—" : Math.round(top)} px (≤ 80)`);
-    rule(m.pics.length === 3 && m.pics.every((w) => w >= 20), `desk: candidate pictures on the map ${m.pics.map((w) => w.toFixed(1)).join("/") || "none"} px (3, ≥ 20)`);
-    rule(m.taps.length === 3 && m.taps.every((x) => x.ok), `desk: a tap on a candidate's picture reaches its county (${m.taps.map((x) => (x.ok ? "✓" : "hits " + x.hit)).join(", ") || "none"})`);
-    let reach = m.quitTop && m.langTop;
-    if (!reach && m.menu) { await t.ev(`document.querySelector("[data-menu]").click()`); await sleep(400); const o = JSON.parse(await t.ev(MEASURE)); reach = o.quitTop && o.langTop; }
-    rule(!!reach, `desk: quit and language reachable (on screen, or one menu away)`);
-    rule(m.sw <= m.iw, `desk: no sideways scroll (${m.sw} ≤ ${m.iw})`);
-    t.close();
   }
   {
     const t = await tab(br, `${base}?tutorial`, 390, 844, true);
     await sleep(600);
     const b = JSON.parse(await t.ev(`(()=>{const e=document.querySelector("[data-tutorial]"); if(!e) return "null"; const r=e.getBoundingClientRect(); return JSON.stringify({x:r.left,r:r.right,w:r.width,h:r.height,iw:innerWidth});})()`));
-    rule(!!b && b.w > 0 && b.x >= 0 && b.r <= b.iw + 1, `tutorial 390: box on screen and inside the width (${b ? Math.round(b.x) + "…" + Math.round(b.r) + " of " + b.iw : "missing"})`);
+    rule(!!b && b.w > 0 && b.x >= 0 && b.r <= b.iw + 1, `[tutorial, its own fixed game] tutorial 390: box on screen and inside the width (${b ? Math.round(b.x) + "…" + Math.round(b.r) + " of " + b.iw : "missing"})`);
     t.close();
   }
 } finally { br.close(); }

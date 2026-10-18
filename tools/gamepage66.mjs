@@ -28,6 +28,21 @@
 //   - the floats over the map — the toast [data-act-toast], the totals [data-issue-lead], the issue chips — cover no
 //     county's box while they are visible (added after the first delivery: the toast sat on 台北市 and 金馬, the totals
 //     on 屏東).
+//
+// Fixed games (2026-10-18, after #87): 「開始選戰」 seeds a solo game with crypto.getRandomValues (public/app.js), so every
+// run was a different game: the floats row went red in some runs and not others (the checker's red at c8b3489), and
+// since #87 made 新手 the default level a game can open on a sheet (a rival's CP play triggers one of your events) instead
+// of a card to pick, which skipped the hand's rows (58 rows fell to 52). Before the start button is pressed the page's
+// crypto.getRandomValues is replaced by one that returns a fixed seed, and sessionStorage p2000.solo.setup picks seat 0
+// and the level; the saved session is read back to check the game really has them. Two rounds, every row prefixed with
+// its own:
+//   (a) 總幹事 (level 2), seed P2000_SEED_A (default 2): opens on a card to pick, so this round has the 58 rows a run had
+//       before #87 (should the seed stop opening on a card to pick, a row says so and fails);
+//   (b) 新手 (level 0), seed P2000_SEED_B (default 10): the level a first visit gets; this game opens on a card to pick
+//       too, with 連's chip on a headline. About one game in four at level 0 opens on a sheet instead (seeds 1, 4, 5, 7,
+//       12, 15, 18, … of 1–60: a rival's CP play triggers one of your cards): those skip the hand's rows (3 fewer a page),
+//       and on the phone in English the toast and the totals then sit on 台東 and 高雄縣 (2026-10-18; P2000_SEED_B=1
+//       shows it).
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 
@@ -62,6 +77,13 @@ async function tab(br, url, w, h, mobile) {
   return { ev, tapAt, close: () => { try { ws.close(); } catch { /* closed */ } } };
 }
 const START = `(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.offsetParent&&/開始選戰|Start/.test(x.textContent)); if(b){b.click();return 1;} return 0;})()`;
+// The two rounds (see the head of this file): the level and the seed the start button gets, and a check that it got them.
+const ROUNDS = [
+  { tag: "a 總幹事", level: 2, seed: Number(process.env.P2000_SEED_A || 2) >>> 0, pick: true },
+  { tag: "b 新手", level: 0, seed: Number(process.env.P2000_SEED_B || 10) >>> 0, pick: false },
+];
+const FIX = (r) => `(()=>{ sessionStorage.setItem("p2000.solo.setup", JSON.stringify({ seat: 0, level: ${r.level} })); crypto.getRandomValues = (a) => { a[0] = ${r.seed}; return a; }; return 1; })()`;
+const GOT = `(()=>{ try { const s = JSON.parse(sessionStorage.getItem("p2000.solo.session")); return s ? s.seed + "/" + s.level : "no game"; } catch { return "no game"; } })()`;
 const CLOSE = `(()=>{const b=document.querySelector('[data-turncard] button, [data-replay] button'); if(b){b.click();return 1;} return 0;})()`;
 // Wait until it is the human's decision (a card to play or a sheet) and no replay is running, up to 20 s.
 const MINE = `(()=>!!document.querySelector('.t-hand[data-pick="1"], [data-sheet]') && !document.querySelector('[data-turncard], [data-replay]'))()`;
@@ -110,73 +132,81 @@ const rule = (ok, what) => out.push({ ok, what });
 const inside = (b, ih) => b.y >= -1 && b.b <= ih + 1;
 const br = await launch();
 try {
-  for (const [dev, w, h, mobile] of [["phone", 390, 664, true], ["desk", 1280, 800, false]]) {
-    for (const lang of ["zh", "en"]) {
-      const who = `${dev} ${lang}`;
-      const t = await tab(br, `${base}?play${lang === "en" ? "&lang=en" : ""}`, w, h, mobile);
-      if (!(await t.ev(START))) { rule(false, `${who}: no start button found`); t.close(); continue; }
-      await sleep(2500); await t.ev(CLOSE);
-      for (let i = 0; i < 40 && !(await t.ev(MINE)); i++) { await sleep(500); await t.ev(CLOSE); }
-      await sleep(600);
-      const m = JSON.parse(await t.ev(MEASURE(lang === "en")));
-      rule(m.sh <= m.ih + 1, `${who}: the page does not scroll (${m.sh} ≤ ${m.ih})`);
-      rule(!!m.map && inside(m.map, m.ih) && (dev === "phone" ? m.map.w >= 290 && m.map.h >= 400 : m.map.w >= 640), `${who}: the whole map on screen, ${dev === "phone" ? "≥ 290×400" : "≥ 640 wide"} (${m.map ? `${Math.round(m.map.w)}×${Math.round(m.map.h)} at ${Math.round(m.map.y)}–${Math.round(m.map.b)} of ${m.ih}` : "no map"})`);
-      if (dev === "phone") rule(m.sw <= m.iw, `${who}: no sideways scroll (${m.sw} ≤ ${m.iw})`);
-      rule(!m.now && !m.reg && !m.leg && !m.playText, `${who}: no 剛剛, region list, cube legend or pick-a-card prompt (剛剛 ${m.now}, list ${m.reg}, legend ${m.leg}, prompt ${m.playText})`);
-      rule(!!m.top && m.top.b <= 50 && !!m.tog && m.tog.b <= 56, `${who}: the top row ends by 50 px and holds the record button (top ${m.top ? Math.round(m.top.b) : "-"}, button ${m.tog ? Math.round(m.tog.b) : "not drawn"})`);
-      if (dev === "phone") rule(!!m.players && m.players.h <= 60 && !!m.track && m.track.h <= 60, `${who}: candidates and headlines each ≤ 60 px (${m.players ? Math.round(m.players.h) : "-"} / ${m.track ? Math.round(m.track.h) : "-"})`);
-      else rule(!!m.players && !!m.map && m.players.r <= m.map.x + 1, `${who}: the candidates left of the map (${m.players ? Math.round(m.players.r) : "-"} ≤ ${m.map ? Math.round(m.map.x) : "-"})`);
-      rule(m.hand === "down" && m.hcVis != null && m.hcVis >= 0.3 && m.hcVis <= 0.6, `${who}: the hand lowered, 30–60 % of a card on screen (data-hand ${m.hand}, ${m.hcVis == null ? "no card" : Math.round(m.hcVis * 100) + "%"})`);
-      if (m.chips.length) rule(m.chips.every((c) => c.changed && c.near && c.cx >= m.map.x && c.cx <= m.map.r && c.cy >= m.map.y && c.cy <= m.map.b), `${who}: the rivals' chips on the map, each within 40 px of its county, the county marked (${m.chips.map((c) => `${c.county}${c.changed ? "" : " unmarked"}${c.near ? "" : " far"}`).join(", ")})`);
-      else rule(true, `${who}: the rivals placed no cube before this decision (chips not sampled)`);
-      rule(m.floats.every((f) => !f.over.length), `${who}: the floats over the map (toast, totals, issue chips) cover no county box (${m.floats.length ? m.floats.map((f) => `${f.n}: ${f.over.length ? "over " + f.over.join(",") : "clear"}`).join("; ") : "no floats drawn"})`);
-      // tap a playable card
-      if (m.pickCard) {
-        await t.tapAt(m.pickCard.x + m.pickCard.w / 2, Math.min(m.pickCard.y + 20, m.ih - 4)); await sleep(500);
-        const a = JSON.parse(await t.ev(AFTER_TAP));
-        rule(a.hand === "up" && !!a.sheet && a.card === m.pickCard.id && a.opts.length > 0 && a.opts.every((o) => inside(o, a.ih)) && a.sh <= a.ih + 1,
-          `${who}: a tap raises the hand and shows the card's plays on screen (data-hand ${a.hand}, sheet for ${a.card || "-"}, ${a.opts.length} plays${a.opts.length ? ` at ${Math.round(Math.min(...a.opts.map((o) => o.y)))}–${Math.round(Math.max(...a.opts.map((o) => o.b)))}` : ""}, scroll ${a.sh}/${a.ih})`);
-        // #67: the same card tapped again in the tray lowers the hand; so does the raised face in the sheet.
-        const SAME = (where) => `(()=>{const e=[...document.querySelectorAll('${where} [data-sel="${m.pickCard.id}"]')].find((x)=>x.getClientRects().length&&x.getBoundingClientRect().width>0); if(!e) return null; const r=e.getBoundingClientRect(); return JSON.stringify({x:r.x,y:r.y,w:r.width,h:r.height});})()`;
-        const tray = JSON.parse(await t.ev(SAME(".t-hand")) || "null");
-        if (tray) { await t.tapAt(tray.x + tray.w / 2, Math.min(Math.max(tray.y + 20, 0), m.ih - 4)); await sleep(500); }
-        const s2 = JSON.parse(await t.ev(AFTER_TAP));
-        rule(!!tray && s2.hand === "down" && !s2.sheet, `${who}: a second tap on the same tray card lowers the hand (#67; ${tray ? `data-hand ${s2.hand}, sheet ${s2.sheet ? "still drawn" : "gone"}` : "the card not found in the tray"})`);
-        if (s2.hand !== "up") { await t.tapAt(m.pickCard.x + m.pickCard.w / 2, Math.min(m.pickCard.y + 20, m.ih - 4)); await sleep(500); }
-        const face = JSON.parse(await t.ev(SAME("[data-sheet]")) || "null");
-        if (face) { await t.tapAt(face.x + face.w / 2, Math.min(Math.max(face.y + face.h / 2, 0), m.ih - 4)); await sleep(500); }
-        const s3 = JSON.parse(await t.ev(AFTER_TAP));
-        rule(!!face && s3.hand === "down" && !s3.sheet, `${who}: a tap on the raised card's face lowers the hand (#67; ${face ? `data-hand ${s3.hand}, sheet ${s3.sheet ? "still drawn" : "gone"}` : "no [data-sel] face in the sheet"})`);
-        if (s3.hand !== "up") { await t.tapAt(m.pickCard.x + m.pickCard.w / 2, Math.min(m.pickCard.y + 20, m.ih - 4)); await sleep(500); }
-        const b2 = JSON.parse(await t.ev(AFTER_TAP));
-        if (b2.back) { await t.tapAt(b2.back.x + b2.back.w / 2, b2.back.y + b2.back.h / 2); await sleep(400); }
-        const c = JSON.parse(await t.ev(AFTER_TAP));
-        rule(c.hand === "down" && !c.sheet, `${who}: the back button lowers the hand again (data-hand ${c.hand}, sheet ${c.sheet ? "still drawn" : "gone"})`);
-      } else rule(true, `${who}: this decision picks no card (a sheet opened first); the tap not sampled here`);
-      // the record
-      // #74 (owner 2026-10-17 「Desktop 上，紀錄 預設展開在右邊」): on the desk the record may stand open from the start;
-      // then the first tap closes it and the second opens it again (tools/feeddock74.mjs measures where it stands).
-      const f0 = JSON.parse(await t.ev(FEED)), pre = dev === "desk" && f0.open === "1" && f0.drawn;
-      if (m.tog && pre) {
-        await t.tapAt(m.tog.x + m.tog.w / 2, m.tog.y + m.tog.h / 2); await sleep(400);
-        const g = JSON.parse(await t.ev(FEED));
-        rule(g.open === "0" && !g.drawn, `${who}: the record stands open from the start; a tap closes it (data-open ${g.open}, ${g.drawn ? "still drawn" : "gone"})`);
-        if (g.tog) { await t.tapAt(g.tog.x + g.tog.w / 2, g.tog.y + g.tog.h / 2); await sleep(400); }
-        const f = JSON.parse(await t.ev(FEED));
-        rule(f.open === "1" && f.drawn && inside(f.rect, f.ih) && f.lines > 0 && f.sh <= f.ih + 1, `${who}: a second tap opens it on screen again (data-open ${f.open}, ${f.lines} lines, ${f.rect ? `${Math.round(f.rect.y)}–${Math.round(f.rect.b)}` : "not drawn"}, scroll ${f.sh}/${f.ih})`);
-      } else if (m.tog) {
-        await t.tapAt(m.tog.x + m.tog.w / 2, m.tog.y + m.tog.h / 2); await sleep(400);
-        const f = JSON.parse(await t.ev(FEED));
-        rule(f.open === "1" && f.drawn && inside(f.rect, f.ih) && f.lines > 0 && f.sh <= f.ih + 1, `${who}: the record opens on screen (data-open ${f.open}, ${f.lines} lines, ${f.rect ? `${Math.round(f.rect.y)}–${Math.round(f.rect.b)}` : "not drawn"}, scroll ${f.sh}/${f.ih})`);
-        if (f.tog) { await t.tapAt(f.tog.x + f.tog.w / 2, f.tog.y + f.tog.h / 2); await sleep(400); }
-        const g = JSON.parse(await t.ev(FEED));
-        rule(g.open === "0" && !g.drawn, `${who}: a second tap closes it (data-open ${g.open}, ${g.drawn ? "still drawn" : "gone"})`);
+  for (const rd of ROUNDS) {
+    for (const [dev, w, h, mobile] of [["phone", 390, 664, true], ["desk", 1280, 800, false]]) {
+      for (const lang of ["zh", "en"]) {
+        const who = `[${rd.tag} seed ${rd.seed}] ${dev} ${lang}`;
+        const t = await tab(br, `${base}?play${lang === "en" ? "&lang=en" : ""}`, w, h, mobile);
+        await t.ev(FIX(rd));
+        if (!(await t.ev(START))) { rule(false, `${who}: no start button found`); t.close(); continue; }
+        await sleep(150);
+        const got = await t.ev(GOT);
+        if (got !== `${rd.seed}/${rd.level}`) { rule(false, `${who}: instrument — the game did not start with seed ${rd.seed}, level ${rd.level} (got ${got})`); t.close(); continue; }
+        await sleep(2350); await t.ev(CLOSE);
+        for (let i = 0; i < 40 && !(await t.ev(MINE)); i++) { await sleep(500); await t.ev(CLOSE); }
+        await sleep(600);
+        const m = JSON.parse(await t.ev(MEASURE(lang === "en")));
+        rule(m.sh <= m.ih + 1, `${who}: the page does not scroll (${m.sh} ≤ ${m.ih})`);
+        rule(!!m.map && inside(m.map, m.ih) && (dev === "phone" ? m.map.w >= 290 && m.map.h >= 400 : m.map.w >= 640), `${who}: the whole map on screen, ${dev === "phone" ? "≥ 290×400" : "≥ 640 wide"} (${m.map ? `${Math.round(m.map.w)}×${Math.round(m.map.h)} at ${Math.round(m.map.y)}–${Math.round(m.map.b)} of ${m.ih}` : "no map"})`);
+        if (dev === "phone") rule(m.sw <= m.iw, `${who}: no sideways scroll (${m.sw} ≤ ${m.iw})`);
+        rule(!m.now && !m.reg && !m.leg && !m.playText, `${who}: no 剛剛, region list, cube legend or pick-a-card prompt (剛剛 ${m.now}, list ${m.reg}, legend ${m.leg}, prompt ${m.playText})`);
+        rule(!!m.top && m.top.b <= 50 && !!m.tog && m.tog.b <= 56, `${who}: the top row ends by 50 px and holds the record button (top ${m.top ? Math.round(m.top.b) : "-"}, button ${m.tog ? Math.round(m.tog.b) : "not drawn"})`);
+        if (dev === "phone") rule(!!m.players && m.players.h <= 60 && !!m.track && m.track.h <= 60, `${who}: candidates and headlines each ≤ 60 px (${m.players ? Math.round(m.players.h) : "-"} / ${m.track ? Math.round(m.track.h) : "-"})`);
+        else rule(!!m.players && !!m.map && m.players.r <= m.map.x + 1, `${who}: the candidates left of the map (${m.players ? Math.round(m.players.r) : "-"} ≤ ${m.map ? Math.round(m.map.x) : "-"})`);
+        rule(m.hand === "down" && m.hcVis != null && m.hcVis >= 0.3 && m.hcVis <= 0.6, `${who}: the hand lowered, 30–60 % of a card on screen (data-hand ${m.hand}, ${m.hcVis == null ? "no card" : Math.round(m.hcVis * 100) + "%"})`);
+        if (m.chips.length) rule(m.chips.every((c) => c.changed && c.near && c.cx >= m.map.x && c.cx <= m.map.r && c.cy >= m.map.y && c.cy <= m.map.b), `${who}: the rivals' chips on the map, each within 40 px of its county, the county marked (${m.chips.map((c) => `${c.county}${c.changed ? "" : " unmarked"}${c.near ? "" : " far"}`).join(", ")})`);
+        else rule(true, `${who}: the rivals placed no cube before this decision (chips not sampled)`);
+        rule(m.floats.every((f) => !f.over.length), `${who}: the floats over the map (toast, totals, issue chips) cover no county box (${m.floats.length ? m.floats.map((f) => `${f.n}: ${f.over.length ? "over " + f.over.join(",") : "clear"}`).join("; ") : "no floats drawn"})`);
+        // tap a playable card
+        if (m.pickCard) {
+          await t.tapAt(m.pickCard.x + m.pickCard.w / 2, Math.min(m.pickCard.y + 20, m.ih - 4)); await sleep(500);
+          const a = JSON.parse(await t.ev(AFTER_TAP));
+          rule(a.hand === "up" && !!a.sheet && a.card === m.pickCard.id && a.opts.length > 0 && a.opts.every((o) => inside(o, a.ih)) && a.sh <= a.ih + 1,
+            `${who}: a tap raises the hand and shows the card's plays on screen (data-hand ${a.hand}, sheet for ${a.card || "-"}, ${a.opts.length} plays${a.opts.length ? ` at ${Math.round(Math.min(...a.opts.map((o) => o.y)))}–${Math.round(Math.max(...a.opts.map((o) => o.b)))}` : ""}, scroll ${a.sh}/${a.ih})`);
+          // #67: the same card tapped again in the tray lowers the hand; so does the raised face in the sheet.
+          const SAME = (where) => `(()=>{const e=[...document.querySelectorAll('${where} [data-sel="${m.pickCard.id}"]')].find((x)=>x.getClientRects().length&&x.getBoundingClientRect().width>0); if(!e) return null; const r=e.getBoundingClientRect(); return JSON.stringify({x:r.x,y:r.y,w:r.width,h:r.height});})()`;
+          const tray = JSON.parse(await t.ev(SAME(".t-hand")) || "null");
+          if (tray) { await t.tapAt(tray.x + tray.w / 2, Math.min(Math.max(tray.y + 20, 0), m.ih - 4)); await sleep(500); }
+          const s2 = JSON.parse(await t.ev(AFTER_TAP));
+          rule(!!tray && s2.hand === "down" && !s2.sheet, `${who}: a second tap on the same tray card lowers the hand (#67; ${tray ? `data-hand ${s2.hand}, sheet ${s2.sheet ? "still drawn" : "gone"}` : "the card not found in the tray"})`);
+          if (s2.hand !== "up") { await t.tapAt(m.pickCard.x + m.pickCard.w / 2, Math.min(m.pickCard.y + 20, m.ih - 4)); await sleep(500); }
+          const face = JSON.parse(await t.ev(SAME("[data-sheet]")) || "null");
+          if (face) { await t.tapAt(face.x + face.w / 2, Math.min(Math.max(face.y + face.h / 2, 0), m.ih - 4)); await sleep(500); }
+          const s3 = JSON.parse(await t.ev(AFTER_TAP));
+          rule(!!face && s3.hand === "down" && !s3.sheet, `${who}: a tap on the raised card's face lowers the hand (#67; ${face ? `data-hand ${s3.hand}, sheet ${s3.sheet ? "still drawn" : "gone"}` : "no [data-sel] face in the sheet"})`);
+          if (s3.hand !== "up") { await t.tapAt(m.pickCard.x + m.pickCard.w / 2, Math.min(m.pickCard.y + 20, m.ih - 4)); await sleep(500); }
+          const b2 = JSON.parse(await t.ev(AFTER_TAP));
+          if (b2.back) { await t.tapAt(b2.back.x + b2.back.w / 2, b2.back.y + b2.back.h / 2); await sleep(400); }
+          const c = JSON.parse(await t.ev(AFTER_TAP));
+          rule(c.hand === "down" && !c.sheet, `${who}: the back button lowers the hand again (data-hand ${c.hand}, sheet ${c.sheet ? "still drawn" : "gone"})`);
+        } else if (rd.pick) rule(false, `${who}: instrument — round ${rd.tag} is there to open on a card to pick, and seed ${rd.seed} opens on ${m.pickFlag === "1" ? "no playable card" : "a sheet"}: the hand's rows were not measured`);
+        else rule(true, `${who}: this decision picks no card (a sheet opened first); the tap not sampled here`);
+        // the record
+        // #74 (owner 2026-10-17 「Desktop 上，紀錄 預設展開在右邊」): on the desk the record may stand open from the start;
+        // then the first tap closes it and the second opens it again (tools/feeddock74.mjs measures where it stands).
+        const f0 = JSON.parse(await t.ev(FEED)), pre = dev === "desk" && f0.open === "1" && f0.drawn;
+        if (m.tog && pre) {
+          await t.tapAt(m.tog.x + m.tog.w / 2, m.tog.y + m.tog.h / 2); await sleep(400);
+          const g = JSON.parse(await t.ev(FEED));
+          rule(g.open === "0" && !g.drawn, `${who}: the record stands open from the start; a tap closes it (data-open ${g.open}, ${g.drawn ? "still drawn" : "gone"})`);
+          if (g.tog) { await t.tapAt(g.tog.x + g.tog.w / 2, g.tog.y + g.tog.h / 2); await sleep(400); }
+          const f = JSON.parse(await t.ev(FEED));
+          rule(f.open === "1" && f.drawn && inside(f.rect, f.ih) && f.lines > 0 && f.sh <= f.ih + 1, `${who}: a second tap opens it on screen again (data-open ${f.open}, ${f.lines} lines, ${f.rect ? `${Math.round(f.rect.y)}–${Math.round(f.rect.b)}` : "not drawn"}, scroll ${f.sh}/${f.ih})`);
+        } else if (m.tog) {
+          await t.tapAt(m.tog.x + m.tog.w / 2, m.tog.y + m.tog.h / 2); await sleep(400);
+          const f = JSON.parse(await t.ev(FEED));
+          rule(f.open === "1" && f.drawn && inside(f.rect, f.ih) && f.lines > 0 && f.sh <= f.ih + 1, `${who}: the record opens on screen (data-open ${f.open}, ${f.lines} lines, ${f.rect ? `${Math.round(f.rect.y)}–${Math.round(f.rect.b)}` : "not drawn"}, scroll ${f.sh}/${f.ih})`);
+          if (f.tog) { await t.tapAt(f.tog.x + f.tog.w / 2, f.tog.y + f.tog.h / 2); await sleep(400); }
+          const g = JSON.parse(await t.ev(FEED));
+          rule(g.open === "0" && !g.drawn, `${who}: a second tap closes it (data-open ${g.open}, ${g.drawn ? "still drawn" : "gone"})`);
+        }
+        t.close();
       }
-      t.close();
     }
   }
 } finally { br.close(); }
 for (const o of out) console.log(`${o.ok ? "✓" : "✗"} ${o.what}`);
 const bad = out.filter((o) => !o.ok).length;
-console.log(bad ? `FAIL: ${bad} of ${out.length} checks` : `PASS: ${out.length} checks`);
+const per = ROUNDS.map((rd) => `${rd.tag} seed ${rd.seed}: ${out.filter((o) => o.what.startsWith(`[${rd.tag} seed ${rd.seed}]`)).length} rows`).join(", ");
+console.log(bad ? `FAIL: ${bad} of ${out.length} checks (${per})` : `PASS: ${out.length} checks (${per})`);
 process.exit(bad ? 1 : 0);

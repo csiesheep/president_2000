@@ -11,9 +11,26 @@
 //     確定使用 / 先不要 buttons; tap 確定使用 and the candidate card is used ([data-cand][data-used]);
 //   - tap the candidate card, then a hand card: that card's face ([data-face]) shows and the question is gone (changing
 //     your mind still works), and closing that face (← 收起) leaves neither the face nor the old question.
+//
+// Two rounds (2026-10-18, after #87 made 新手 the default level of the solo setup and of the room's host), every row
+// prefixed with its own: (a) 總幹事 (level 2), (b) 新手 (level 0).
+//   - Solo: a fixed game built here in node and put in the page's sessionStorage, 宋 at its first decision: seed
+//     P2000_SEED_A (default 3701) at level 2, P2000_SEED_B (default 3701) at level 0. Node checks first that this
+//     decision offers the candidate card (a seed whose first decision is a sheet does not, and a row says so).
+//   - Room: the host picks the round's level in the lobby (the go button must carry it). The room's seed cannot be
+//     fixed from here: the room (src/room.js) draws it with crypto.getRandomValues on the server. So the table is
+//     waited for instead: until the candidate card can be used, the steps before the play decision are taken for you
+//     (the order, a trigger's pass, and since v0.8's 「a rival's CP play always triggers」 the effect of your own card a
+//     bot played: its first option, a placement's in the county box its chip opens), each only after it has stood 1.2 s
+//     (a decision with one option the page sends itself, #70). Up to 60 s a room, up to 3 rooms; flow B checks the card
+//     can be used before it taps it too. Before this the loop took only the order or a pass and gave up after 30 s, and
+//     flow B tapped without checking: the checker's 「not usable at the start」 and 「tapping the candidate card alone did
+//     not ask」 were rooms that opened on such an effect (5 rooms in 10 at level 0 on 2026-10-18: 災區情誼, 勤政愛民 and
+//     省府舊部 played by a bot for CP, 宋 to place their cubes).
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import * as S from "../public/solo.js";
+import * as E from "../public/shared/engine.js";
 
 const base = process.argv[2];
 if (!base) { console.log("usage: node tools/candtap38.mjs <base url ending in /president_2000/>"); process.exit(2); }
@@ -79,6 +96,8 @@ const rule = (ok, what) => out.push({ ok, what });
 async function flows(where, open) {
   // A: a card, then the candidate card, then 確定使用.
   let t = await open();
+  if (t.failed) { rule(false, `${where}: instrument — the table never got to a decision where the candidate card can be used (${t.failed})`); return; }
+  const note = t.note ? `; ${t.note}` : "";
   let m = await look(t);
   if (!m.cand || !m.cand.usable) { rule(false, `${where}: instrument — the candidate card is not usable at the start (${say(m.cand)})`); t.close(); return; }
   const id = await tapCard(t); await sleep(500);
@@ -86,19 +105,23 @@ async function flows(where, open) {
   if (!id || m1.face !== id) { rule(false, `${where}: instrument — tapping a hand card did not open it (tapped ${id}, face ${m1.face})`); t.close(); return; }
   await tapCand(t); await sleep(500);
   const m2 = await look(t);
-  rule(m2.question && m2.yes && m2.no, `${where}: tap ${id}, then the candidate card → the question with ${YES} / ${NO} (question ${m2.question}, ${YES} ${m2.yes}, ${NO} ${m2.no}, face still open ${m2.face})`);
+  rule(m2.question && m2.yes && m2.no, `${where}: tap ${id}, then the candidate card → the question with ${YES} / ${NO} (question ${m2.question}, ${YES} ${m2.yes}, ${NO} ${m2.no}, face still open ${m2.face}${note})`);
   if (m2.yes) { await tapYes(t); await sleep(where.includes("room") ? 2500 : 800); }
   const m3 = await look(t);
   rule(!!m3.cand && m3.cand.used && !m3.question, `${where}: … then ${YES} → the candidate card is used (${m2.yes ? say(m3.cand) : "no " + YES + " button to tap"})`);
   t.close();
   // B: the candidate card, then a card: the card wins, the question goes.
   t = await open();
+  if (t.failed) { rule(false, `${where}: instrument — (B) the table never got to a decision where the candidate card can be used (${t.failed})`); return; }
+  const note2 = t.note ? `; ${t.note}` : "";
+  const n0 = await look(t);
+  if (!n0.cand || !n0.cand.usable) { rule(false, `${where}: instrument — (B) the candidate card is not usable at the start (${say(n0.cand)})`); t.close(); return; }
   await tapCand(t); await sleep(500);
   const n1 = await look(t);
   if (!n1.question) { rule(false, `${where}: instrument — tapping the candidate card alone did not ask (${say(n1)})`); t.close(); return; }
   const id2 = await tapCard(t); await sleep(500);
   const n2 = await look(t);
-  rule(!!id2 && n2.face === id2 && !n2.question, `${where}: tap the candidate card, then ${id2} → its face, the question gone (face ${n2.face}, question ${n2.question})`);
+  rule(!!id2 && n2.face === id2 && !n2.question, `${where}: tap the candidate card, then ${id2} → its face, the question gone (face ${n2.face}, question ${n2.question}${note2})`);
   // … and closing that face (← 收起) does not bring the old question back (FE, #38: a face drawn over a question
   // still standing underneath passes the line above).
   await settle(t);
@@ -108,34 +131,80 @@ async function flows(where, open) {
   t.close();
 }
 
+// The rounds (see the head of this file).
+const ROUNDS = [
+  { tag: "a 總幹事", level: 2, seed: Number(process.env.P2000_SEED_A || 3701) >>> 0 },
+  { tag: "b 新手", level: 0, seed: Number(process.env.P2000_SEED_B || 3701) >>> 0 },
+];
+// The room, until the candidate card can be used: "ready" (twice in a row), "busy" (a replay, the turn card or the handoff
+// card is up), or the decision in front of you that is not the play decision — its options' signature and the first one,
+// which NEXT_GO takes once the same signature has stood 1.2 s. A placement's options are in the county's box: the bar's
+// county chip ([data-open-county]) opens it first.
+const NEXT = `(() => {
+  const up = (el) => el.getClientRects().length > 0 && Number(getComputedStyle(el).opacity) > 0.05;
+  if ([...document.querySelectorAll("[data-replay], [data-turncard], [data-handoff]")].some(up)) return JSON.stringify({ k: "busy" });
+  const cand = document.querySelector(".tbl [data-cand][data-move]");
+  if (cand && !cand.disabled) return JSON.stringify({ k: "ready" });
+  const ms = [...document.querySelectorAll(".tbl [data-move]")].filter((x) => !x.disabled && x.getClientRects().length).map((x) => { try { return JSON.parse(x.getAttribute("data-move")); } catch { return null; } })
+    .filter((m) => m && m.type !== "play" && m.type !== "candidate");
+  if (ms.length) {
+    const pick = ms.find((m) => m.type === "order") || ms.find((m) => m.type === "pass") || ms[0];
+    return JSON.stringify({ k: "decide", sig: ms.map((m) => JSON.stringify(m)).sort().join("|"), pick: JSON.stringify(pick), type: pick.type });
+  }
+  const chips = [...document.querySelectorAll(".tbl [data-open-county]")].filter((x) => x.getClientRects().length).map((x) => x.getAttribute("data-open-county"));
+  if (chips.length) return JSON.stringify({ k: "decide", sig: "open " + chips.join(","), open: chips[0], type: "the box of county " + chips[0] });
+  return JSON.stringify({ k: "waiting", phase: (document.querySelector(".tbl") || {}).dataset?.phase || null });
+})()`;
+const NEXT_GO = (n) => n.open != null
+  ? `(() => { const b = document.querySelector(".tbl [data-open-county='${n.open}']"); if (!b) return false; b.click(); return true; })()`
+  : `(() => { const b = [...document.querySelectorAll(".tbl [data-move]")].find((x) => !x.disabled && x.getClientRects().length && JSON.stringify(JSON.parse(x.getAttribute("data-move"))) === ${JSON.stringify(n.pick)}); if (!b) return false; b.click(); return true; })()`;
+const ROOM_WAIT = 60000, ROOM_TRIES = 3;
+
 const br = await launch();
 try {
-  // Solo: 宋 at the first decision of a fixed game (the candidate card can be used, five cards in hand).
-  const s = S.advance(S.newSolo({ seat: 1, level: 2, seed: 3701 }));
-  for (const [w, h, mob] of [[390, 844, true], [1440, 900, false]]) {
-    await flows(`${w} solo`, async () => {
-      const t = await tab(br, base, w, h, mob);
-      await t.ev(`(()=>{ sessionStorage.setItem("p2000.solo.session", ${JSON.stringify(JSON.stringify(s))}); return 1; })()`);
-      await t.go(`${base}?play`); await sleep(600);
-      return t;
+  for (const rd of ROUNDS) {
+    const R0 = `[${rd.tag} seed ${rd.seed}]`;
+    // Solo: 宋 at the first decision of a fixed game (the candidate card can be used; at 3701, five cards in hand).
+    const s = S.advance(S.newSolo({ seat: 1, level: rd.level, seed: rd.seed }));
+    if (!E.legalMoves(s.st, 1).some((m) => m.type === "candidate")) rule(false, `${R0} solo: instrument — seed ${rd.seed} at level ${rd.level} does not open on a decision that offers the candidate card (${[...new Set(E.legalMoves(s.st, 1).map((m) => m.type))].join(", ")})`);
+    else for (const [w, h, mob] of [[390, 844, true], [1440, 900, false]]) {
+      await flows(`${R0} ${w} solo`, async () => {
+        const t = await tab(br, base, w, h, mob);
+        await t.ev(`(()=>{ sessionStorage.setItem("p2000.solo.session", ${JSON.stringify(JSON.stringify(s))}); return 1; })()`);
+        await t.go(`${base}?play`); await sleep(600);
+        return t;
+      });
+    }
+    // A room: host it, sit, pick the round's level, start with bots, wait until the candidate card can be used.
+    await flows(`[${rd.tag}, the room's seed is the server's] 390 room`, async () => {
+      let notes = [];
+      for (let k = 1; k <= ROOM_TRIES; k++) {
+        const t = await tab(br, `${base}?host`, 390, 844, true);
+        await t.ev(`(() => { const f = document.querySelector("form.rform"); f.elements.name.value = "測試"; f.requestSubmit(); return 1; })()`);
+        for (let i = 0; i < 40 && !(await t.ev(`!!document.querySelector(".btn.sit[data-msg]")`)); i++) await sleep(250);
+        await t.ev(`(() => { const b = document.querySelector(".btn.sit[data-msg]"); b && b.click(); return 1; })()`); await sleep(800);
+        for (let i = 0; i < 20 && !(await t.ev(`!!document.querySelector("[data-level='${rd.level}']")`)); i++) await sleep(250);
+        await t.ev(`(() => { const b = document.querySelector("[data-level='${rd.level}']"); b && b.click(); return 1; })()`); await sleep(300);
+        const go = await t.ev(`(() => { const b = document.querySelector(".big.go[data-msg]"); if (!b) return null; const m = b.getAttribute("data-msg"); b.click(); return m; })()`);
+        let lv = null; try { lv = JSON.parse(go).level; } catch { /* no button */ }
+        if (lv !== rd.level) { notes.push(`room ${k}: the go button carries level ${lv} (${go}), not ${rd.level}`); t.close(); continue; }
+        const t0 = Date.now(); let ready = 0, seen = null, since = 0, last = null; const took = [];
+        while (Date.now() - t0 < ROOM_WAIT && ready < 2) {
+          const n = JSON.parse(await t.ev(NEXT)); last = n;
+          ready = n.k === "ready" ? ready + 1 : 0;
+          if (n.k === "decide") {
+            if (n.sig !== seen) { seen = n.sig; since = Date.now(); }
+            else if (Date.now() - since >= 1200 && (await t.ev(NEXT_GO(n)))) { took.push(n.type); seen = null; }
+          } else seen = null;
+          await sleep(300);
+        }
+        if (ready >= 2) { if (took.length) notes.push(`room ${k}: took ${took.join(", ")} for you first`); t.note = notes.join("; "); return t; }
+        notes.push(`room ${k}: the candidate card not usable after ${Math.round((Date.now() - t0) / 1000)} s (last ${JSON.stringify(last)}; took ${took.join(", ") || "nothing"})`);
+        t.close();
+      }
+      return { failed: notes.join("; ") };
     });
   }
-  // A room: host it, sit, start with bots, wait until the candidate card can be used.
-  await flows("390 room", async () => {
-    const t = await tab(br, `${base}?host`, 390, 844, true);
-    await t.ev(`(() => { const f = document.querySelector("form.rform"); f.elements.name.value = "測試"; f.requestSubmit(); return 1; })()`);
-    for (let i = 0; i < 40 && !(await t.ev(`!!document.querySelector(".btn.sit[data-msg]")`)); i++) await sleep(250);
-    await t.ev(`(() => { const b = document.querySelector(".btn.sit[data-msg]"); b && b.click(); return 1; })()`); await sleep(800);
-    await t.ev(`(() => { const b = document.querySelector(".big.go[data-msg]"); b && b.click(); return 1; })()`);
-    // With the initiative the room first asks for an order: take position 1, then wait for the play decision. A rival may
-    // have played one of your cards for CP, so the first thing asked can be whether to trigger it: decline (the candidate
-    // card cannot be used while that is open; seen 1 run in 3 once the game was v0.5, #53).
-    for (let i = 0; i < 120 && !(await t.ev(`!!document.querySelector(".tbl [data-cand][data-move]")`)); i++) {
-      await t.ev(`(() => { const b = [...document.querySelectorAll("[data-move]")].find((x) => { try { const t = JSON.parse(x.getAttribute("data-move")).type; return t === "order" || t === "pass"; } catch { return false; } }); b && b.click(); return 1; })()`);
-      await sleep(250);
-    }
-    return t;
-  });
 } finally { br.close(); }
 let bad = 0;
 for (const x of out) { if (!x.ok) bad++; console.log(`${x.ok ? "✓" : "✗"} ${x.what}`); }
