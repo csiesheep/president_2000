@@ -122,7 +122,8 @@ export default {
           "花蓮縣": "Hualien", "台東縣": "Taitung", "澎湖縣": "Penghu", "金馬": "Kinmen-Matsu",
         },
       },
-      hl: { lead: "{who} leads", tie: "{who} tied", none: "No one yet", reward: { 1: "+1 mom., endorse.", 2: "Endorse.", 3: "+1 mom." } },
+      hl: { lead: "{who} leads", tie: "{who} tied", none: "No one yet", reward: { 1: "+1 mom., endorse.", 2: "Endorse.", 3: "+1 mom." },
+        rewardM: { 1: "Endorse.", 2: "Endorse.", 3: "No reward" } }, // v0.8 (#82): the stories of a game with no momentum
       help: {
         mom: "Momentum: your pull. It is halved at the end of each turn (rounded down), then the overall issue leader gains 1, and leading an issue adds to it. Spend it to trigger your card that an opponent used for CP, or to convert it into cubes on election day.",
         bag: "Bag: a support check draws one cube from here. Your own colour is a success; another colour fails and that cube goes back to its owner. The numbers are the cubes of each colour in the bag.",
@@ -136,6 +137,8 @@ export default {
         turnOrder: "Turn {n} begins · fewest votes first: {order} · you are dealt up to {cards} {cards#card|cards}", turnOrderNoDeal: "Turn {n} begins · fewest votes first: {order}", shuffle: "Issues reshuffled (Lead story to Page three): {text}",
         turnDebate: "Turn {n}: the Policy Forum begins", turnElection: "Turn {n}: election day begins",
         decay: "End of turn · momentum halved: {text}", mediaBonus: "Media lead: {who} +1 momentum", leadBonus: "Issue leader: {who} +1 momentum", slot1: "Lead story, {issue}: {who} leads: +1 momentum and an endorsement", slot3: "Page three, {issue}: {who} leads: +1 momentum",
+        talkMorale: { effect_tvbs: "{card} gives morale to one player, and we pick {seat}." }, // v0.8 (#82): said instead of talk.effect_tvbs in a game with no momentum
+        slotM1: "Lead story, {issue}: {who} leads: draws an endorsement", slotM2: "Second story, {issue}: {who} leads: draws an endorsement",
         issueDecay: "The leader of each issue loses 1 cube", momNow: "Momentum now: {text}", group: "{head}: {what}", times: "×{n}",
         p: {
           fill: "{county} +{n}", cross: "{county} cross-camp +{n}", steal: "{county}: took {n} {target}", remove: "{county}: removed {n} {target}", grey: "{county} non-voter +{n}",
@@ -171,7 +174,7 @@ export default {
         media: "The ad worked: place 1 of your media cubes, or remove 1 of an opponent's.", issue: "Issue: {cp} CP left.",
         local: "Place 1 cube in {county}.",
         fxPlace: "Place cubes ({left} to go).", fxRemove: "Remove {who} cubes ({left} to go).", fxMedia: "Place media ({left} to go).",
-        fxMediaRemove: "Remove {who} media ({left} to go).", fxConvert: "Turn non-voter blocks into green swing blocks ({left} to go).", fxTvbs: "Pick one player to gain 1 momentum.", fxIssue: "Pick an issue: put {n} {who} {n#cube|cubes} on it.", fxIssueRemove: "Pick an issue: remove up to {n} {who} {n#cube|cubes} from it.",
+        fxMediaRemove: "Remove {who} media ({left} to go).", fxConvert: "Turn non-voter blocks into green swing blocks ({left} to go).", fxTvbs: "Pick one player to gain 1 momentum.", fxTvbsMorale: "Pick one player to gain 5% morale.", fxIssue: "Pick an issue: put {n} {who} {n#cube|cubes} on it.", fxIssueRemove: "Pick an issue: remove up to {n} {who} {n#cube|cubes} from it.",
         swap: "You are the overall issue leader: you may swap two adjacent issues.", reward: "You lead the issue on Page two: take 1 momentum, or draw 1 endorsement.",
         destDebate: "Policy Forum", destElection: "election day",
         autoDebate: "Only this one card is kept: it is played face down, and all three reveal together.", autoElection: "Only this one card is kept: canvass the county on it, with 3 checks.", autoAction: "Only this one card can be played: pick a way to play it.",
@@ -199,7 +202,7 @@ export default {
         issuePlace: "{issue} · place 1 cube ({cost} CP)", issueRemove: "{issue} · remove 1 {who} cube ({cost} CP)",
         swap: "Swap issues {a} and {b}", noswap: "No swap", rewardMom: "+1 momentum", rewardEndorse: "Draw 1 endorsement",
         save: "Keep: {cards}", reveal: "Turn over {card} → {issue}", canvass: "Canvass: {card} ({county})",
-        grey: "{county} · fill 1 non-voter block", remove: "{county} · remove 1 {who} cube ({kind})", convert: "{county} · turn 1 non-voter block into a green swing block", pick: "{who} +1 momentum",
+        grey: "{county} · fill 1 non-voter block", remove: "{county} · remove 1 {who} cube ({kind})", convert: "{county} · turn 1 non-voter block into a green swing block", pick: "{who} +1 momentum", pickMorale: "{who} morale +5%",
         block: { G: "green swing block", B: "blue swing block", N: "non-voter block" }, unknown: "—",
       },
       debate: {
@@ -215,11 +218,11 @@ export default {
         move: "{who} moves to {county}", adOk: "{who}'s ad works", adFail: "{who}'s ad misses",
         mediaPlace: "{who} places a national media cube", mediaRemove: "{who} removes one of {target}'s media cubes",
         issuePlace: "{who} puts 1 cube on {issue}", issueRemove: "{who} removes 1 {target} cube from {issue}",
-        swap: "{who} swaps two issues", rewardMom: "{who} takes 1 momentum", rewardEndorse: "{who} draws an endorsement", endorseOne: "{who} takes the endorsement of {region}", pickMom: "{who} gains 1 momentum",
+        swap: "{who} swaps two issues", rewardMom: "{who} takes 1 momentum", rewardEndorse: "{who} draws an endorsement", endorseOne: "{who} takes the endorsement of {region}", pickMom: "{who} gains 1 momentum", pickMorale: "{who} gains 5% morale",
         save: "{who} sets aside {n} {n#card|cards}", pick: "{who} has picked",
         reveal: "Turned over: {who}, {card} → {issue}", dead: "Turned over: {who}, {card} → {issue} (already settled, no effect)", settle: "{issue} is settled: {who} wins, {n} {n#cube|cubes}",
         canvass: "{who} canvasses {county}", convert: "Election day: issues and momentum become cubes in the bag",
-        convertLuck: "Election day: momentum becomes canvassing morale: {text}", convertLuckLead: "Election day: momentum and the issues led become canvassing morale: {text}",
+        convertMorale: "Election day: the issues led become canvassing morale: {text}", convertLuck: "Election day: momentum becomes canvassing morale: {text}", convertLuckLead: "Election day: momentum and the issues led become canvassing morale: {text}",
         strategic: "Strategic voting: swing blocks go to {text}", strategicHalf: "First strategic vote (half): {text}", strategicNone: "Strategic voting: no swing blocks move", endorse: "Endorsements: non-voter blocks {text}", result: "The count is done",
       },
       end: {
