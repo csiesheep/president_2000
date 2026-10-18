@@ -24,6 +24,10 @@
 //   - while it stands open the record button shows no count of new lines (.nb), since they are on screen
 //     (orchestrator's ruling, #74: the owner may overrule);
 //   - a tap on the record button closes it, and it stays closed while the rivals move; a second tap opens it again;
+//     each tap waits until no handoff card ([data-handoff]) is up, at most 8 s (#82: on v0.8 the handoff card left at 3.53 s
+//     and redrew the page between the first tap's mousedown and mouseup, so no click). It does not wait for a replay: a tap
+//     on the record button during a rival's replay must work (the first delivery of #82 took it as a skip): a row of its
+//     own waits for the rivals' first replay ([data-replay]) and taps the button twice during it: closed, then open;
 //   - the page does not scroll.
 // On the phone (390×664) nothing changes: the record is closed until its button is tapped (tools/gamepage66.mjs measures
 // the rest there).
@@ -121,6 +125,8 @@ const LOOK = `(() => {
     sheet: q("[data-sheet]"), tog: drawn(tog) ? R(tog) : null, nb: drawn(nb), sw: document.documentElement.scrollWidth, sh: document.documentElement.scrollHeight, iw: innerWidth, ih: innerHeight });
 })()`;
 const look = async (t) => JSON.parse(await t.ev(LOOK));
+// Wait, at most 8 s, until no handoff card is on the page (its leaving redraws the table).
+const quiet = async (t) => { for (let i = 0; i < 80; i++) { if (await t.ev(`!document.querySelector("[data-handoff]")`)) return true; await sleep(100); } return false; };
 const meet = (a, b) => !!a && !!b && Math.min(a.r, b.r) - Math.max(a.x, b.x) > 1 && Math.min(a.b, b.b) - Math.max(a.y, b.y) > 1;
 const onScreen = (b, m) => !!b && b.x >= -1 && b.y >= -1 && b.r <= m.iw + 1 && b.b <= m.ih + 1;
 
@@ -163,6 +169,18 @@ try {
       // the rivals moving: it stays open with the newest in view; closed by a tap, it stays closed
       await load(t, ST.rivals.s, lang);
       const a = await look(t);
+      // #82: during a rival's replay, a tap on the record button toggles it (it is not taken as a skip of the replay).
+      let rp = false, rpMsg = "no replay came up in 3 s (instrument)";
+      for (let i = 0; i < 30 && !rp; i++) { rp = await t.ev(`!!document.querySelector("[data-replay]")`); if (!rp) await sleep(100); }
+      if (rp) {
+        const r0 = await look(t); let r1 = null, r2 = null;
+        if (r0.tog) { await t.tapAt(r0.tog.x + r0.tog.w / 2, r0.tog.y + r0.tog.h / 2); await sleep(250); r1 = await look(t); }
+        const still = await t.ev(`!!document.querySelector("[data-replay]")`);
+        if (r1 && r1.tog) { await t.tapAt(r1.tog.x + r1.tog.w / 2, r1.tog.y + r1.tog.h / 2); await sleep(250); r2 = await look(t); }
+        rp = !!(r0.open === "1" && r1 && r1.open !== "1" && !r1.drawn && r2 && r2.open === "1" && r2.drawn);
+        rpMsg = `before ${r0.open === "1" ? "open" : "closed"}; first tap ${r1 ? (r1.open !== "1" && !r1.drawn ? "closed it" : "did nothing") : "no button"}${still ? " (replay still up)" : ""}; second tap ${r2 ? (r2.open === "1" && r2.drawn ? "opened it" : "did nothing") : "no button"}`;
+      }
+      rule(rp, `${who}: during a rival's replay a tap on the record button closes it and a second opens it (${rpMsg})`);
       await sleep(3500);
       const b = await look(t);
       blocks(a, "rivals to move"); blocks(b, "rivals moved");
@@ -170,11 +188,13 @@ try {
       rule(moved && grew && b.open === "1" && b.drawn && b.newest && b.newestFree, `${who}: while the rivals move it stays open, its newest line in view (${moved ? `log ${a.log} → ${b.log}` : "the rivals did not move (instrument)"}, newest line ${grew ? "changed" : "the same as before"}, ${b.newest ? (b.newestFree ? "in view" : "in view but COVERED") : `NOT in view (list ${b.olBox ? `${b.olBox.ch} high of ${b.olBox.sh}, scrolled ${b.olBox.st}` : "-"})`}, data-open ${b.open})`);
       rule(b.fresh > 0 && b.open === "1" && !b.nb, `${who}: while it stands open the button shows no count of new lines (${b.fresh} new lines of the rivals, ${b.nb ? "a count IS drawn" : "no count"})`);
       let closedOk = false, reopened = false, msg = "no record button";
-      if (b.tog) {
-        await t.tapAt(b.tog.x + b.tog.w / 2, b.tog.y + b.tog.h / 2); await sleep(300);
+      const b1 = (await quiet(t)) ? await look(t) : b;
+      if (b1.tog) {
+        await t.tapAt(b1.tog.x + b1.tog.w / 2, b1.tog.y + b1.tog.h / 2); await sleep(300);
         const c1 = await look(t); await sleep(2500); const c2 = await look(t);
         closedOk = !c1.drawn && !c2.drawn;
-        if (c2.tog) { await t.tapAt(c2.tog.x + c2.tog.w / 2, c2.tog.y + c2.tog.h / 2); await sleep(400); }
+        const c3 = (await quiet(t)) ? await look(t) : c2;
+        if (c3.tog) { await t.tapAt(c3.tog.x + c3.tog.w / 2, c3.tog.y + c3.tog.h / 2); await sleep(400); }
         const d = await look(t);
         reopened = d.open === "1" && d.drawn && onScreen(d.feed, d) && !!d.map && d.feed.x >= d.map.r - 1;
         msg = `after the tap ${c1.drawn ? "still drawn" : "gone"}, 2.5 s later ${c2.drawn ? "drawn again" : "still gone"}; a second tap ${reopened ? "opens it right of the map again" : "does not open it where it was"}`;
