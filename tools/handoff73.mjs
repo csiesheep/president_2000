@@ -194,7 +194,9 @@ try {
         const steps = saves.filter((q, i) => i > 0 && q.log > saves[i - 1].log && q.t > c.on + 60 && (c.off == null || q.t < c.off));
         if (steps.length) bad.wait.push(`${x.where}: ${steps.length} step(s) while the card for ${c.k} showed`);
         const end = c.off == null ? polls[polls.length - 1].t : c.off, stay = Math.round(end - c.on);
-        if (stay < 500 || stay > 3000 || c.off == null) bad.stay.push(`${x.where}: the card for ${c.k} ${c.off == null ? "still up after" : "stayed"} ${stay} ms`);
+        // a card still up when the observation ends is judged only if it has already outstayed 3 s (after #73's third
+        // delivery: the human's last card of a run was counted as "still up" and the FE cut the hold to fit the window)
+        if ((c.off != null && stay < 500) || stay > 3000) bad.stay.push(`${x.where}: the card for ${c.k} ${c.off == null ? "still up after" : "stayed"} ${stay} ms`);
         const sv = seatAt(saves, c.on);
         if (!sv || sv.a == null || KEYS[sv.a] !== c.k) bad.words.push(`${x.where}: a card for ${c.k} while ${sv && sv.a != null ? KEYS[sv.a] : "no one seat"} is to act`);
         else if (lang === "zh") { const want = sv.a === me ? "輪到你" : `輪到 ${FULL[sv.a]}`; if (!c.txt.includes(want)) bad.words.push(`${x.where}: the card says 「${c.txt.slice(0, 40)}」, not 「${want}」`); }
