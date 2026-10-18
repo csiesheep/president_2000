@@ -56,7 +56,7 @@ const MEASURE = (lang) => `(() => {
   const NAMES = ${JSON.stringify(lang === "en" ? ["Chen", "Soong", "Lien"] : ["陳水扁", "宋楚瑜", "連戰"])};
   const VOTES = ${lang === "en" ? "/^\\s*\\d+(\\.\\d)?\\s*M\\s*votes?\\s*$/i" : "/^\\s*\\d+\\s*0\\s*萬票\\s*$/"};
   const MOM = ${lang === "en" ? "/^\\s*Momentum/i" : "/^\\s*動能/"};
-  const LUCK = ${lang === "en" ? "/^\\s*Luck\\s*\\d+\\s*%\\s*$/i" : "/^\\s*運氣\\s*\\d+\\s*%\\s*$/"};
+  const LUCK = ${lang === "en" ? "/^\\s*(Luck|Morale)\\s*\\d+\\s*%\\s*$/i" : "/^\\s*(運氣|士氣)\\s*\\d+\\s*%\\s*$/"}; // #76: 運氣 renamed 士氣 (Luck → Morale)
   const drawn = (e) => { if (!e) return false; const r = e.getBoundingClientRect(), s = getComputedStyle(e); return e.getClientRects().length > 0 && r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none" && Number(s.opacity) > 0; };
   const R = (e) => { const r = e.getBoundingClientRect(); return { x: Math.round(r.left), y: Math.round(r.top), r: Math.round(r.right), b: Math.round(r.bottom), w: Math.round(r.width), h: Math.round(r.height) }; };
   // The smallest drawn element inside p whose whole text matches rx.

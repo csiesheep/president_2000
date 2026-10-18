@@ -45,7 +45,7 @@ const POOL = screens();
 const ZH_STR = strings(zh), EN_STR = strings(en);
 const CARD_ZH = [...EVENTS, ...localCards()].map((c) => [c.id, c.text || ""]);
 const GATE = ZH_STR.some(([, v]) => v.includes("士氣")) || CARD_ZH.some(([, t]) => t.includes("士氣"));
-const gate = (fn) => () => { const ne = nonEmpty(POOL.length, "牌桌的狀態"); if (ne !== true) return ne; return GATE ? fn() : "TODO: 中文字串裡還沒有「士氣」（#76）"; };
+const gate = (fn) => () => { const ne = nonEmpty(POOL.length, "牌桌的狀態"); if (ne !== true) return ne; return GATE ? fn() : "中文字串裡沒有「士氣」（#76 已上線，e9cbb26；這是退步，不是尚未實作）"; };
 const OLD = { zh: /運氣/, en: /\bluck/i };
 
 section("76 運氣改叫士氣（Luck → Morale）");
