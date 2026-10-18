@@ -324,7 +324,8 @@ const MOM_ONLY = new Set([
   "talk.effect_tvbs", "talk.reward_momentum",
 ]);
 const FORBID8 = { zh: /動能/, en: /momentum/i };
-const gate8 = (fn) => () => (V08 ? fn() : "TODO: 牌文還是 v0.7（楊吉雄爆料沒寫士氣，#81）");
+// Since #81 landed (2976d04), a 楊吉雄爆料 without 士氣 is a failure, not 尚未實作.
+const gate8 = (fn) => () => (V08 ? fn() : "楊吉雄爆料的牌文沒有寫士氣：#81 已上線（2976d04），這是退步，不是尚未實作");
 const SEAT_EN = ["Chen", "Soong", "Lien"];
 // English: the morale a card gives, as "Chen's morale +5%" (two seats: "Soong's and Chen's morale +5% each", "Soong and
 // Chen's morale each +5%" …); "Everyone's morale −5%"; the headline issue's leader "… morale +5%"; "… lowest morale … +5%".
