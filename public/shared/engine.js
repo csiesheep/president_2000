@@ -106,6 +106,53 @@ const noMomentum = (st) => st.momentum === "none";
 // nobody); TVBS 民調 the lowest 士氣 (a tie: the player picks among them, even when the pick cannot go up). The state
 // says st.moraleCards === true; without the option it has no such field and is #75's, byte for byte.
 const moraleCards = (st) => st.moraleCards === true;
+// #79 (owner, 2026-10-17: 「檢查每一張牌，提出一些牌可以影響士氣，像是興票案 影響宋士氣」; the amounts are orchestrator's
+// proposal #79, which the owner may change), under momentum "none" only. opts.moraleCards "full": every momentum written
+// on a card becomes 士氣 (st.luck), within LUCK_MIN–LUCK_MAX, as MORALE_FULL says; it replaces #77's four cards. The
+// state says st.moraleCards === "full"; without it (or with true) nothing below applies. The debate winner's and the
+// issue rewards' momentum are not on a card and stay nothing (#75).
+const moraleFull = (st) => st.moraleCards === "full";
+// What each card's momentum becomes, in 士氣 points: card id → [[who, points], …], at the place of the card text where the
+// momentum was (a choice-free card: after its effect). who: a seat (CHEN 陳, SOONG 宋, LIEN 連); "all": every seat;
+// "leader": the headline issue's unique leader (a tie is nobody); "lowest": the lowest 士氣 (a tie: the player resolving
+// the card picks among them, even when the pick cannot go up; a card with a program only, not an EFFECTS one).
+// Only the momentum is here: what a card already gives as 士氣 stays (the 「袋中 +n」 of 張俊雄邱義仁、百萬人連署、
+// 全代會, +LUCK_CARD each, addBag), so 張俊雄邱義仁 is 陳 +10 +5 in all. The default is 5 per momentum; 楊吉雄爆料
+// (「宋動能歸零」) and 說法反覆 (「連動能 +1」, 宋's own story turning on him) are orchestrator's special cases.
+// Change a number here and the engine and the bots (bots.js reads this table) both follow.
+export const MORALE_FULL = {
+  // 陳
+  alternation: [[CHEN, 10]], // 政黨輪替: 陳動能 +2
+  no_nuke4: [[SOONG, 5]], // 宋動能 +1
+  lin_chairman: [[CHEN, 5]],
+  lee_yuan_tseh: [[CHEN, 10]], // 陳動能 +2
+  million_rally: [[CHEN, 5]],
+  chang_chiu: [[CHEN, 5]], // and its own 士氣 +10 (袋中): 陳 +15 in all
+  // 宋
+  poll_lead: [[SOONG, 10]], // 宋動能 +2 (turns 1–3, as the card says)
+  million_signatures: [[SOONG, 5]], // and its own 士氣 +10: 宋 +15 in all
+  soong_friends: [[SOONG, 5]],
+  kneel_for_votes: [[SOONG, 10]], // 宋動能 +2, before its two placements
+  hsu_hsin_liang: [[SOONG, 5]],
+  // 連
+  expel_soong: [[SOONG, 5]], // 宋動能 +1
+  yang_exposes: [[SOONG, -20]], // 楊吉雄爆料 (興票案): 「宋動能歸零」
+  shifting_story: [[SOONG, -10]], // 說法反覆: 「連動能 +1」
+  hand_in_hand: [[LIEN, 5]],
+  lee_attacks_soong: [[SOONG, 5]], // 宋動能 +1
+  ma_leaks_polls: [[SOONG, 5], [CHEN, 5]], // after its placements
+  party_congress: [[LIEN, 5]], // and its own 士氣 +10: 連 +15 in all
+  kmt_anniversary: [[LIEN, 5]],
+  // 外力
+  poll_published: [["leader", 5]], // 民調公布: 頭條領先者動能 +1
+  strait_tension: [[CHEN, 5]],
+  white_paper: [[CHEN, 5]],
+  zhu_rongji: [[CHEN, 5]],
+  stock_crash: [["all", -5]], // 所有人動能 −1
+  lee_secret_help: [[LIEN, -5]],
+  tvbs_poll: [["lowest", 5]], // TVBS 民調: 動能最少者 +1 → 士氣最低者
+  pla_drill_rumor: [[CHEN, -5]],
+};
 const LIEN_CANDIDATE_CP_V07 = 4; // 細節 6: 連's candidate card, 3 CP and 2 rest cubes in v0.6
 
 // opts.startTurn (裁決 16): the same opening board, starting at that turn
@@ -133,7 +180,7 @@ export function createGame(seed, opts = {}) {
   if ((opts.momentum != null || opts.trigger != null) && rules !== "v0.7") throw new Error("createGame: momentum and trigger are v0.7 options");
   if (opts.momentum != null && !MOMENTUM.includes(opts.momentum)) throw new Error("createGame: momentum must be one of " + MOMENTUM.join("/"));
   if (opts.trigger != null && !TRIGGER.includes(opts.trigger)) throw new Error("createGame: trigger must be one of " + TRIGGER.join("/"));
-  if (opts.moraleCards != null && opts.moraleCards !== false && !(opts.moraleCards === true && rules === "v0.7" && opts.momentum === "none")) throw new Error("createGame: moraleCards is true, with v0.7 and momentum none"); // #77
+  if (opts.moraleCards != null && opts.moraleCards !== false && !((opts.moraleCards === true || opts.moraleCards === "full") && rules === "v0.7" && opts.momentum === "none")) throw new Error("createGame: moraleCards is true or \"full\", with v0.7 and momentum none"); // #77, #79
   const rng = makeRng(seed);
   const counties = COUNTIES.map(([name, region, G, B, N, init]) => {
     const blocks = [];
@@ -196,6 +243,7 @@ export function createGame(seed, opts = {}) {
     if (rules === "v0.7" && opts.momentum != null) { st.momentum = opts.momentum; st.mom = [0, 0, 0]; } // #75
     if (rules === "v0.7" && opts.trigger != null) st.trigger = opts.trigger; // #75
     if (opts.moraleCards === true) st.moraleCards = true; // #77 (checked above: v0.7, momentum none)
+    if (opts.moraleCards === "full") st.moraleCards = "full"; // #79 (checked above: v0.7, momentum none)
     delete st.media; // v0.5 二、3.2: no media cubes, no national media box
     issueCubes(st, "econ")[LIEN] = V05_START_ECON; // v0.5 四.5、十三: 連 opens with 2 on 經濟民生
   }
@@ -593,9 +641,37 @@ const PROGRAMS_V07 = {
 const PROGRAMS_NO_MOM = { tvbs_poll: () => [] };
 // #77 moraleCards: TVBS 民調 is 「士氣最低者 +10%（平手由出牌者選）」, the same step read on st.luck (tvbsTrack, tvbsGive).
 const PROGRAMS_MORALE = { tvbs_poll: (by) => [step("tvbs", by, 1)] };
-const tvbsTrack = (st) => (moraleCards(st) ? st.luck : st.mom);
-const tvbsGive = (st, p) => (moraleCards(st) ? addLuck(st, p, LUCK_CARD) : addMom(st, p, 1));
-const programOf = (st, id) => (moraleCards(st) && PROGRAMS_MORALE[id]) || (noMomentum(st) && PROGRAMS_NO_MOM[id]) || (V07(st) && PROGRAMS_V07[id]) || (V05(st) && PROGRAMS_V05[id]) || PROGRAMS[id];
+// #79 "full": a "lowest" entry of MORALE_FULL is this step with its points (s.n) on st.luck.
+const tvbsTrack = (st) => (moraleCards(st) || moraleFull(st) ? st.luck : st.mom);
+const tvbsGive = (st, p, s) => (s.n != null ? addLuck(st, p, s.n) : moraleCards(st) ? addLuck(st, p, LUCK_CARD) : addMom(st, p, 1));
+const programBase = (st, id) => (moraleCards(st) && PROGRAMS_MORALE[id]) || (noMomentum(st) && PROGRAMS_NO_MOM[id]) || (V07(st) && PROGRAMS_V07[id]) || (V05(st) && PROGRAMS_V05[id]) || PROGRAMS[id];
+// #79 "full": a card of MORALE_FULL loses its momentum steps (nothing under momentum "none" anyway) and gets its 士氣
+// where the first of them was, or at the end when it had none (TVBS 民調's program is empty under momentum "none").
+const moraleSteps = (id, by) => MORALE_FULL[id].map(([who, n]) => (who === "lowest" ? { ...step("tvbs", by, 1), n } : { op: "morale", who, n }));
+function programOf(st, id) {
+  const base = programBase(st, id);
+  if (!base || !moraleFull(st) || !MORALE_FULL[id]) return base;
+  return (by, s0) => {
+    const q = base(by, s0), at = q.findIndex((s) => s.op === "mom" || s.op === "momTo");
+    const rest = q.filter((s) => s.op !== "mom" && s.op !== "momTo");
+    rest.splice(at < 0 ? rest.length : at, 0, ...moraleSteps(id, by));
+    return rest;
+  };
+}
+// One automatic MORALE_FULL entry ("lowest" is a tvbs step, above).
+function moraleGive(st, who, n) {
+  if (who === "all") for (let p = 0; p < 3; p++) addLuck(st, p, n);
+  else if (who === "leader") { const p = leader(st.issues[0].cubes); if (p >= 0) addLuck(st, p, n); }
+  else addLuck(st, who, n);
+}
+// A wrong entry of MORALE_FULL fails at load, not in the middle of a game.
+for (const [id, list] of Object.entries(MORALE_FULL)) {
+  if (!EVENTS.some((e) => e.id === id)) throw new Error("engine: MORALE_FULL has no card " + id);
+  for (const [who, n] of list) {
+    if (!(Number.isInteger(n) && ([CHEN, SOONG, LIEN, "all", "leader", "lowest"].includes(who)))) throw new Error(`engine: MORALE_FULL ${id}: [who, points] with who a seat, "all", "leader" or "lowest"`);
+    if (who === "lowest" && EFFECTS[id]) throw new Error(`engine: MORALE_FULL ${id}: "lowest" needs a card with a program`);
+  }
+}
 
 // 棄連保扁、棄連保宋、黨內整合: in one county, the target −1 (checked, Q5
 // default) and then the player +1 (§8.1). With no target cube anywhere the
@@ -650,6 +726,7 @@ function runProgram(st) {
   while (q.length) {
     const s = q[0];
     if (s.op === "mom") { addMom(st, s.p, s.n); q.shift(); continue; }
+    if (s.op === "morale") { moraleGive(st, s.who, s.n); q.shift(); continue; } // #79
     if (s.op === "issue") { addIssue(st, s.name, s.p, s.n); q.shift(); continue; }
     if (s.op === "bag") { addBag(st, s.p, s.n); q.shift(); continue; }
     if (s.op === "media") {
@@ -660,7 +737,7 @@ function runProgram(st) {
     if (s.op === "issueTo") { issueCubes(st, s.name)[s.p] = s.v; q.shift(); continue; }
     if (s.left <= 0) { q.shift(); continue; }
     const ms = stepMoves(st, s);
-    if (s.op === "tvbs" && ms.length === 1) { tvbsGive(st, ms[0].seat); q.shift(); continue; }
+    if (s.op === "tvbs" && ms.length === 1) { tvbsGive(st, ms[0].seat, s); q.shift(); continue; }
     if (!ms.length) { q.shift(); if (!s.picked && s.fallback) q.unshift(...s.fallback); continue; }
     return true;
   }
@@ -690,7 +767,7 @@ function applyEffect(st, seat, m) {
     key = m.county;
     st.counties[key].blocks.find((b) => b.o < 0 && b.t === "N").t = "G";
   } else if (s.op === "tvbs") {
-    tvbsGive(st, m.seat);
+    tvbsGive(st, m.seat, s);
   } else if (s.op === "anyIssue") {
     key = m.issue;
     if (s.target < 0) addIssue(st, m.issue, s.p, s.n); else addIssue(st, m.issue, s.target, -s.n);
@@ -731,7 +808,12 @@ function ownEventAllowed(st, seat, c) {
 // a choice (pending stage "effect"); the play then goes on with `after`.
 function resolveEffect(st, id, by, after) {
   st.flags.played[id] = true;
-  if (EFFECTS[id] && !(V05(st) && PROGRAMS_V05[id])) { EFFECTS[id](st); st.log.push({ t: "effect", card: id, by }); return false; }
+  if (EFFECTS[id] && !(V05(st) && PROGRAMS_V05[id])) {
+    EFFECTS[id](st);
+    if (moraleFull(st) && MORALE_FULL[id]) for (const [who, n] of MORALE_FULL[id]) moraleGive(st, who, n); // #79: after the effect
+    st.log.push({ t: "effect", card: id, by });
+    return false;
+  }
   if (programOf(st, id)) { st.log.push({ t: "effect", card: id, by }); return startProgram(st, id, by, after); }
   st.log.push({ t: "effect", card: id, by, unimplemented: true });
   return false;
