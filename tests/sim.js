@@ -1,7 +1,7 @@
 // tests/sim.js — bot-vs-bot balance (M2, #10). BE's file; not part of `npm test`.
 //
 //   node tests/sim.js <games> [levels=3,3,3] [seed=1] [rotate=1] [workers=N] [quiet=1] [rules=v0.4|v0.5|v0.6|v0.7] [fill=candidate|free]
-//                     [luck=a,b,c] [issues=lead] [momentum=none] [trigger=always|never]
+//                     [luck=a,b,c] [issues=lead] [momentum=none] [trigger=always|never] [morale=1]
 //
 // Game i (0-based) uses seed + i. levels[s] plays seat s (1 樁腳, 2 總幹事, 3 操盤手).
 // rotate=1: the first level in `levels` is the hero and the other two its
@@ -16,6 +16,8 @@
 // issues each seat led at the conversion, a game's average) and "canvassLuck" (each seat's average luck over its
 // election-day checks)); #75: momentum=none and trigger=always|never, passed as { momentum, trigger } (v0.7); the JSON
 // line then says them and "triggers" (each seat's triggers a game);
+// #77: morale=1 passes { moraleCards: true } (v0.7 with momentum=none: the four momentum-only cards give 士氣); the JSON
+// line then says "moraleCards": true;
 // the report also shows where each seat's CP went (競選/廣告/議題). Games run in child processes (workers, default: CPUs − 1, at most 8);
 // a chunk whose process dies is run again once, then the whole run fails.
 import { fork } from "node:child_process";
@@ -48,6 +50,7 @@ export function playGame(seed, levels, rules, fill, extra = null) {
   if (extra && extra.issueLuck) opts.issueLuck = extra.issueLuck;
   if (extra && extra.momentum) opts.momentum = extra.momentum; // #75
   if (extra && extra.trigger) opts.trigger = extra.trigger;
+  if (extra && extra.moraleCards) opts.moraleCards = true; // #77
   let st = E.createGame(seed, opts);
   let leadsAtVote = null; // #58: the issues each seat led on the state the conversion read
   const R = rng(seed * 977 + 13);
@@ -101,7 +104,7 @@ function levelsFor(i, n, base, rotate) {
 }
 
 function parseArgs(argv) {
-  const o = { games: parseInt(argv[0] || "100", 10), levels: [3, 3, 3], seed: 1, rotate: false, workers: Math.min(8, Math.max(1, os.cpus().length - 1)), quiet: false, rules: null, fill: null, luck: null, issueLuck: null, momentum: null, trigger: null };
+  const o = { games: parseInt(argv[0] || "100", 10), levels: [3, 3, 3], seed: 1, rotate: false, workers: Math.min(8, Math.max(1, os.cpus().length - 1)), quiet: false, rules: null, fill: null, luck: null, issueLuck: null, momentum: null, trigger: null, moraleCards: false };
   for (const a of argv.slice(1)) {
     const [k, v] = a.split("=");
     if (k === "levels") o.levels = v.split(",").map(Number);
@@ -115,6 +118,7 @@ function parseArgs(argv) {
     else if (k === "issues") o.issueLuck = v;
     else if (k === "momentum") o.momentum = v;
     else if (k === "trigger") o.trigger = v;
+    else if (k === "morale") o.moraleCards = v === "1" || v === "true";
     else throw new Error("sim: unknown option " + a);
   }
   if (!(o.games > 0)) throw new Error("sim: games must be a positive number");
@@ -138,9 +142,9 @@ function runInChild(list) {
 
 async function runAll(o) {
   const jobs = [];
-  const extra = o.luck || o.issueLuck || o.momentum || o.trigger ? { luck: o.luck, issueLuck: o.issueLuck, momentum: o.momentum, trigger: o.trigger } : null;
+  const extra = o.luck || o.issueLuck || o.momentum || o.trigger || o.moraleCards ? { luck: o.luck, issueLuck: o.issueLuck, momentum: o.momentum, trigger: o.trigger, moraleCards: o.moraleCards } : null;
   // fail here, not in a worker: the engine checks the options
-  if (extra) E.createGame(o.seed, { ...(o.rules ? { rules: o.rules } : {}), ...(o.fill ? { fill: o.fill } : {}), ...(o.luck ? { luck: o.luck } : {}), ...(o.issueLuck ? { issueLuck: o.issueLuck } : {}), ...(o.momentum ? { momentum: o.momentum } : {}), ...(o.trigger ? { trigger: o.trigger } : {}) });
+  if (extra) E.createGame(o.seed, { ...(o.rules ? { rules: o.rules } : {}), ...(o.fill ? { fill: o.fill } : {}), ...(o.luck ? { luck: o.luck } : {}), ...(o.issueLuck ? { issueLuck: o.issueLuck } : {}), ...(o.momentum ? { momentum: o.momentum } : {}), ...(o.trigger ? { trigger: o.trigger } : {}), ...(o.moraleCards ? { moraleCards: true } : {}) });
   for (let i = 0; i < o.games; i++) jobs.push([o.seed + i, levelsFor(i, o.games, o.levels, o.rotate), o.rules, o.fill, extra]);
   if (o.workers <= 1 || o.games < 8) return runChunk(jobs);
   const size = Math.max(1, Math.ceil(jobs.length / (o.workers * 4)));
@@ -192,6 +196,7 @@ function summarize(o, games) {
   if (o.issueLuck) out.issueLuck = o.issueLuck;
   if (o.momentum) out.momentum = o.momentum; // #75
   if (o.trigger) out.trigger = o.trigger;
+  if (o.moraleCards) out.moraleCards = true; // #77
   if (o.momentum || o.trigger) out.triggers = [0, 1, 2].map((p) => Math.round(100 * avg(games.map((g) => g.triggers[p]))) / 100);
   if (games.length && games[0].leadsAtVote) {
     out.leadsAtVote = [0, 1, 2].map((p) => Math.round(100 * avg(games.map((g) => g.leadsAtVote[p]))) / 100);
