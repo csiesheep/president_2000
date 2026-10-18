@@ -221,7 +221,7 @@ if (typeof document !== "undefined") {
     let swallow = false;
     Replay.bindTaps({ active: () => !!session && !!session.st && (!!timer || (!session.tut && rep.active())),
       onStep: () => { swallow = !!timer; setTimeout(() => { swallow = false; }, 0); if (session.tut) skipAll(); else skipStep(); }, onAll: () => { swallow = !!timer; setTimeout(() => { swallow = false; }, 0); skipAll(); },
-      ignore: "[data-menu], [data-menu-top], #gmenu, .mset, [data-botnext], [data-turncard], [data-handoff], [data-rp-next], a, input, textarea" });
+      ignore: "[data-menu], [data-menu-top], #gmenu, .mset, [data-botnext], [data-feed-toggle], [data-turncard], [data-handoff], [data-rp-next], a, input, textarea" });
     // (in the tutorial the bubble decides what scrolls)
     // (#66: the table is one screen that never scrolls, so a tapped card or a question does not scroll to the decision any more)
 
