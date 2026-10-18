@@ -22,6 +22,8 @@
 //   - whenever one seat is to act (and no turn card, replayed move or handoff card is up), that seat's board alone
 //     carries data-turn, its tag [data-turn-tag] is on screen (in Chinese 「輪到你」 / 「<short> 行動中」), its card
 //     (.pl-card) is not faded (opacity ≥ 0.95) and the other two boards' cards are (opacity ≤ 0.7);
+//   - the lit board's tag covers none of the board's words (name, ballot number, votes, momentum, 士氣, issue-lead tag:
+//     their glyphs, not their boxes) (added after #73 landed: on the phone the tag sat over the votes, #78);
 //   - the tutorial never shows the card.
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
@@ -118,7 +120,9 @@ const SPY = `(() => {
         cut: hc.scrollHeight > hc.clientHeight + 1 || hc.scrollWidth > hc.clientWidth + 1 }; }
     const boards = [...document.querySelectorAll("article.pl")].map((b) => { const c = b.querySelector(".pl-card"), tag = b.querySelector("[data-turn-tag]"), tr = vis(tag);
       return { seat: Number((b.className.match(/\\bs(\\d)\\b/) || [])[1]), turn: b.hasAttribute("data-turn"), op: c ? Math.round(eff(c) * 100) / 100 : 1,
-        tag: tr ? { on: tr.left >= 0 && tr.top >= 0 && tr.right <= innerWidth && tr.bottom <= innerHeight, txt: tag.textContent.trim() } : null }; });
+        tag: tr ? { on: tr.left >= 0 && tr.top >= 0 && tr.right <= innerWidth && tr.bottom <= innerHeight, txt: tag.textContent.trim(),
+          // what of the board the tag lies over: its name, ballot number, votes, momentum, 士氣, the issue-lead tag
+          hits: [".pl-n", ".no", ".pl-v", ".pl-mm", ".pl-lk", ".pl-lead"].filter((sel) => [...b.querySelectorAll(sel)].filter((e) => !!vis(e)).some((e) => { const rs = []; const w = document.createTreeWalker(e, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) { if (!n.textContent.trim()) continue; const rg = document.createRange(); rg.selectNodeContents(n); rs.push(...rg.getClientRects()); } if (!rs.length) rs.push(e.getBoundingClientRect()); return rs.some((r) => Math.min(r.right, tr.right) - Math.max(r.left, tr.left) > 1 && Math.min(r.bottom, tr.bottom) - Math.max(r.top, tr.top) > 1); })) } : null }; });
     window.__h.polls.push({ t, hand, tc, rp, boards });
   }, 50);
 })();`;
@@ -175,7 +179,7 @@ if (ST.mid.length < 2 || !ST.start) rule(false, `instrument: states found — ${
 const br = await launch();
 try {
   for (const [dev, w, h, mobile, lang] of [["phone", 390, 664, true, "zh"], ["phone", 390, 664, true, "en"], ["desk", 1280, 800, false, "zh"]]) {
-    const who = `${dev} ${lang}`, bad = { miss: [], wait: [], stay: [], place: [], words: [], together: [], lit: [] };
+    const who = `${dev} ${lang}`, bad = { miss: [], wait: [], stay: [], place: [], words: [], together: [], lit: [], tagover: [] };
     let events = 0, cards = 0, litN = 0;
     const judge = (m, x, opening) => {
       const me = x.s.seat, saves = m.saves, polls = m.polls, iv = intervals(polls);
@@ -220,6 +224,7 @@ try {
           else if (lit.op < 0.95 || rest.some((b) => b.op > 0.7)) why = `opacity ${KEYS[sv.a]} ${lit.op}, the others ${rest.map((b) => b.op).join("/")} (lit ≥ 0.95, others ≤ 0.7)`;
         }
         litN++;
+        if (sv.a != null) { const lit = p.boards.find((b) => b.seat === sv.a); if (lit && lit.tag && lit.tag.hits.length && bad.tagover.length < 3) bad.tagover.push(`${x.where}: ${KEYS[sv.a]}'s tag over ${lit.tag.hits.join(",")}`); }
         if (why) { bad.lit.push(`${x.where}: ${why}`); break; }
       }
     };
@@ -241,6 +246,7 @@ try {
     rule(cards > 0 && !bad.place.length, `${who}: on screen, over the map, words not cut (${bad.place.length ? bad.place[0] : "all"})`);
     rule(cards > 0 && !bad.words.length, `${who}: the card names whoever is to act${lang === "zh" ? " (輪到你 / 輪到 全名)" : ""} (${bad.words.length ? bad.words.slice(0, 2).join(" | ") : "all"})`);
     rule(cards > 0 && !bad.together.length, `${who}: never together with the turn card or a replayed move (${bad.together.length ? bad.together[0] : "never"})`);
+    rule(litN > 0 && !bad.tagover.length, `${who}: the tag covers nothing on the board (name, number, votes, momentum, 士氣, issue lead)${bad.tagover.length ? "; " + bad.tagover.join(" | ") : ""}`);
     rule(litN > 0 && !bad.lit.length, `${who}: the board of whoever is to act lit with its tag, the other two faded (${litN} settled screens${bad.lit.length ? "; " + bad.lit[0] : ""})`);
     // a tap closes it, and is not a skip
     {
