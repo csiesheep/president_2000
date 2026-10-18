@@ -149,6 +149,7 @@ const V07_CHECKS_PER_PLAY = 1.8, V07_CANVASS = 3, V07_CARDS_ELECTION = 4;
 const V07_ISSUE_CUBE = 0;  // an issue cube turns into nothing on election day
 // The draft's numbers as the bots read them (engine.js holds the rule): a card's luck, the cap, luck per momentum.
 const V07_LUCK_CARD = 10, V07_LUCK_MAX = 80, V07_LUCK_PER_MOM = 10;
+const V07_LUCK_MIN = 20; // #79: a card that takes 士氣 stops at the floor
 // v0.7 option 丙 (#58, st.issueLuck "lead"): each issue a seat leads at the conversion (most cubes on the card, a tie
 // is nobody; after every momentum phase still to come takes 1 off each card's leader) is +10 canvassing luck, outside
 // the 80, at most 95. The bots value a lead at the conversion as that luck over the election-day checks (V07_CANVASS
@@ -204,6 +205,7 @@ function see(st) {
     issueLuck: st.issueLuck || null, // #58: option 丙
     momentum: st.momentum || null, trigger: st.trigger || null, // #75: momentum "none", trigger "always" / "never"
     moraleCards: st.moraleCards === true, // #77: the four momentum-only cards give 士氣
+    moraleFull: st.moraleCards === "full", // #79: every momentum on a card is 士氣 (engine.js MORALE_FULL)
     // #49: a v0.5 game (ads and media folded into the issues) has no media at all.
     // #54: a v0.6 game is a v0.5 game plus the simplifications (no 地方大老: fill "candidate" or "free"; ties by st.order).
     // #55: a v0.7 game is a v0.6 game (fill "candidate") with luck instead of the bag.
@@ -258,7 +260,8 @@ class Bot {
     return (now + HAND.play * later) * V07_CHECKS_PER_PLAY + cards * V07_CANVASS;
   }
   // The value of q's luck going up by dl points (capped at 80), counted for the seat valuing it (this.p).
-  vLuck(q, dl) { const V = [0, 0, 0]; const d = Math.max(0, Math.min(V07_LUCK_MAX - this.v.luck[q], dl)); V[q] = (d / 100) * this.checksLeft(q) * V07_SUCCESS[this.p]; return V; }
+  // #79: dl < 0 (a card of MORALE_FULL that takes 士氣) is the same with the sign turned, stopping at 20.
+  vLuck(q, dl) { const V = [0, 0, 0]; const d = dl >= 0 ? Math.max(0, Math.min(V07_LUCK_MAX - this.v.luck[q], dl)) : Math.min(0, Math.max(V07_LUCK_MIN - this.v.luck[q], dl)); V[q] = (d / 100) * this.checksLeft(q) * V07_SUCCESS[this.p]; return V; }
   // v0.7: one momentum now, halved at every momentum phase still to come, is +10 canvassing luck at the conversion.
   momCanvass() {
     const t = this.v.turn;
@@ -698,7 +701,20 @@ class Bot {
     const c = CARD[id];
     if (c.owner === "local") { const k = ci(c.county); const b = this.bestIn(by, k, { steal: false }); return b ? add3([0, 0, 0], b.d, b.opt.p) : [0, 0, 0]; }
     const f = (this.v.moraleCards && EV_MORALE[id]) || (this.v.v07 && EV_V07[id]) || (this.v.v05 && EV_V05[id]) || EV[id];
-    return f ? f(this, by) : [0, 0, 0];
+    const V = f ? f(this, by) : [0, 0, 0];
+    // #79 "full": the card's momentum (worth nothing under momentum "none", MOMV 0) is its MORALE_FULL 士氣, valued as
+    // every other 士氣 card is (vLuck), read from the engine's table.
+    return this.v.moraleFull && E.MORALE_FULL[id] ? add3(add3([0, 0, 0], V), this.vMoraleFull(id, by)) : V;
+  }
+  vMoraleFull(id, by) {
+    let V = [0, 0, 0];
+    for (const [who, n] of E.MORALE_FULL[id]) {
+      if (who === "all") for (let q = 0; q < 3; q++) V = add3(V, this.vLuck(q, n));
+      else if (who === "leader") { const l = leaderOf(this.v.issues[0].cubes); if (l >= 0) V = add3(V, this.vLuck(l, n)); }
+      else if (who === "lowest") { const min = Math.min(...this.v.luck); const lows = [0, 1, 2].filter((q) => this.v.luck[q] === min); V = add3(V, this.vLuck(lows.includes(by) ? by : lows[0], n)); }
+      else V = add3(V, this.vLuck(who, n));
+    }
+    return V;
   }
   ownEventAllowed(q, c) {
     if (c.owner !== SEATS[q]) return false;
