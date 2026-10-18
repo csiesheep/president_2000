@@ -22,12 +22,15 @@
 //   - the special turns keep their words: turn 1 the start of the race, turn 6 the debate and its three issues, turn 9
 //     the four steps of election day and the dark card (#44).
 // Since #64 landed (b931579), a card without a masthead is a failure (it reported 尚未實作 before).
+// v0.8 (#81, no momentum): once the Chinese 楊吉雄爆料 says 士氣, election day's first step is 「記下領先的議題，然後議題歸零」 /
+// "Issue leads are recorded" (the vault's v0.8 draft); the other three steps stay.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { R, section, check, ok, nonEmpty, summary } from "./harness.js";
 import * as D from "./driver.js";
 import * as S from "../public/solo.js";
 import { bind } from "../public/table.js";
+import { EVENTS } from "../public/shared/cards.js";
 
 const KEYS = ["chen", "soong", "lien"];
 const SHORT_ZH = { chen: "陳", soong: "宋", lien: "連" };
@@ -38,10 +41,11 @@ const DATE_EN = { 1: "Late November 1999", 2: "Mid December 1999", 3: "Late Dece
 // The special turns' words as the game has them since #44 (copied here, not read from the strings).
 const T1_ZH = "九個回合，每回合約兩週。2000 年 3 月 18 日開票，票多的人當選。";
 const T6_ZH = "這回合不發牌、不出手牌。三人同時翻出前五回合留下的牌，在三個議題上比 CP。";
-const T9_ZH = ["記下動能與領先的議題，然後歸零", "票數由少到多，少的先催票", "各自翻出留下的 4 張牌催票", "棄保、背書，然後計票"];
+const V08 = (EVENTS.find((e) => e.id === "yang_exposes")?.text || "").includes("士氣");
+const T9_ZH = [V08 ? "記下領先的議題，然後議題歸零" : "記下動能與領先的議題，然後歸零", "票數由少到多，少的先催票", "各自翻出留下的 4 張牌催票", "棄保、背書，然後計票"];
 const T1_EN = "Nine turns, about two weeks each.";
 const T6_EN = "No cards are dealt or played this turn.";
-const T9_EN = ["Momentum and issue leads are recorded", "Canvassing goes by votes, fewest first", "Each reveals their 4 kept cards", "Tactical voting, endorsements, then the count"];
+const T9_EN = [V08 ? "Issue leads are recorded" : "Momentum and issue leads are recorded", "Canvassing goes by votes, fewest first", "Each reveals their 4 kept cards", "Tactical voting, endorsements, then the count"];
 const ISSUES = ["cross", "clean", "econ"];
 
 // Solo games stepped one move at a time; each state right after a turn's log entry is written (as tests/turncard).

@@ -28,6 +28,14 @@
 // 連's blurb speaks of his 60 % luck. Those report 尚未實作 until the Chinese rules page says 運氣. Three of the nine v0.5
 // cards change again on v0.7 (張榮發挺扁, 省府舊部, 張昭雄的醫界): once the v0.7 gate is open the v0.5 row reads them from
 // CARD_TEXT_V07.
+// Then v0.8, 「yes, go ahead」 (2026-10-17, #81, after #75–#80): morale, no momentum. No string and no card speaks of momentum
+// (Chinese 動能; English momentum) except the ones only a game saved on v0.7 with momentum shows (MOM_ONLY), which stay; the
+// 27 cards that spoke of momentum read as in the vault's v0.8 draft (CARD_TEXT_V08), word for word in Chinese, and in
+// English give the morale of the V10 table; the rules page has morale 陳 50%、宋 50%、連 50% (and the candidates' table), an
+// opponent's event that always triggers, and the 結算階段. Those report 尚未實作 until the Chinese 楊吉雄爆料 says 士氣. Once
+// it does (V08), the older rows read v0.8: the v0.5 and v0.7 card rows read CARD_TEXT_V08 for the cards in it, the v0.7
+// rules row wants 連 50%, 連's blurb no longer speaks of 60 %, and the v0.5 row on the issue leader's +1 momentum (gone
+// in v0.8) is left to the v0.8 rows; the v0.5 rows also open on V08 (v0.8 may drop the word 議題總領先者).
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
@@ -67,6 +75,47 @@ const CARD_TEXT_V07 = {
   party_congress: "連運氣 +10%；連動能 +1",
   econ_cabinet: "經濟議題連 +1；連運氣 +10%",
 };
+// The 27 cards, the vault's 「v0.8 草稿（士氣，沒有動能）」 (copied by hand): V10 (#80) plus the cards' own 士氣 +10%.
+const CARD_TEXT_V08 = {
+  alternation: "陳士氣 +5%",
+  no_nuke4: "經濟議題陳 +1、連 −1；宋士氣 +5%",
+  lin_chairman: "清廉議題陳 +1；陳士氣 +5%",
+  lee_yuan_tseh: "陳士氣 +5%；陳本回合放方塊全部免檢定",
+  million_rally: "陳在任 3 個縣市各 +1 免檢定；陳士氣 +5%",
+  chang_chiu: "陳士氣 +15%",
+  poll_lead: "僅第 1–3 回合可當事件出：宋士氣 +10%",
+  million_signatures: "宋士氣 +15%",
+  soong_friends: "宋士氣 +5%；宋在任 1 個空的藍營游離塊放方塊免檢定",
+  kneel_for_votes: "宋士氣 +10%；宋在任 2 個縣市各 +1 需檢定",
+  hsu_hsin_liang: "陳在任一縣市 −1（宋選）；宋士氣 +5%",
+  expel_soong: "宋在任一議題 −2；宋士氣 +5%",
+  yang_exposes: "宋移除 4 顆盤上方塊（連選）；宋失去清廉議題全部方塊；宋士氣 −30%",
+  shifting_story: "僅在「李登輝授意說」出過後可當事件出：宋移除 2 顆盤上方塊（連選）；宋士氣 −10%",
+  hand_in_hand: "連士氣 +10%；經濟議題連 +1",
+  lee_attacks_soong: "宋在任一縣市 −2；宋士氣 +10%",
+  ma_leaks_polls: "法定競選期：連在任 2 個縣市各 +1 需檢定；宋、陳士氣各 +5%",
+  party_congress: "連士氣 +20%",
+  kmt_anniversary: "連士氣 +10%；兩岸議題連 +1",
+  poll_published: "頭條議題的領先者士氣 +5%",
+  strait_tension: "兩岸議題上每人 −1",
+  white_paper: "兩岸議題陳 +1",
+  zhu_rongji: "陳在任 3 個縣市各 +1 免檢定",
+  stock_crash: "經濟議題連 +1；所有人士氣 −5%",
+  lee_secret_help: "陳在任 2 個縣市各 +1 免檢定",
+  tvbs_poll: "士氣最低者 +5%（平手由出牌者選）",
+  pla_drill_rumor: "兩岸議題連 +1、宋 +1；陳士氣 −5%",
+};
+// The same in morale per card (V10 with the cards' own +10%): seat 0 陳 / Chen, 1 宋 / Soong, 2 連 / Lien; "all", "leader"
+// (the 頭條's leader), "lowest" (the lowest morale); [] moves none.
+const MORALE_V08 = {
+  alternation: [[0, 5]], no_nuke4: [[1, 5]], lin_chairman: [[0, 5]], lee_yuan_tseh: [[0, 5]], million_rally: [[0, 5]],
+  chang_chiu: [[0, 15]], poll_lead: [[1, 10]], million_signatures: [[1, 15]], soong_friends: [[1, 5]], kneel_for_votes: [[1, 10]],
+  hsu_hsin_liang: [[1, 5]], expel_soong: [[1, 5]], yang_exposes: [[1, -30]], shifting_story: [[1, -10]], hand_in_hand: [[2, 10]],
+  lee_attacks_soong: [[1, 10]], ma_leaks_polls: [[1, 5], [0, 5]], party_congress: [[2, 20]], kmt_anniversary: [[2, 10]],
+  poll_published: [["leader", 5]], strait_tension: [], white_paper: [], zhu_rongji: [], stock_crash: [["all", -5]],
+  lee_secret_help: [], tvbs_poll: [["lowest", 5]], pla_drill_rumor: [[0, -5]],
+};
+const V08 = (EVENTS.find((e) => e.id === "yang_exposes")?.text || "").includes("士氣");
 const NAMES = /黨產廣告|Party-Assets Ads|Massive Ad Buy/g;
 const FORBID = { zh: /廣告|媒體/, en: /\bads?\b|advert|\bmedia\b/i };
 // The nine cards, rulebook v0.5 §十四 (copied by hand from the vault's rulebook).
@@ -85,7 +134,7 @@ const CARD_TEXT = {
 const UNUSED = ["ui.solo.p.fxMedia", "ui.solo.p.fxMediaRemove", "ui.solo.end.kicker", "ui.solo.end.elected", "ui.solo.end.youWon", "ui.solo.end.youLost", "ui.solo.end.unit", "ui.solo.end.emptyLeft", "ui.solo.end.history"];
 const get = (d, path) => path.split(".").reduce((o, k) => (o && typeof o === "object" ? o[k] : undefined), d);
 const SRC = readdirSync(new URL("../public/", import.meta.url)).filter((f) => f.endsWith(".js")).map((f) => readFileSync(new URL(`../public/${f}`, import.meta.url), "utf8")).join("\n");
-const gate = (fn) => () => (/議題總領先者/.test(all(zh)) ? fn() : "TODO: 規則頁還是 v0.4（沒有「議題總領先者」，#52）");
+const gate = (fn) => () => (/議題總領先者/.test(all(zh)) || V08 ? fn() : "TODO: 規則頁還是 v0.4（沒有「議題總領先者」，#52）");
 
 section("52 規則與文字 v0.5");
 
@@ -101,6 +150,7 @@ check("沒有廣告也沒有媒體：中英所有字串（只有 v0.4 舊局才�
 }));
 
 check("規則頁講 v0.5：議題總領先者（三個議題的總數）、動能結算裡它 +1 動能（中英）", gate(() => {
+  if (V08) return ok(true, "v0.8 沒有動能，議題總領先者不再 +1（#81）：交給 81 那一節");
   const z = all(zh), e = all(en);
   if (!/總數/.test(z)) return "zh 規則頁沒寫出議題總領先者看的是「總數」";
   if (!/議題總領先者[^。]{0,30}\+?1 動能/.test(z)) return "zh 規則頁找不到「議題總領先者 +1 動能」";
@@ -134,8 +184,8 @@ check("九張改寫的牌：中文牌文照規則書 v0.5 §十四一字不差�
   for (const [id, want] of Object.entries(CARD_TEXT)) {
     const c = EVENTS.find((e) => e.id === id);
     if (!c) { bad.push(`${id} 不在牌庫`); continue; }
-    const w = /運氣|士氣/.test(all(zh)) && CARD_TEXT_V07[id] ? CARD_TEXT_V07[id] : want;
-    if (c.text.split("士氣").join("運氣") !== w) bad.push(`${id}：「${c.text}」（${w}）`);
+    const w8 = V08 && CARD_TEXT_V08[id], w = w8 ? CARD_TEXT_V08[id] : /運氣|士氣/.test(all(zh)) && CARD_TEXT_V07[id] ? CARD_TEXT_V07[id] : want;
+    if ((w8 ? c.text : c.text.split("士氣").join("運氣")) !== w) bad.push(`${id}：「${c.text}」（${w}）`);
     const t = get(en, `cards.${id}.text`) || "";
     if (!/issue/i.test(t)) bad.push(`${id} 英文：「${t}」沒寫 issue`);
   }
@@ -228,14 +278,16 @@ check("十二張改寫的牌：中文牌文照規則書 v0.7 §十四一字不�
   for (const [id, want] of Object.entries(CARD_TEXT_V07)) {
     const c = EVENTS.find((e) => e.id === id);
     if (!c) { bad.push(`${id} 不在牌庫`); continue; }
-    if (c.text.split("士氣").join("運氣") !== want) bad.push(`${id}：「${c.text}」（${want}）`); // #76: 士氣 reads as 運氣
+    const w8 = V08 && CARD_TEXT_V08[id];
+    if (w8 ? c.text !== w8 : c.text.split("士氣").join("運氣") !== want) bad.push(`${id}：「${c.text}」（${w8 || want}）`); // #76: 士氣 reads as 運氣; #81: v0.8
   }
   for (const id of LUCK_CARDS) { const t = get(en, `cards.${id}.text`) || ""; if (!/luck|morale/i.test(t)) bad.push(`${id} 英文：「${t}」沒寫 luck`); }
   return bad.length ? bad.join("；") : ok(true, "十二張中文牌文都對，九張運氣牌的英文都寫 luck");
 }));
 check("規則頁講 v0.7：運氣 陳 50%、宋 50%、連 60%；我 ÷（我 + 對手）；20%–80%；催票運氣算領先的議題、最多 95%（中英）", gate7(() => {
   const z = all(zh), e = all(en);
-  if (!/陳 ?50%[^。]{0,8}宋 ?50%[^。]{0,8}連 ?60%/.test(z)) return "zh 規則頁沒寫出開局運氣 陳 50%、宋 50%、連 60%";
+  const lien = V08 ? 50 : 60; // #81: v0.8 opens 連 at 50%
+  if (!new RegExp(`陳 ?50%[^。]{0,8}宋 ?50%[^。]{0,8}連 ?${lien}%`).test(z)) return `zh 規則頁沒寫出開局運氣 陳 50%、宋 50%、連 ${lien}%`;
   if (!/÷/.test(z) || !/對手的(運氣|士氣)/.test(z)) return "zh 規則頁沒寫出有特定對手時的成功率（我 ÷（我 + 對手））";
   if (!/20%[^。]{0,4}80%/.test(z)) return "zh 規則頁沒寫出運氣 20%–80%";
   if (!/催票(運氣|士氣)/.test(z) || !/領先的議題/.test(z) || !/95%/.test(z)) return "zh 規則頁沒寫出催票運氣（領先的議題、最多 95%）";
@@ -248,9 +300,92 @@ check("候選人表：連的候選人牌 4 CP，有一列起始運氣；連的�
   const rows = (d) => flat(d.rules, "rules").filter(([k]) => /table\.rows/.test(k)).map(([, v]) => v);
   if (!rows(zh).some((v) => /^4 CP/.test(v)) || !rows(en).some((v) => /^4 CP/.test(v))) return "候選人表裡沒有一格以 4 CP 開頭（連的候選人牌）";
   const zb = get(zh, "ui.solo.cand.lien.blurb") || "", eb = get(en, "ui.solo.cand.lien.blurb") || "";
+  if (V08) { // #81: 連 opens at 50% like the others
+    if (/60 ?%/.test(zb) || /60 ?%/.test(eb)) return `連的簡介還講 60%（v0.8 是 50%）：「${/60 ?%/.test(zb) ? zb : eb}」`;
+    return ok(true, "候選人表有 4 CP 與起始士氣；連的簡介不再講 60%（v0.8）");
+  }
   if (!/運氣|士氣/.test(zb) || !/60%/.test(zb)) return `zh 連的簡介沒講 60% 的運氣：「${zb}」`;
   if (!/luck|morale/i.test(eb) || !/60 ?%/.test(eb)) return `en 連的簡介沒講 60% luck：「${eb}」`;
   return ok(true, "候選人表有 4 CP 與起始運氣；連的簡介講 60%");
+}));
+
+section("81 規則與文字 v0.8");
+
+// Strings only a game saved on v0.7 with momentum shows (its momentum on the boards and their help, the trigger question
+// and its options, the slot-2 reward choice, the momentum lines of the record and the feed, TVBS's momentum pick, the
+// election conversion with momentum, the issue track's momentum rewards, the glossary word, the table talk about momentum).
+// They stay: an old game still draws them. A v0.8 game needs its own words for some of them (#82).
+const MOM_ONLY = new Set([
+  "ui.look.board.mom", "ui.solo.hdr.mom", "ui.solo.hdr.momL", "ui.solo.help.mom", "ui.solo.r.decay", "ui.solo.r.mediaBonus",
+  "ui.solo.r.leadBonus", "ui.solo.r.slot1", "ui.solo.r.slot3", "ui.solo.r.momNow", "ui.solo.p.trigger", "ui.solo.p.fxTvbs",
+  "ui.solo.p.reward", "ui.solo.b.triggerSub", "ui.solo.o.playBlock", "ui.solo.o.trigger", "ui.solo.o.rewardMom", "ui.solo.o.pick",
+  "ui.solo.f.rewardMom", "ui.solo.f.pickMom", "ui.solo.f.convert", "ui.solo.f.convertLuck", "ui.solo.f.convertLuckLead",
+  "ui.solo.hl.reward.1", "ui.solo.hl.reward.3", "terms.momentum", "talk.block_trigger", "talk.trigger_event", "talk.pass_trigger",
+  "talk.effect_tvbs", "talk.reward_momentum",
+]);
+const FORBID8 = { zh: /動能/, en: /momentum/i };
+const gate8 = (fn) => () => (V08 ? fn() : "TODO: 牌文還是 v0.7（楊吉雄爆料沒寫士氣，#81）");
+const SEAT_EN = ["Chen", "Soong", "Lien"];
+// English: the morale a card gives, as "Chen's morale +5%" (two seats: "Soong's and Chen's morale +5% each", "Soong and
+// Chen's morale each +5%" …); "Everyone's morale −5%"; the headline issue's leader "… morale +5%"; "… lowest morale … +5%".
+function enMorale(t, list) {
+  if (!list.length) return /morale/i.test(t) ? "寫了 morale（這張不動士氣）" : true;
+  for (const [who, n] of list) {
+    const amt = `${n > 0 ? "\\+" : "[−-]"}${Math.abs(n)} ?%`;
+    const re = who === "all" ? new RegExp(`(everyone|every player|each player|all players)('s)? morale( each)? ${amt}`, "i")
+      : who === "leader" ? new RegExp(`leader[^.]*morale ${amt}|morale ${amt}[^.]*leader`, "i")
+      : who === "lowest" ? new RegExp(`lowest morale[^.]*${amt}`, "i")
+      : new RegExp(`\\b${SEAT_EN[who]}('s)?( and \\w+('s)?)? morale( each)? ${amt}`);
+    if (!re.test(t)) return `沒寫 ${typeof who === "number" ? SEAT_EN[who] + "'s " : who + " "}morale ${n > 0 ? "+" : "−"}${Math.abs(n)}%`;
+  }
+  return true;
+}
+
+check("沒有動能：中英所有字串、所有中文牌文與英文牌文（只有 v0.7 有動能的舊局才會用到的那些除外）", gate8(() => {
+  const left = [];
+  for (const [lang, d] of LANGS) for (const [k, v] of flat(d)) {
+    if (MOM_ONLY.has(k)) continue;
+    const m = v.match(FORBID8[lang]);
+    if (m) left.push(`${lang} ${k}：「${v.slice(Math.max(0, m.index - 12), m.index + 14)}」`);
+  }
+  for (const c of EVENTS) { const m = (c.text || "").match(FORBID8.zh); if (m) left.push(`cards.js ${c.id}：「${c.text}」`); }
+  return left.length ? `還有 ${left.length} 處：${left.slice(0, 6).join("；")}${left.length > 6 ? "…" : ""}` : ok(true, `中英字串與 ${EVENTS.length} 張牌都沒有動能（${MOM_ONLY.size} 個舊局字串除外）`);
+}));
+
+check("27 張改寫的牌：中文牌文照 v0.8 草稿一字不差；英文寫出照 V10 的士氣（不動士氣的四張不寫）", gate8(() => {
+  const bad = [];
+  for (const [id, want] of Object.entries(CARD_TEXT_V08)) {
+    const c = EVENTS.find((e) => e.id === id);
+    if (!c) { bad.push(`${id} 不在牌庫`); continue; }
+    if (c.text !== want) bad.push(`${id}：「${c.text}」（v0.8：「${want}」）`);
+    const t = get(en, `cards.${id}.text`) || "", r = enMorale(t, MORALE_V08[id]);
+    if (r !== true) bad.push(`${id} 英文「${t}」${r}`);
+  }
+  return bad.length ? `${bad.length} 處：${bad.slice(0, 6).join("；")}${bad.length > 6 ? "…" : ""}` : ok(true, "27 張中文牌文一字不差，英文的士氣都對");
+}));
+
+check("規則頁講 v0.8：開局士氣 陳 50%、宋 50%、連 50%（候選人表那一列也是）；對手當 CP 打出你的事件，一定替你發生；結算階段（中英）", gate8(() => {
+  const z = all(zh), e = all(en);
+  if (!/陳 ?50%[^。]{0,8}宋 ?50%[^。]{0,8}連 ?50%/.test(z)) return "zh 規則頁沒寫出開局士氣 陳 50%、宋 50%、連 50%";
+  if (!/Chen,? (has )?50 ?%[^.]{0,24}Soong,? (has )?50 ?%[^.]{0,24}Lien,? (has )?50 ?%/.test(e)) return "en 規則頁沒寫出 morale Chen 50%, Soong 50%, Lien 50%";
+  for (const [lang, d] of LANGS) {
+    const rows = rulesOf(d).filter(([k]) => /table\.rows\.\d+\.\d+$/.test(k));
+    const label = rows.find(([, v]) => (lang === "zh" ? /起始士氣/ : /start\w* morale/i).test(v));
+    if (!label) return `${lang} 候選人表找不到起始士氣那一列`;
+    const row = label[0].replace(/\.\d+$/, "");
+    const cells = rows.filter(([k]) => k.startsWith(row + ".") && k !== label[0]).map(([, v]) => v);
+    if (cells.length !== 3 || !cells.every((c) => /^50 ?%/.test(c))) return `${lang} 起始士氣那一列不是三格 50%：${cells.join(" / ")}`;
+  }
+  if (!/CP[^。]{0,40}(一定|自動)|(一定|自動)[^。]{0,40}CP/.test(z)) return "zh 規則頁沒寫出對手當 CP 打出你的事件時一定（自動）替你發生";
+  if (!/CP[^.]{0,80}(always|automatically)|(always|automatically)[^.]{0,80}CP/i.test(e)) return "en 規則頁沒寫出 an opponent's CP play of your event always triggers it";
+  if (!/結算階段/.test(z)) return "zh 規則頁沒有「結算階段」";
+  return ok(true, "中英：開局士氣 50/50/50、候選人表三格 50%、對手的事件一定觸發、結算階段");
+}));
+
+check("只有舊局才用的字串還在：v0.7 有動能的局要畫的 31 個字串，中英都在", gate8(() => {
+  const miss = [];
+  for (const [lang, d] of LANGS) for (const k of MOM_ONLY) if (typeof get(d, k) !== "string") miss.push(`${lang} ${k}`);
+  return miss.length ? `不見了：${miss.join("、")}` : ok(true, `中英各 ${MOM_ONLY.size} 個都在`);
 }));
 
 test("rulestext", () => {
