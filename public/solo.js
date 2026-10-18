@@ -246,7 +246,7 @@ export function screen(session, lang, opts = {}) {
   const html = tableHTML(v, d.choices, lang, {
     feed: session.feed, wait: botsToMove(session), advisor: { on: !!session.advisor, why: d.why },
     undo: session.tut || botsToMove(session).length ? null : canUndo(session) ? "on" : session.drew ? "off" : null,
-    recent: recentLines(rec, v, x), rec, result: resultBlock(session.mine, x), autoNote: session.autoNote || null, changed, ...opts, ...(session.tut && opts.county == null && boxCounty(session) != null ? { county: boxCounty(session) } : {}), turnCard: session.tut ? false : opts.turnCard,
+    recent: recentLines(rec, v, x), rec, mineActs: (session.mine && session.mine.lines) || [], result: resultBlock(session.mine, x), autoNote: session.autoNote || null, changed, ...opts, ...(session.tut && opts.county == null && boxCounty(session) != null ? { county: boxCounty(session) } : {}), turnCard: session.tut ? false : opts.turnCard,
   });
   return session.tut ? decorate(html, session, lang, opts) : html;
 }

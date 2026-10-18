@@ -55,6 +55,7 @@ export function drawInto(root, html, state = {}) {
   applyState(root, state);
   fitBar(root);
   fitPop(root);
+  fitChips(root);
   keepToast(root);
   feedToLast(root);
   const hs = root.querySelector(".hs");
@@ -74,6 +75,56 @@ export function drawInto(root, html, state = {}) {
 export function feedToLast(root) {
   const ol = root.querySelector('.t-feed[data-open="1"] > ol');
   if (ol) ol.scrollTop = ol.scrollHeight;
+}
+// #72: the chips of the actions (.act-stack, one per county) are first placed by map.js from an estimate of their size and of the floats at the
+// map's foot; once drawn, the page measures the real boxes and moves a stack that meets another county's box, a float (the notes, the issue
+// totals), an earlier stack or the map's edge, or whose chips would be more than 36 px from their county, to the free spot that costs least.
+export function fitChips(root) {
+  const box = root.querySelector(".tw-box");
+  const stacks = box ? [...box.querySelectorAll(".act-stack")] : [];
+  if (!stacks.length) return;
+  const B = box.getBoundingClientRect();
+  if (!B.width) return;
+  const rel = (r) => ({ x0: r.left - B.left, x1: r.right - B.left, y0: r.top - B.top, y1: r.bottom - B.top });
+  const hit = (a, b) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
+  const papers = new Map([...box.querySelectorAll("rect[data-paper]")].map((p) => [p.getAttribute("data-paper"), rel(p.getBoundingClientRect())]));
+  const floats = [...root.querySelectorAll(".t-notes > *, .t-lead")].filter((e) => e.getClientRects().length).map((e) => rel(e.getBoundingClientRect()));
+  const placed = [];
+  for (const st of stacks) {
+    const k = st.querySelector("[data-county]").getAttribute("data-county"), P = papers.get(k);
+    if (!P) continue;
+    const S0 = rel(st.getBoundingClientRect()), W = S0.x1 - S0.x0, H = S0.y1 - S0.y0;
+    const offs = [...st.querySelectorAll("[data-act-chip]")].map((c) => { const r = rel(c.getBoundingClientRect()); return { dx: r.x0 - S0.x0, dy: r.y0 - S0.y0, w: r.x1 - r.x0, h: r.y1 - r.y0 }; });
+    const cost = (x0, y0) => {
+      const R = { x0, x1: x0 + W, y0, y1: y0 + H };
+      let c = (Math.max(0, -R.x0) + Math.max(0, R.x1 - (B.width)) + Math.max(0, -R.y0) + Math.max(0, R.y1 - B.height)) * 1000;
+      for (const o of offs) {
+        const cx = x0 + o.dx + o.w / 2, cy = y0 + o.dy + o.h / 2;
+        c += (Math.max(0, P.x0 - 36 - cx, cx - P.x1 - 36) + Math.max(0, P.y0 - 36 - cy, cy - P.y1 - 36)) * 1000;
+      }
+      const grown = (q, g) => ({ x0: q.x0 - g, x1: q.x1 + g, y0: q.y0 - g, y1: q.y1 + g });
+      for (const [j, q] of papers) if (j !== k) c += hit(R, grown(q, 1)) * 10;
+      for (const f of floats) c += hit(R, grown(f, 2)) * 10;
+      for (const q of placed) c += hit(R, grown(q, 1)) * 10;
+      return c;
+    };
+    let best = { c: cost(S0.x0, S0.y0), x: S0.x0, y: S0.y0 };
+    if (best.c > 0) {
+      for (const g of [0, 10, 20]) {
+        const spots = [];
+        for (let x = P.x0 - W + 4; x <= P.x1 - 4; x += 4) { spots.push([x, P.y1 + 1 + g]); spots.push([x, P.y0 - H - 1 - g]); }
+        for (let y = P.y0 - H + 4; y <= P.y1 - 4; y += 4) { spots.push([P.x1 + 1 + g, y]); spots.push([P.x0 - 1 - W - g, y]); }
+        for (const [x, y] of spots) {
+          const c = cost(x, y) + g * 0.01 + Math.hypot(x + W / 2 - (P.x0 + P.x1) / 2, y + H / 2 - (P.y0 + P.y1) / 2) * 0.001;
+          if (c < best.c) best = { c, x, y };
+        }
+        if (best.c < 1) break;
+      }
+      // (in % of the map, so that the map's size changing does not undo it)
+      st.style.left = ((best.x / B.width) * 100).toFixed(3) + "%"; st.style.top = ((best.y / B.height) * 100).toFixed(3) + "%"; st.style.right = "auto"; st.style.bottom = "auto";
+    }
+    placed.push({ x0: best.x, x1: best.x + W, y0: best.y, y1: best.y + H });
+  }
 }
 // The rivals' line over the map shows for about four seconds and fades (CSS); a redraw must not bring it back, so it is told how long it has been there
 // (a new line starts it again).

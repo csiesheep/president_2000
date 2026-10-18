@@ -395,9 +395,65 @@ export function taiwanMap(view, lang, opts = {}) {
   // The rivals' chips (#66): beside the paper, on its bottom-left edge (the top-right is the candidates', the bottom-right the endorsement
   // stamp's), kept inside the board. They sit in the page as HTML placed in % of the svg and take no taps.
   const pc = (n, of) => Math.round((n / of) * 100000) / 1000;
-  const chips = Object.entries(o.acts || {}).map(([k, a]) => {
-    const s = L.spots[k], x = Math.max(2, Math.min(m.w - 44, s.cx - s.w / 2)), y = Math.max(9, Math.min(m.h - 9, s.cy + s.h / 2));
-    return `<span class="act-chip s${a.who}" data-act-chip data-county="${k}" data-who="${SEATS[a.who]}" data-n="${a.n}" aria-hidden="true" style="left:${pc(x, m.w)}%;top:${pc(y, m.h)}%">${esc(cand(d, a.who).short)} ${a.n ? "+" + a.n : "▸"}</span>`;
+  // #72: a county's chips (one per candidate who acted there, the human's own too) stand in one stack under the paper, each with a mark per
+  // action in the record's order (+1 / 搶 / −1 / ✗ for a check that failed / ▸ for a walk). A stack on the right half hangs from the paper's
+  // right edge, on the left half from its left edge; one at the foot of the map stands above the paper instead.
+  const word = (e) => (e.k === "move" ? "▸" : !e.ok ? "✗" : e.k === "steal" ? (lang === "en" ? "⇆" : "搶") : e.k === "remove" ? "−1" : "+1");
+  // Where a county's chips go is picked in svg units: a row (else a column) of them beside the paper on the first of six sides (below or above,
+  // from its left or right edge; right of it; left of it) where the estimated box lies in the map, covers no other county's paper and no chip
+  // already placed; if none is free, the one that covers the least.
+  const sc = mode === "phone" ? 0.84 : 0.92, placed = [];
+  // the floats at the map's bottom-right corner (the notes stack and the issue totals, #70) are an obstacle, at their largest extent
+  const FOOT = { x0: m.w * (mode === "phone" ? 0.55 : 0.6), x1: m.w, y0: m.h - (mode === "phone" ? 140 : 110) / sc, y1: m.h };
+  const hit = (a, b) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
+  const chips = Object.entries(o.marks || {}).map(([k, list]) => {
+    const s = L.spots[k], P = { x0: s.cx - s.w / 2, x1: s.cx + s.w / 2, y0: s.cy - s.h / 2, y1: s.cy + s.h / 2 };
+    let best = null;
+    // (the chip in px: its padding, a letter of the name, a mark, its height, one more line of marks; "tight" is the same in smaller type)
+    for (const tight of [0, 1, 2]) for (const pl of [99, 5, 4, 3, 2]) for (const dir of ["row", "col"]) {
+      const z = [1, 0.78, 0.68][tight], ch = (mode === "phone" ? 20 : 26) * z, lh = (mode === "phone" ? 14 : 17) * z, cw = (mode === "phone" ? [12, 12, 15] : [14, 13, 17]).map((n) => n * z);
+      // a mark is as wide as its letters; a failed one has its pill's padding too; the grid takes the widest of each column
+      const mw = (a) => { const cols = []; a.list.forEach((e, i) => { const w = e.k !== "move" && !e.ok ? cw[2] + 5 * z : /^.[^\d]?$/.test(word(e)) && word(e).length === 1 ? cw[2] - 4 * z : cw[2]; cols[i % pl] = Math.max(cols[i % pl] || 0, w); }); return cols.reduce((x, y) => x + y, 0); };
+      const wc = list.map((a) => cw[0] + (lang === "en" ? 6.6 * z : cw[1]) * cand(d, a.who).short.length + mw(a) + 2);
+      const hc = list.map((a) => ch + (Math.ceil(a.list.length / pl) - 1) * lh);
+      const sum = (a) => a.reduce((x, y) => x + y, 0);
+      const [W0, H0] = (dir === "row" ? [(sum(wc) + 2 * (list.length - 1)) / sc, Math.max(...hc) / sc] : [Math.max(...wc) / sc, (sum(hc) + list.length - 1) / sc]);
+      const W = W0 * 1.1 + 3, H = H0 + 2; // (the estimate is a little generous)
+      if (pl < 99 && list.every((a) => a.list.length <= pl)) continue;
+      const spots = [];
+      for (const g of [0, 12, -3]) { // g: how far off the paper's edge (the nearer the better; the 40 px rule is in the cost)
+        for (let x = P.x0 - W + 6; x <= P.x1 - 6; x += 6) { spots.push([x, P.y1 + 1.5 + g, g]); spots.push([x, P.y0 - H - 1.5 - g, g]); }
+        for (let y = P.y0 - H + 6; y <= P.y1 - 6; y += 6) { spots.push([P.x1 + 1 + g, y, g]); spots.push([P.x0 - 1 - W - g, y, g]); }
+      }
+      for (const [x0, y0, g] of spots) {
+        const R = { x0, x1: x0 + W, y0, y1: y0 + H };
+        let cost = (Math.max(0, -R.x0) + Math.max(0, R.x1 - m.w) + Math.max(0, -R.y0) + Math.max(0, R.y1 - m.h)) * 1000;
+        const rt = (R.x0 + R.x1) / 2 > s.cx || R.x1 <= P.x0 + 2, upw = (R.y0 + R.y1) / 2 < s.cy && R.y1 <= P.y0 + 2; // as the chips are anchored in the page, the real box
+        const bx = rt ? R.x1 - W0 : R.x0, by = upw ? R.y1 - H0 : R.y0, cx = bx + W0 / 2, cy = by + H0 / 2;
+        let run = 0; // each chip's centre has to be within 40 px of the paper
+        list.forEach((a, i) => {
+          const w = wc[i] / sc, h = hc[i] / sc;
+          const ex = dir === "row" ? bx + run + w / 2 : rt ? bx + W0 - w / 2 : bx + w / 2, ey = dir === "row" ? cy : by + run + h / 2;
+          run += (dir === "row" ? w : h) + 2 / sc;
+          cost += (Math.max(0, P.x0 - 34 / sc - ex, ex - P.x1 - 34 / sc) + Math.max(0, P.y0 - 34 / sc - ey, ey - P.y1 - 34 / sc)) * 1000;
+        });
+        L.spots.forEach((t, j) => { if (j !== +k) cost += hit(R, { x0: t.cx - t.w / 2 - 1.5, x1: t.cx + t.w / 2 + 1.5, y0: t.cy - t.h / 2 - 1.5, y1: t.cy + t.h / 2 + 1.5 }) * 10; });
+        for (const q of placed) cost += hit(R, q) * 10;
+        cost += hit(R, FOOT) * 10;
+        cost += Math.hypot(cx - s.cx, cy - s.cy) * 0.01 + (pl < 99 ? 0.5 : 0) + (dir === "col" ? 0.2 : 0) + (tight * 0.8) + (g < 0 ? 0.6 : 0);
+        if (!best || cost < best.cost) best = { cost, R, dir, pl, tight };
+      }
+    }
+    placed.push(best.R);
+    const right = (best.R.x0 + best.R.x1) / 2 > s.cx || best.R.x1 <= P.x0 + 2, up = (best.R.y0 + best.R.y1) / 2 < s.cy && best.R.y1 <= P.y0 + 2;
+    const edge = right ? `right:${pc(m.w - best.R.x1, m.w)}%` : `left:${pc(best.R.x0, m.w)}%`;
+    const at = up ? `bottom:${pc(m.h - best.R.y1, m.h)}%` : `top:${pc(best.R.y0, m.h)}%`;
+    const inner = list.map((a) => {
+      const n = a.list.filter((e) => e.k !== "move" && e.ok).length;
+      return `<span class="act-chip s${a.who}${a.mine ? " mine" : ""}" data-act-chip data-county="${k}" data-who="${SEATS[a.who]}" data-n="${n}"${a.mine ? " data-mine" : ""} aria-hidden="true"><b>${esc(cand(d, a.who).short)}</b>` +
+        `<span class="act-ms" style="--pl:${Math.min(a.list.length, best.pl)}">` + a.list.map((e) => `<i class="act-mark${e.k !== "move" && !e.ok ? " no" : ""}" data-act-mark data-k="${e.k}" data-ok="${e.k === "move" || e.ok ? 1 : 0}">${word(e)}</i>`).join("") + `</span></span>`;
+    }).join("");
+    return `<div class="act-stack${right ? " r" : ""}${best.dir === "row" ? " row" : ""}${best.tight ? " sm" + best.tight : ""}" aria-hidden="true" style="${edge};${at}">${inner}</div>`;
   }).join("");
   return `<section class="t-map" aria-label="${esc(M.board)}"><h3 class="sr">${esc(M.board)}</h3>` +
     `<div class="tw-box" style="--aw:${m.w};--ah:${m.h}" title="${esc(M.hint)}">${svg}${pics.join("")}${chips}${key}${media}${o.floats || ""}${o.overlay || ""}</div><ul class="sr tw-keys">${keyList}</ul>${o.cover || ""}</section>`;
