@@ -62,7 +62,7 @@ export default {
     },
     // Direction C (#26): the box lid on the home page, the player boards, the candidate card
     look: {
-      home: { meta: "3 players · 9 turns", sub: "Soong, Lien, Chen.", play: "Play solo", playSub: "Against three levels of AI", host: "Host a room", hostSub: "Send the code to friends", join: "Join", joinSub: "Enter the 4-character code", rules: "Open the rulebook" },
+      home: { meta: "3 players · 9 turns", sub: "Soong, Lien, Chen.", play: "Play solo", playSub: "Against four levels of AI", host: "Host a room", hostSub: "Send the code to friends", join: "Join", joinSub: "Enter the 4-character code", rules: "Open the rulebook" },
       board: { label: "Player boards", cubes: "{n} on the board", mom: "Momentum", hand: "Hand {n} · kept {k}", bag: "Bag {n}", luck: "Morale {n}%", luckW: "Morale", canvassW: "Canvass", votes: "M votes", votesNone: " votes", leadTag: "Issue lead" },
       card: { seal: "Once a game", used: "Used" },
     },
@@ -94,7 +94,7 @@ export default {
       setup: {
         kicker: "SOLO VS. BOTS", title: "Whose campaign will you run?", sub: "The other two seats are played by the computer.",
         pick: "Pick", picked: "Picked", level: "Bot level",
-        levelNote: { 1: "The Volunteer only fills blocks: no taking and no triggering.", 2: "The Campaign chief counts strategic voting, takes blocks and triggers.", 3: "The Strategist also saves cards for the Policy Forum and cuts issue leads to a tie." },
+        levelNote: { 0: "The Beginner often misplays and miscounts votes: good for a first game.", 1: "The Volunteer only fills blocks: no taking.", 2: "The Campaign chief counts strategic voting and takes blocks.", 3: "The Strategist also saves cards for the Policy Forum and cuts issue leads to a tie." },
         start: "Start the campaign", note: "Nine turns. Progress is kept in this tab; a reload brings you back to the same screen.", home: "← Home",
       },
       menu: { quit: "Abandon this game", confirm: "Abandon this game and go back to setup?", skip: "Tap to jump to this step's result, tap twice to skip the rivals' turn", label: "Menu",
@@ -513,7 +513,7 @@ export default {
     media: "Media",
     issue: "Issue",
   },
-  bots: { 1: "Volunteer", 2: "Campaign chief", 3: "Strategist" },
+  bots: { 0: "Beginner", 1: "Volunteer", 2: "Campaign chief", 3: "Strategist" },
   // Table talk: what the bot's campaign staff say, in "we", about this move only. One key per WHY in bots.js.
   talk: {
     only_move: "There's only one move left, so we take it.",

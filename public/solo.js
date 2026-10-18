@@ -156,7 +156,7 @@ export function stepBot(session) {
   const todo = botsToMove(session);
   if (!todo.length) return session;
   const r = E.makeRng(0); r.state = session.rng;
-  const { move: m, why } = chooseMove(session.st, todo[0], session.level, () => r.next());
+  const { move: m, why } = chooseMove(session.st, todo[0], session.level, () => r.next(), { humans: [session.seat] });
   // A bot has moved: what the human did before it is final (#43).
   return { ...move(session, todo[0], m, why), rng: r.state, undo: [], drew: false };
 }

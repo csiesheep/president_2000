@@ -229,14 +229,14 @@ if (typeof document !== "undefined") {
       syncUrl();
       $("#solo").classList.remove("intable");
       $("#quit").hidden = true;
-      const pick = store.get(SETUP) || { seat: 0, level: 2 };
+      const pick = store.get(SETUP) || { seat: 0, level: 0 };
       const seatOrder = [1, 2, 0], keys = ["chen", "soong", "lien"], no = [5, 1, 2];
       const cards = seatOrder.map((p) => {
         const c = S.cand[keys[p]], on = pick.seat === p;
         return `<button type="button" class="cand s${p}${on ? " on" : ""}" data-seat="${p}" aria-pressed="${on}"><span class="pic"><img src="art/candidates/${keys[p]}.webp" alt="" width="480" height="640" loading="lazy" decoding="async"><b class="no">${no[p]}</b></span>` +
           `<span class="cb"><span class="nm">${esc(c.name)}</span><span class="bl">${esc(c.blurb)}</span></span><span class="tag">${esc(on ? S.setup.picked : S.setup.pick)}</span></button>`;
       }).join("");
-      const levels = [1, 2, 3].map((n) => `<button type="button" class="lv${pick.level === n ? " on" : ""}" data-level="${n}" aria-pressed="${pick.level === n}">${esc(T.bots[n])}</button>`).join("");
+      const levels = [0, 1, 2, 3].map((n) => `<button type="button" class="lv${pick.level === n ? " on" : ""}" data-level="${n}" aria-pressed="${pick.level === n}">${esc(T.bots[n])}</button>`).join("");
       drawInto(stage, `<section class="setup"><p class="kicker">${esc(S.setup.kicker)}</p><h1 class="st">${esc(S.setup.title)}</h1><p class="sub">${esc(S.setup.sub)}</p>` +
         `<div class="cands">${cards}</div><h2 class="lh">${esc(S.setup.level)}</h2><div class="lvs">${levels}</div><p class="sub">${esc(S.setup.levelNote[pick.level])}</p>` +
         `<button type="button" class="big go" data-start="1">${esc(S.setup.start)}</button><p class="note">${esc(S.setup.note)}</p>` +
@@ -287,10 +287,10 @@ if (typeof document !== "undefined") {
         session = d.tut === "skip" ? Tut.skip(session) : Tut.next(session);
         ui = { ...ui, raise: false, sel: null, picks: [], confirm: null, county: null, seat: null };
         save(); pump(); // the bubble scrolls the next target into view itself
-      } else if (d.seat != null) { const p = store.get(SETUP) || { seat: 0, level: 2 }; store.set(SETUP, { ...p, seat: +d.seat }); setup(); }
-      else if (d.level != null) { const p = store.get(SETUP) || { seat: 0, level: 2 }; store.set(SETUP, { ...p, level: +d.level }); setup(); }
+      } else if (d.seat != null) { const p = store.get(SETUP) || { seat: 0, level: 0 }; store.set(SETUP, { ...p, seat: +d.seat }); setup(); }
+      else if (d.level != null) { const p = store.get(SETUP) || { seat: 0, level: 0 }; store.set(SETUP, { ...p, level: +d.level }); setup(); }
       else if (d.start) {
-        const p = store.get(SETUP) || { seat: 0, level: 2 };
+        const p = store.get(SETUP) || { seat: 0, level: 0 };
         const seed = crypto.getRandomValues(new Uint32Array(1))[0];
         session = Solo.setAdvisor(Solo.advance(Solo.newSolo({ seat: p.seat, level: p.level, seed })), store.get(ADV) === true);
         ui = { feed: deskNow(), raise: false, sel: null, picks: [], help: null, moves: false, confirm: null, county: null, seat: null, narrow: narrowNow() };

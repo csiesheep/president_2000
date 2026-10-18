@@ -61,7 +61,7 @@ export default {
     },
     // 方向 C（#26）：首頁的盒蓋、玩家板、候選人牌
     look: {
-      home: { meta: "3 人 · 9 回合", sub: "宋楚瑜、連戰、陳水扁。", play: "單人開打", playSub: "對三種難度的 AI", host: "開房", hostSub: "傳代碼給朋友", join: "加入", joinSub: "輸入 4 碼代碼", rules: "翻開規則書" },
+      home: { meta: "3 人 · 9 回合", sub: "宋楚瑜、連戰、陳水扁。", play: "單人開打", playSub: "對四種難度的 AI", host: "開房", hostSub: "傳代碼給朋友", join: "加入", joinSub: "輸入 4 碼代碼", rules: "翻開規則書" },
       board: { label: "玩家板", cubes: "{n} 顆在盤上", mom: "動能", hand: "手牌 {n} · 已留 {k}", bag: "袋中 {n}", luck: "士氣 {n}%", luckW: "士氣", canvassW: "催票", votes: "0萬票", votesNone: "票", leadTag: "議題領先" },
       card: { seal: "整局一次", used: "已用" },
     },
@@ -93,7 +93,7 @@ export default {
       setup: {
         kicker: "單人對戰 AI", title: "你要替誰打這場選戰？", sub: "另外兩個位子由電腦操盤。",
         pick: "選擇", picked: "已選", level: "對手強度",
-        levelNote: { 1: "助選員只會填塊，不搶、不觸發。", 2: "總幹事會算棄保、搶塊與觸發。", 3: "操盤手還會留牌打政見發表會、卡議題平手。" },
+        levelNote: { 0: "新手常常出錯牌、算不準票，適合第一次玩。", 1: "助選員只會填塊，不搶塊。", 2: "總幹事會算棄保與搶塊。", 3: "操盤手還會留牌打政見發表會、卡議題平手。" },
         start: "開始選戰 · 1999 年 11 月", note: "九個回合。進度存在這個分頁，重新整理會回到同一個畫面。", home: "← 首頁",
       },
       menu: { quit: "放棄這局", confirm: "放棄這一局，回到設定？", skip: "點一下跳到這一步的結果，連點兩下跳過對手回合", label: "選單",
@@ -513,7 +513,7 @@ export default {
     media: "媒體",
     issue: "議題",
   },
-  bots: { 1: "助選員", 2: "總幹事", 3: "操盤手" },
+  bots: { 0: "新手", 1: "助選員", 2: "總幹事", 3: "操盤手" },
   // 桌邊話：電腦對手的競選幕僚說的話，用「我們」，只談這一步棋。每個 key 對應 bots.js 的 WHY。
   talk: {
     only_move: "只剩這一步可走，我們照辦。",
