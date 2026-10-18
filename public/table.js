@@ -16,6 +16,7 @@ const NO = [5, 1, 2]; // the ballot numbers on the 1999 flags: 陳 5, 宋 1, 連
 const SHOW_ORDER = [1, 2, 0]; // 宋, 連, 陳: ballot-number order, as in the mockups
 // v0.6 (#54, #57): no initiative; the turn's order (v.order, votes fewest first) is how the candidates' boards stand.
 const isV06 = (v) => !!v && (v.rules === "v0.6" || v.rules === "v0.7"); // v0.7 (#60) is built on v0.6: the order, the reshuffled issues, no local boss
+const noMom = (v) => !!v && v.momentum === "none"; // v0.8 (#82): a game with no momentum at all (a v0.7 game saved before has it, and shows it)
 const isV07 = (v) => !!v && v.rules === "v0.7"; // v0.7 (#55, #58): luck instead of the bag and the rest cubes
 const orderOf = (v) => (isV06(v) && Array.isArray(v.order) && v.order.length === 3 ? v.order : SHOW_ORDER);
 const orderText = (order, x) => order.map((p) => x.short(p)).join(" → "); // no break inside it: a long line moves it whole
@@ -247,7 +248,7 @@ export function labelMove(v, m, lang) {
     case "grey": return tr("o.grey", { county: x.county(m.county) });
     case "remove": return tr("o.remove", { county: x.county(m.county), who: x.short(m.target), kind: tr("o.block." + m.t) }) + suffix;
     case "convert": return tr("o.convert", { county: x.county(m.county) });
-    case "pick": return tr("o.pick", { who: x.short(m.seat) });
+    case "pick": return tr(noMom(v) ? "o.pickMorale" : "o.pick", { who: x.short(m.seat) });
   }
   return tr("o.unknown");
 }
@@ -671,7 +672,7 @@ function playersHTML(v, x, o = {}) {
   const onBoard = (p) => v.counties.reduce((s, c) => s + c.blocks.filter((b) => b.o === p).length, 0);
   const first = (p) => (isV06(v) ? v.order[0] === p : v.initiative === p) && v.phase !== "end";
   const flag = x.tr(isV06(v) ? "hdr.first" : "hdr.star");
-  const v7 = isV07(v), leadP = hasLead(v) && v.phase !== "end" ? issueTotals(v).who : -1;
+  const nm = noMom(v), v7 = isV07(v), leadP = hasLead(v) && v.phase !== "end" ? issueTotals(v).who : -1;
   const ts = turnSeat(v); // 甲 (#73): the board of whoever is to act is lit and wears a tag
   const boards = orderOf(v).map((p) => {
     const mom = v.mom[p], n = onBoard(p);
@@ -685,17 +686,17 @@ function playersHTML(v, x, o = {}) {
       return `<span class="pl-lk${prov ? " prov" : ""}${elect ? " elect" : ""}"><small>${esc(elect ? L.canvassW : L.luckW)}</small> <b>${luckNow(v, q)}%</b></span>`;
     };
     return `<article class="pl s${p}${p === v.seat ? " me" : ""}${first(p) ? " first" : ""}"${ts === p ? ` data-turn="${SEATS[p]}"` : ""}>` +
-      `<div class="pl-card" data-seat="${p}"${v7 ? ` data-luck="${luckNow(v, p)}"` : ""}>${ts === p ? `<b class="pl-tag" data-turn-tag>${tagHtml(x, v, p)}</b>` : ""}<button type="button" class="pl-tap" data-detail="${p}" aria-expanded="false" aria-label="${esc(`${x.full(p)} · ${fill(L.cubes, { n })} · ${L.mom} ${mom}`)}">` +
+      `<div class="pl-card" data-seat="${p}"${v7 ? ` data-luck="${luckNow(v, p)}"` : ""}>${ts === p ? `<b class="pl-tag" data-turn-tag>${tagHtml(x, v, p)}</b>` : ""}<button type="button" class="pl-tap" data-detail="${p}" aria-expanded="false" aria-label="${esc(`${x.full(p)} · ${fill(L.cubes, { n })}${nm ? "" : ` · ${L.mom} ${mom}`}`)}">` +
       `<span class="pl-pic"><img src="art/candidates/${SEATS[p]}.webp" alt="${esc(x.full(p))}" width="480" height="640" loading="lazy" decoding="async"></span><b class="no">${NO[p]}</b>${p === leadP ? `<i class="pl-lead">${esc(x.d.ui.look.board.leadTag)}</i>` : ""}` +
       `<span class="pl-t"><span class="pl-n">${first(p) ? `<i class="flag-i" role="img" aria-label="${esc(flag)}" title="${esc(flag)}">⚑</i>` : ""}${esc(x.lang === "en" ? x.short(p) : x.full(p))}</span>` +
-      `<span class="pl-v">${votes}</span><span class="pl-mm">${esc(L.mom)} ${dots}</span>${v7 ? lk(p) : ""}</span></button></div>` +
+      `<span class="pl-v">${votes}</span>${nm ? "" : `<span class="pl-mm">${esc(L.mom)} ${dots}</span>`}${v7 ? lk(p) : ""}</span></button></div>` +
       `<div class="pl-d"><span class="pl-h">${esc(fill(L.hand, { n: inHand(p), k: kept(p) }))}</span>` +
       (isV07(v)
         ? `<button type="button" class="pl-bag pl-luck helpable${o.help === "luck" ? " on" : ""}" data-help="luck" aria-expanded="${o.help === "luck"}" aria-label="${esc(x.tr("hdr.luck") + " · " + x.tr("hdr.tap"))}">${esc(fill(L.luck, { n: boardLuck(v, p) }))}</button>`
         : `<button type="button" class="pl-bag helpable${o.help === "bag" ? " on" : ""}" data-help="bag" aria-expanded="${o.help === "bag"}" aria-label="${esc(x.tr("hdr.bag") + " · " + x.tr("hdr.tap"))}">${esc(fill(L.bag, { n: v.bag[p] }))}</button>`) +
-      `<button type="button" class="pl-m helpable${o.help === "mom" ? " on" : ""}" data-help="mom" aria-expanded="${o.help === "mom"}" aria-label="${esc(x.tr("hdr.momL") + " " + mom + " · " + x.tr("hdr.tap"))}">${esc(L.mom)} <b>${mom}</b></button></div></article>`;
+      (nm ? "" : `<button type="button" class="pl-m helpable${o.help === "mom" ? " on" : ""}" data-help="mom" aria-expanded="${o.help === "mom"}" aria-label="${esc(x.tr("hdr.momL") + " " + mom + " · " + x.tr("hdr.tap"))}">${esc(L.mom)} <b>${mom}</b></button>`) + `</div></article>`;
   }).join("");
-  return `<section class="t-players${ts != null ? " lit" : ""}" aria-label="${esc(L.label)}">${boards}</section>`;
+  return `<section class="t-players${ts != null ? " lit" : ""}${nm ? " nm" : ""}" aria-label="${esc(L.label)}">${boards}</section>`;
 }
 
 // The one-line explanation under the header, for whichever small label was tapped (o.help).
@@ -717,7 +718,7 @@ function trackHTML(v, x, o = {}, acts = {}) {
     // #66: a rival who moved this issue just now flashes the headline and leaves a chip on it
     const chip = act ? `<span class="act-chip s${act.who}" data-act-chip data-issue="${esc(iss.name)}" data-who="${SEATS[act.who]}" data-n="${act.n}" aria-hidden="true">${esc(x.short(act.who))} +${act.n}</span>` : "";
     return `<button type="button" class="slot hl h${i + 1} helpable${o.help === "slot" ? " on" : ""}" data-issue="${esc(iss.name)}" data-help="slot" data-hl-slot="${i + 1}"${act ? " data-changed" : ""} aria-expanded="${o.help === "slot"}" aria-label="${esc(x.tr("hdr.slotsL") + " · " + lab + " · " + x.issue(iss.name) + " · " + st)}">` +
-      `<span class="hf" data-hl-reward><b data-hl-label>${esc(lab)}</b><span>${esc(x.tr("hl.reward." + (i + 1)))}</span></span>` +
+      `<span class="hf" data-hl-reward><b data-hl-label>${esc(lab)}</b><span>${esc(x.tr((noMom(v) ? "hl.rewardM." : "hl.reward.") + (i + 1)))}</span></span>` +
       `<span class="hs">${issueImg(iss.name, x)}<span class="hb"><b class="hn" data-hl-name>${esc(x.issue(iss.name))}</b>` +
       `<span class="hr"><span class="hw${mx > 0 && top.length === 1 ? " w" + top[0] : ""}" data-hl-status>${esc(st)}</span> <span class="cb">${cubesRow(iss.cubes) || `<em>—</em>`}</span></span></span></span>${chip}</button>`;
   }).join("");
@@ -825,7 +826,7 @@ function fxPrompt(v, x) {
   else if (s.op === "media") line = s.target < 0 ? x.tr("p.fxMedia", { left }) : x.tr("p.fxMediaRemove", { left, who: x.short(s.target) });
   else if (s.op === "convert") line = x.tr("p.fxConvert", { left });
   else if (s.op === "anyIssue") line = s.target < 0 ? x.tr("p.fxIssue", { n: s.n, who: x.short(s.p) }) : x.tr("p.fxIssueRemove", { n: s.n, who: x.short(s.target) });
-  else line = x.tr("p.fxTvbs");
+  else line = x.tr(noMom(v) ? "p.fxTvbsMorale" : "p.fxTvbs");
   return `<p class="pr"><b>${esc(cardName)}</b> · ${esc(line)}</p><p class="ct">${esc(x.cardText(pd.fx.card))}</p>`;
 }
 
@@ -1015,6 +1016,7 @@ export function feedLine(e, v, x) {
     case "swap": return tr("f.swap", { who: who(e.seat) });
     case "reward": return tr(e.pick === "mom" ? "f.rewardMom" : "f.rewardEndorse", { who: who(e.seat) });
     case "endorseOne": return tr("f.endorseOne", { who: who(e.seat), region: x.region(e.region) });
+    case "pickMorale": return tr("f.pickMorale", { who: who(e.seat) });
     case "pickMom": return tr("f.pickMom", { who: who(e.seat) });
     case "save": return tr("f.save", { who: who(e.seat), n: e.n });
     case "pick": return tr("f.pick", { who: who(e.seat) });
@@ -1024,9 +1026,10 @@ export function feedLine(e, v, x) {
     case "canvass": return tr("f.canvass", { who: who(e.seat), county: x.county(e.county) });
     case "convert": {
       if (!e.mom || !v || !v.luck) return tr("f.convert");
+      // v0.8 (#82): no momentum, only the issues led become the canvassing morale (the engine's number, electionLuck, with the momentum 0).
       // v0.7 (#55, #58): the conversion turns the momentum (and, with 丙, the issues led) into the canvassing luck.
       const text = SHOW_ORDER.map((p) => `${who(p)} ${electionLuck(v.luck[p], e.mom[p], e.leads ? e.leads[p] : null)}%`).join(" · ");
-      return tr(e.leads ? "f.convertLuckLead" : "f.convertLuck", { text });
+      return tr(noMom(v) ? "f.convertMorale" : e.leads ? "f.convertLuckLead" : "f.convertLuck", { text });
     }
     case "strategic": case "endorse": {
       const text = SHOW_ORDER.filter((p) => e.per[p]).map((p) => `${who(p)} +${e.per[p]}`).join(" · ");
@@ -1038,6 +1041,7 @@ export function feedLine(e, v, x) {
     case "decay": return tr("r.decay", { text: e.per.map((q, p) => `${who(p)} ${q[0]}→${q[1]}`).join(" · ") });
     case "mediaBonus": return tr("r.mediaBonus", { who: who(e.seat) }); // v0.4 (#34): §5.3 step 2
     case "leadBonus": return tr("r.leadBonus", { who: who(e.seat) }); // v0.5 (#49): the issue leader's +1
+    case "slotM": return tr(e.slot === 1 ? "r.slotM1" : "r.slotM2", { issue: x.issue(e.issue), who: who(e.seat) }); // v0.8 (#82): the headline and the second story each draw an endorsement
     case "slot": return tr(e.slot === 1 ? "r.slot1" : "r.slot3", { issue: x.issue(e.issue), who: who(e.seat) });
     case "issueDecay": return tr("r.issueDecay");
     case "momNow": return tr("r.momNow", { text: SHOW_ORDER.map((p) => `${who(p)} ${e.mom[p]}`).join(" · ") });
@@ -1047,8 +1051,8 @@ export function feedLine(e, v, x) {
 
 // What a bot's team says about its move: talk[why.key] with the placeholders read as names.
 // A placeholder the move did not carry is shown as "…", never as a raw "{x}".
-export function sayLine(why, seat, x) {
-  const t = x.d.talk && x.d.talk[why.key];
+export function sayLine(why, seat, x, none = false) {
+  const t = none && why.key === "effect_tvbs" ? x.tr("r.talkMorale.effect_tvbs") : x.d.talk && x.d.talk[why.key]; // v0.8 (#82): the pick gives morale, not momentum
   if (!t) return "";
   const who = (s) => (typeof s === "number" ? s : SEATS.indexOf(s));
   const vars = {};
@@ -1083,7 +1087,7 @@ function feedHTML(v, x, o, lines = []) {
   if (!feed.length && !o.chat && !lines.length) return "";
   const rows = feed.map(({ e, i }) => {
     const line = e.k === "say" ? "" : feedLine(e, v, x);
-    const say = keep.has(i) ? sayLine(e.why, line ? null : e.seat, x) : "";
+    const say = keep.has(i) ? sayLine(e.why, line ? null : e.seat, x, noMom(v)) : "";
     if (!line && !say) return "";
     return `<li class="${e.seat != null ? "s" + e.seat : "sys"}${e.k === "turn" ? " turn" : ""}">${line ? esc(line) : ""}${say ? `<span class="say">${esc(say)}</span>` : ""}</li>`;
   }).join("");
@@ -1176,10 +1180,10 @@ function advisorBar(x, o) {
     `<span class="sw" aria-hidden="true"></span><b>${esc(A.label)}</b><em>${esc(on ? A.on : A.off)}</em></button>` +
     `<span class="advn">${esc(A.note)}</span></div>`;
 }
-function adviceLine(x, o) {
+function adviceLine(x, o, none) {
   const why = o.advisor && o.advisor.on && o.advisor.why;
   if (!why || why.key === "only_move") return "";
-  const say = sayLine(why, null, x);
+  const say = sayLine(why, null, x, none);
   return say ? `<p class="advice"><b>${esc(x.d.ui.advisor.prefix)}</b> ${esc(say)}</p>` : "";
 }
 
@@ -1318,7 +1322,7 @@ export function tableHTML(view, choices, lang, opts = {}) {
   const riv = rivalsOf(o.rec, v), lines = recentLines(o.rec || [], v, x);
   const said = lines.filter((l) => l.seat != null && l.seat !== v.seat).pop() || lines[lines.length - 1];
   const toast = riv.length ? `<p class="t-toast s${said && said.seat != null ? said.seat : riv[riv.length - 1].seat}" data-act-toast>${esc(said ? said.text : feedLine(riv[riv.length - 1], v, x) || x.tr("hdr.feed"))}</p>` : "";
-  const notes = toast + autoNoteHTML(o, x, true) + resultHTML(o, x, true) + (choices.length ? adviceLine(x, o) : "");
+  const notes = toast + autoNoteHTML(o, x, true) + resultHTML(o, x, true) + (choices.length ? adviceLine(x, o, noMom(v)) : "");
   const sh = sheetFor(v, choices, x, o);
   // #69: with a sheet up the undo button is the sheet's first line (on a phone the bar covers the foot of the map, where it used to be).
   const undoBox = o.undo ? `<div class="t-undo${o.undo === "off" ? " off" : ""}">${undoHTML(o, x)}</div>` : "";

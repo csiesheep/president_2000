@@ -15,7 +15,7 @@ const FEED_MAX = 60;
 
 export function newSolo({ seat, level, seed }) {
   const s = seed >>> 0;
-  const st = E.createGame(s, { rules: "v0.7", issueLuck: "lead" }); // #60: new games are played on rulebook v0.7 with option 丙 (luck 50/50/60); a v0.6, v0.5 or v0.4 save keeps its own rules
+  const st = E.createGame(s, { rules: "v0.7", issueLuck: "lead", momentum: "none", trigger: "always", moraleCards: "full", luck: [50, 50, 50] }); // #82: new games are v0.8 (no momentum, a rival's CP play always triggers, morale on the cards, 50/50/50); #60: v0.7 丙 (50/50/60) before; a v0.6, v0.5 or v0.4 save keeps its own rules
   const session = { v: 1, seat, level, seed: s, rng: (s ^ 0x9e3779b9) >>> 0, st, feed: [], logSeen: 0, rec: [], mine: null };
   const first = fromLog(st, 0);
   return { ...session, feed: first, rec: first, logSeen: st.log.length };
@@ -49,7 +49,7 @@ function describe(b, seat, m, a) {
     case "save": return [{ k: "save", seat, n: m.cards.length }];
     case "reveal": return [{ k: "pick", seat }];
     case "canvass": return [{ k: "canvass", seat, county: COUNTIES.findIndex((c) => c[0] === b.cards[m.card].county) }];
-    case "pick": return [{ k: "pickMom", seat: m.seat }];
+    case "pick": return [{ k: b.momentum === "none" ? "pickMorale" : "pickMom", seat: m.seat }]; // v0.8 (#82): TVBS 民調 gives morale
   }
   return [];
 }
@@ -89,8 +89,16 @@ function leaderOf(arr) {
 // The end-of-turn settlement (§5.3) in the words the table needs. The engine logs only the momentum
 // after each step, so the "before" comes from the caller: momBefore [3] and issues [{ name, cubes }]
 // as they stood before this slice of the log. Shared by the solo record and the room client.
-export function settleEntries(momBefore, issues, slice) {
+export function settleEntries(momBefore, issues, slice, none = false) {
   const out = [];
+  if (none) { // v0.8 (#82): no momentum to halve, to add or to show; the headline and the second story each draw an endorsement, the third nothing
+    const done0 = slice.find((e) => e.t === "momentum" && e.step === "done");
+    if (done0 && issues) {
+      for (const [slot, i] of [[1, 0], [2, 1]]) { const l = leaderOf(issues[i].cubes); if (l >= 0) out.push({ k: "slotM", slot, seat: l, issue: issues[i].name }); }
+      if (issues.some((i) => leaderOf(i.cubes) >= 0)) out.push({ k: "issueDecay" });
+    }
+    return out;
+  }
   const dec = slice.find((e) => e.t === "momentum" && e.step === "decay");
   if (dec && momBefore) out.push({ k: "decay", per: dec.mom.map((after, p) => [momBefore[p], after]) });
   // v0.4 (#34): the media leader's +1 right after the halving
@@ -120,7 +128,7 @@ function move(session, seat, m, why) {
   const lines = describe(b, seat, m, a);
   if (said) { if (lines.length) lines[0] = { ...lines[0], why: said }; else lines.push({ k: "say", seat, why: said }); }
   const slice = a.log.slice(b.log.length);
-  const settle = settleEntries(b.mom, b.issues, slice);
+  const settle = settleEntries(b.mom, b.issues, slice, b.momentum === "none");
   const logged = fromLog(a, session.logSeen);
   // The move itself comes first, then the settlement it set off (the decay is logged by the move that
   // ends the action phase, the slot rewards by the one that ends the momentum phase), then the log.

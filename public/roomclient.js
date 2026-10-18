@@ -127,7 +127,7 @@ function nextFeed(client, view) {
   const prev = client.snap;
   if (!prev || view.log.length < prev.logLen) { const all = roomLog(view.log, 0).slice(-FEED_MAX); return { feed: all, added: all, fresh: true }; }
   const slice = view.log.slice(prev.logLen);
-  const settle = settleEntries(prev.mom, prev.slots, slice);
+  const settle = settleEntries(prev.mom, prev.slots, slice, view.momentum === "none");
   const added = [...roomLog(view.log, prev.logLen), ...diffFeed(prev, view, slice), ...settle];
   return { feed: client.feed.concat(added).slice(-FEED_MAX), added, fresh: false, slice };
 }
@@ -249,7 +249,7 @@ function chatHTML(client, lang, opts, T) {
   const C = T.ui.room.chat, x = bind(lang);
   const rows = client.tape.map((e) => {
     if (e.k === "chat") return `<li class="c${e.seat != null && e.seat >= 0 ? " s" + e.seat : ""}${e.seat != null && e.seat === client.seat ? " me" : ""}"><b>${esc(e.name || T.ui.room.lobby.guest)}</b> ${esc(e.text)}</li>`;
-    const say = sayLine(e.why, e.seat, x);
+    const say = sayLine(e.why, e.seat, x, !!(client.state && client.state.view.momentum === "none"));
     return say ? `<li class="bt${e.seat != null ? " s" + e.seat : ""}"><span class="say">${esc(say)}</span></li>` : "";
   }).join("");
   return `<section class="t-chat" aria-label="${esc(C.title)}"><h3 class="t-h">${esc(C.title)}</h3>` +
