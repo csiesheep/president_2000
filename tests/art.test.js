@@ -11,6 +11,9 @@
 //   candidates/<seat>.webp       chen / soong / lien                  480×640
 //   end/<seat>.webp              the end page's hero, by winner      900×600   (#32: owner chose the end page
 //                                "開票之夜", design canvas R26gizGsymbFUZnLxPoP7V; checked once public/art/end/ exists)
+//   news/studio.webp             election night (#91): the anchor desk, 16:9    1280×720  (owner 2026-10-18 to the
+//   news/wall.webp               election night (#91): the screen wall          1280×800   wave-2 canvas: 「可以 開工」;
+//                                                                                         checked once public/art/news/ exists)
 //   prompts.json                 { "<path under public/art/>": { prompt, seed, model } } for every picture
 // Each picture ≤ 120 KB, all of them together ≤ 9 MB. No other file in those five folders.
 // Every check reports 尚未實作 until public/art/ exists.
@@ -68,6 +71,9 @@ for (const k of SEATS) expected.push(["candidates", `${k}.webp`, `候選人 ${k}
 const END = SEATS.map((k) => ["end", `${k}.webp`, `結局頁主視覺（${k} 當選）`]);
 const hasEnd = existsSync(new URL("end/", ART));
 if (hasEnd) expected.push(...END);
+// #91: the election-night studio (開票夜像新聞聯播, the fictional 選戰新聞台); required once public/art/news/ exists.
+const NEWS = [["news", "studio.webp", "開票夜的主播台", [1280, 720]], ["news", "wall.webp", "開票夜的螢幕牆", [1280, 800]]];
+const hasNews = existsSync(new URL("news/", ART));
 const rel = (d, f) => `${d}/${f}`;
 const fileOf = (d, f) => new URL(`${d}/${f}`, ART);
 
@@ -151,7 +157,14 @@ c24("來歷：prompts.json 對每一張圖都記了 prompt、seed、model，而�
     if (!Number.isInteger(e.seed)) problems.push(`${k} 的 seed 不是整數`);
     if (typeof e.model !== "string" || !e.model.trim()) problems.push(`${k} 沒有 model`);
   }
-  const want = new Set(expected.concat(END).map(([d, f]) => rel(d, f)));
+  const want = new Set(expected.concat(END, NEWS).map(([d, f]) => rel(d, f)));
+  for (const [d, f] of hasNews ? NEWS : []) {
+    const k = rel(d, f), e = P[k];
+    if (!e) { problems.push(`${k} 沒有記錄`); continue; }
+    if (typeof e.prompt !== "string" || e.prompt.trim().length < 20) problems.push(`${k} 的 prompt 太短或沒有`);
+    if (!Number.isInteger(e.seed)) problems.push(`${k} 的 seed 不是整數`);
+    if (typeof e.model !== "string" || !e.model.trim()) problems.push(`${k} 沒有 model`);
+  }
   for (const k of Object.keys(P)) {
     if (!want.has(k)) problems.push(`記錄了契約以外的 ${k}`);
     else if (!existsSync(new URL(k, ART))) problems.push(`記錄了不存在的 ${k}`);
@@ -167,6 +180,23 @@ check("結局頁主視覺：public/art/end/ 有 chen、soong、lien 三張，900
   const sizes = END.map(([d, f]) => { const b = readFileSync(fileOf(d, f)); return [rel(d, f), webpSize(b), b.length]; });
   for (const [k, sz, n] of sizes) { if (!sz || sz[0] !== 900 || sz[1] !== 600) return `${k} 是 ${sz ? sz.join("×") : "非 WebP"}，應為 900×600`; if (n > MAX_FILE) return `${k} ${(n / 1024).toFixed(0)} KB，超過 120 KB`; }
   return ok(true, `三張都在：${sizes.map(([k, , n]) => `${k} ${(n / 1024).toFixed(0)} KB`).join("、")}`);
+});
+
+check("開票夜的攝影棚：public/art/news/ 只有 studio（1280×720）與 wall（1280×800）兩張 WebP、各 ≤ 120 KB（#91）", () => {
+  if (!hasNews) return "TODO: public/art/news/ 還沒有（#91）";
+  const dir = new URL("news/", ART), names = readdirSync(dir), want = NEWS.map(([, f]) => f);
+  const extra = names.filter((f) => !want.includes(f)), miss = want.filter((f) => !names.includes(f));
+  if (miss.length) return `少了 ${miss.map((f) => "news/" + f).join("、")}`;
+  if (extra.length) return `多出 ${extra.map((f) => "news/" + f).join("、")}`;
+  const out = [];
+  for (const [d, f, what, [w, h]] of NEWS) {
+    const b = readFileSync(fileOf(d, f)), sz = webpSize(b);
+    if (!sz) return `${rel(d, f)}（${what}）不是 WebP`;
+    if (sz[0] !== w || sz[1] !== h) return `${rel(d, f)}（${what}）是 ${sz[0]}×${sz[1]}，應為 ${w}×${h}`;
+    if (b.length > MAX_FILE) return `${rel(d, f)}（${what}）${(b.length / 1024).toFixed(0)} KB，超過 120 KB`;
+    out.push(`${rel(d, f)} ${sz.join("×")} ${(b.length / 1024).toFixed(0)} KB`);
+  }
+  return ok(true, out.join("、"));
 });
 
 test("art", () => {
