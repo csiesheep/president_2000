@@ -33,7 +33,8 @@ import en from "../public/i18n/en.js";
 const V8 = (st) => `${st.rules} ${st.issueLuck} ${st.momentum} ${st.trigger} ${st.moraleCards} ${st.luck}`;
 const WANT = "v0.7 lead none always full 50,50,50";
 const READY = (() => { try { return S.newSolo({ seat: 0, level: 1, seed: 1 }).st.moraleCards === "full"; } catch { return false; } })();
-const c82 = (name, fn) => check(name, () => (READY ? fn() : "TODO: S.newSolo 開的還不是 v0.8（st.moraleCards 不是 \"full\"，#82）"));
+// Since #82 landed (f78b8d3), a new game that is not v0.8 is a failure, not 尚未實作.
+const c82 = (name, fn) => check(name, () => (READY ? fn() : "S.newSolo 開的不是 v0.8（st.moraleCards 不是 \"full\"）：#82 已上線（f78b8d3），這是退步，不是尚未實作"));
 const LANGS = ["zh-Hant", "en"];
 const SHORT = { "zh-Hant": ["陳", "宋", "連"], en: ["Chen", "Soong", "Lien"] };
 const FORBID = { "zh-Hant": /動能/, en: /momentum/i };

@@ -86,7 +86,7 @@ for (const lv of ["L1", "L2", "L3"]) {
   rule(got === PIN[lv], `${lv}×3 untouched (seeds 1…${PINN[lv]}): ${got}${got === PIN[lv] ? "" : ` — before #83: ${PIN[lv]}`}`);
 }
 const reading = [];
-if (!HAS0) rows.push({ ok: true, todo: true, what: "TODO: bots.js has no level 0 (B.BOT_LEVELS does not include 0): N1 and W not run" });
+if (!HAS0) rule(false, "bots.js has no level 0 (B.BOT_LEVELS does not include 0; #83 landed it at 7bbebcc): N1 and W not run");
 else {
   const watch0 = {};
   const n1 = [0, 1, 2].map((seat) => seatRun("N", "L0", seat, N, watch0));

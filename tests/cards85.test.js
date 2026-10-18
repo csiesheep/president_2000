@@ -40,7 +40,8 @@ const strings = (o, p = "", out = []) => {
 };
 const card = (id) => EVENTS.find((e) => e.id === id) || localCards().find((e) => e.id === id) || {};
 const GATE = card("lee_secret_help").name === "李登輝暗助說";
-const gate = (fn) => () => (GATE ? fn() : "TODO: 李登輝暗助還沒改名（#85）");
+// Since #85 landed (007fa0d), 李登輝暗助 under its old name is a failure, not 尚未實作.
+const gate = (fn) => () => (GATE ? fn() : "李登輝暗助又是舊名：#85 已上線（007fa0d），這是退步，不是尚未實作");
 const text = (html) => html.replace(/<[^>]*>/g, " ").replace(/&amp;/g, "&").replace(/&#39;/g, "'").replace(/\s+/g, " ");
 
 section("85 真實人物牌改名（#84 查證）");
