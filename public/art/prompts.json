@@ -171,10 +171,10 @@
   "aspect": "3:2 (Photo)"
  },
  "cards/kneel_for_votes.webp": {
-  "prompt": "A worn kneeling cushion at the foot of stone steps on a dusty farm road in Yunlin, a closed ballot box waiting on the steps All surfaces are completely blank, plain and unmarked, with no writing and no text-like patterns.. Style: claymation plasticine miniature set, warm orange and tan modeling clay with fingerprints visible, soft studio light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
-  "seed": 2000032036,
+  "prompt": "An empty stage at night with warm orange spotlight cones crossing in the dark, an empty microphone stand at centre, rows of plain orange pennant flags strung overhead, a loudspeaker on each side of the stage. All surfaces are completely blank, plain and unmarked, with no writing and no text-like patterns. Style: claymation plasticine miniature set, warm orange and tan modeling clay with fingerprints visible, soft studio light, macro photograph.",
+  "seed": 2000086013,
   "model": "qwen-image-2.1-UC-Q8_0.gguf",
-  "subject": "路邊臺階前一只磨舊的蒲團，後面是緊閉的投票箱",
+  "subject": "選前之夜空無一人的舞台：交叉的舞台燈、麥克風架、兩只喇叭與頭頂的彩旗",
   "aspect": "3:2 (Photo)"
  },
  "cards/lee_alarm.webp": {
@@ -206,10 +206,10 @@
   "aspect": "3:2 (Photo)"
  },
  "cards/lee_secret_help.webp": {
-  "prompt": "A back door left ajar with a shaft of lamp light spilling out onto a dark alley, a small pot with a green sapling outside the door. The door, the frame and all walls are made of smooth plain grey cardboard, absolutely no newspaper, no printed pattern.. Style: sculpture made of crumpled newspaper and grey cardboard, monochrome, harsh side light, macro photograph. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature. No people, no faces, no human figures.",
-  "seed": 2000033067,
+  "prompt": "A tall stack of folded grey paper sheets on a cardboard table with a telephone handset resting across the top of the stack, a small blank rectangle on the top sheet ringed by a rough loop of grey cardboard string. All paper surfaces are completely blank, plain and unmarked, with no writing and no text-like patterns. Style: sculpture made of crumpled newspaper and grey cardboard, monochrome, harsh side light, macro photograph.",
+  "seed": 2000086004,
   "model": "qwen-image-2.1-UC-Q8_0.gguf",
-  "subject": "半開的後門透出一道光，門外放著一盆綠色幼苗",
+  "subject": "一疊空白報紙上圈起一小格、一支話筒擱在頂端（傳聞）",
   "aspect": "3:2 (Photo)"
  },
  "cards/lee_yuan_tseh.webp": {
