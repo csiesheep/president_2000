@@ -403,6 +403,8 @@ export function taiwanMap(view, lang, opts = {}) {
   // from its left or right edge; right of it; left of it) where the estimated box lies in the map, covers no other county's paper and no chip
   // already placed; if none is free, the one that covers the least.
   const sc = mode === "phone" ? 0.84 : 0.92, placed = [];
+  // the floats at the map's bottom-right corner (the notes stack and the issue totals, #70) are an obstacle, at their largest extent
+  const FOOT = { x0: m.w * (mode === "phone" ? 0.55 : 0.6), x1: m.w, y0: m.h - (mode === "phone" ? 140 : 110) / sc, y1: m.h };
   const hit = (a, b) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
   const chips = Object.entries(o.marks || {}).map(([k, list]) => {
     const s = L.spots[k], P = { x0: s.cx - s.w / 2, x1: s.cx + s.w / 2, y0: s.cy - s.h / 2, y1: s.cy + s.h / 2 };
@@ -436,7 +438,8 @@ export function taiwanMap(view, lang, opts = {}) {
           cost += (Math.max(0, P.x0 - 34 / sc - ex, ex - P.x1 - 34 / sc) + Math.max(0, P.y0 - 34 / sc - ey, ey - P.y1 - 34 / sc)) * 1000;
         });
         L.spots.forEach((t, j) => { if (j !== +k) cost += hit(R, { x0: t.cx - t.w / 2 - 1.5, x1: t.cx + t.w / 2 + 1.5, y0: t.cy - t.h / 2 - 1.5, y1: t.cy + t.h / 2 + 1.5 }) * 10; });
-        for (const q of placed) cost += hit(R, q);
+        for (const q of placed) cost += hit(R, q) * 10;
+        cost += hit(R, FOOT) * 10;
         cost += Math.hypot(cx - s.cx, cy - s.cy) * 0.01 + (pl < 99 ? 0.5 : 0) + (dir === "col" ? 0.2 : 0) + (tight * 0.8) + (g < 0 ? 0.6 : 0);
         if (!best || cost < best.cost) best = { cost, R, dir, pl, tight };
       }
