@@ -7,8 +7,9 @@
   --chen: #2f7d46; --soong: #e0731c; --lien: #2456a6;
   --k-chen: #2f7d46; --k-soong: #bc540c; --k-lien: #2456a6; --k-ext: #3d3732; --k-local: #86683a; --ct: #fffaf0; /* card colours (#36) and the text on them */
   --chen-t: #cfe0cf; --lien-t: #d3dcee; --grey: #e3dcc8; --yellow: #fff3c4;
-  --serif: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
-  --sans: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --mast: "Noto Serif TC", var(--serif); /* the Google Fonts subset (index.html: only the masthead, 2000, the title and the home buttons), then the system serif */
+  --serif: "Songti TC", "Noto Serif CJK TC", "Source Han Serif TC", "PMingLiU", serif;
+  --sans: "PingFang TC", "Microsoft JhengHei", "Noto Sans CJK TC", "Noto Sans TC", sans-serif;
   --num: var(--serif);
   --disp: var(--sans);
   --wood: #5b3a22;
@@ -42,7 +43,7 @@ a { color: inherit; }
 .topbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; color: var(--paper); }
 .topbar a { color: var(--paper); font-weight: 900; font-size: 14px; text-decoration: none; }
 .topbar a:hover { text-decoration: underline; }
-.topbar .tt { font: 900 18px/1 var(--serif); letter-spacing: 1px; color: var(--paper); text-shadow: 0 1px 0 rgba(0, 0, 0, .4); flex: 1; text-align: center; }
+.topbar .tt { font: 900 18px/1 var(--mast); letter-spacing: 1px; color: var(--paper); text-shadow: 0 1px 0 rgba(0, 0, 0, .4); flex: 1; text-align: center; }
 .topbar .tt b { font-weight: 900; margin-right: 6px; }
 .topbar .tb { display: flex; gap: 8px; align-items: center; }
 button.btn, a.btn {
@@ -64,8 +65,8 @@ button.btn:hover, a.btn:hover { background: var(--paper2); }
 .lid::before { content: ""; position: absolute; inset: 7px; border: 1px solid var(--ink); border-radius: 3px; pointer-events: none; }
 .lid-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12px; font-weight: 900; letter-spacing: 2px; color: var(--red); padding: 0 4px; }
 .lid h1 { padding: 0 4px; }
-.lid h1 .year { font: 900 100px/1 var(--serif); letter-spacing: 1px; color: var(--ink); }
-.lid h1 .name { font: 900 38px/1.15 var(--serif); }
+.lid h1 .year { font: 900 100px/1 var(--mast); letter-spacing: 1px; color: var(--ink); }
+.lid h1 .name { font: 900 38px/1.15 var(--mast); }
 .lid-foot { display: flex; align-items: center; gap: 12px; padding: 4px 4px 2px; }
 .lid-foot p { margin: 0; font-size: 13px; line-height: 1.6; color: #3a2e22; }
 .blocks { display: flex; gap: 5px; flex: none; }
@@ -80,7 +81,7 @@ button.btn:hover, a.btn:hover { background: var(--paper2); }
 .big:active { transform: translateY(2px); box-shadow: 0 3px 0 #6f1f1a, 0 6px 12px rgba(0, 0, 0, .4); }
 .cta2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .sheetbtn { display: flex; flex-direction: column; gap: 1px; padding: 10px 14px; background: var(--paper); color: var(--ink); text-decoration: none; border-radius: 4px; box-shadow: 0 3px 0 var(--edge2), 0 8px 14px rgba(0, 0, 0, .35); min-height: 58px; justify-content: center; }
-.sheetbtn b { font: 900 18px var(--serif); } .sheetbtn small { font-size: 12px; color: var(--mute); }
+.sheetbtn b { font: 900 18px var(--serif); } #land .big, #land .sheetbtn b { font-family: var(--mast); } .sheetbtn small { font-size: 12px; color: var(--mute); }
 .sheetbtn:hover { background: var(--paper2); }
 .box { background: var(--paper); border-radius: 4px; box-shadow: var(--lift); padding: 14px 16px; transform: rotate(.4deg); }
 .links { display: flex; justify-content: center; gap: 24px; font-weight: 900; font-size: 14px; flex-wrap: wrap; } .links a { color: var(--ink); text-underline-offset: 3px; }
@@ -531,7 +532,7 @@ html { scroll-padding-bottom: 190px; }
 /* The Taiwan map (#25): the printed board on a cream card. The county papers are SVG (map.js); the box that
    opens on a county is HTML laid over the board (table.js popHTML, placed by map.js popPlace). */
 .t-map { order: 8; --m-chen: #2f7d46; --m-soong: #e0731c; --m-lien: #2456a6; --m-ink: #2b2118; position: relative; display: flex; flex-direction: column; gap: 6px; background: #efe6d2; border: 1px solid #c8b892; border-radius: 4px; padding: 8px 8px 10px; box-shadow: 0 2px 0 #b9a885, 0 12px 24px rgba(0, 0, 0, .4); }
-.t-map .t-h { margin: 0; font-family: "Noto Serif TC", var(--disp); font-size: 15px; }
+.t-map .t-h { margin: 0; font-family: var(--serif); font-size: 15px; }
 .tw-hint { margin: 0; }
 .tw-box { position: relative; width: 100%; max-width: 940px; margin: 0 auto; }
 .tw-box.n, .tw-box:has(.tw-phone) { max-width: 520px; }
@@ -566,7 +567,7 @@ html { scroll-padding-bottom: 190px; }
 .pop-n.dn .pop-arrow { top: -7px; border-left: 1.5px solid var(--m-ink); border-top: 1.5px solid var(--m-ink); }
 .pop-n.up .pop-arrow { bottom: -7px; border-right: 1.5px solid var(--m-ink); border-bottom: 1.5px solid var(--m-ink); }
 .pop-h { display: flex; align-items: baseline; gap: 8px; }
-.pop-h b { flex: 1; min-width: 0; font: 900 17px/1.25 "Noto Serif TC", var(--disp); }
+.pop-h b { flex: 1; min-width: 0; font: 900 17px/1.25 var(--serif); }
 /* The county's picture (#41, P1 9): across the box's top edge, the box's own padding and border cancelled; it shrinks (to 72px) before a button is pushed away. */
 .pop-art { position: relative; flex: none; margin: -10.5px -12.5px -2px; height: clamp(72px, 15dvh, 118px); overflow: hidden; border-radius: 5px 5px 0 0; background: #d9cdb4; }
 .pop-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -795,12 +796,12 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
 .tc-ears { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: "l r" "m m"; gap: 3px 8px; align-items: center; }
 .tc-ear { font-size: 10px; letter-spacing: 1px; color: var(--pm); }
 .tc-ear b { font-weight: 400; } .tc-ear.l { grid-area: l; } .tc-ear.r { grid-area: r; text-align: right; }
-.tc-mast { grid-area: m; margin: 0; display: block; text-align: center; white-space: nowrap; font: 900 40px/1 "Noto Serif TC", var(--serif); letter-spacing: 8px; padding-left: 8px; }
-.tc-dl { margin: 2px 0 0; padding: 4px 0 3px; border-top: 3px double var(--pi); border-bottom: 1px solid var(--pi); text-align: center; font: 900 20px/1.2 "Noto Serif TC", var(--serif); }
+.tc-mast { grid-area: m; margin: 0; display: block; text-align: center; white-space: nowrap; font: 900 40px/1 var(--mast); letter-spacing: 8px; padding-left: 8px; }
+.tc-dl { margin: 2px 0 0; padding: 4px 0 3px; border-top: 3px double var(--pi); border-bottom: 1px solid var(--pi); text-align: center; font: 900 20px/1.2 var(--serif); }
 .tc-main { display: grid; grid-template-columns: minmax(0, 1fr) 100px; }
 .tc-top { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; padding-bottom: 6px; }
 .tc-lbl { margin: 0; font-size: 11px; font-weight: 900; letter-spacing: 3px; color: var(--pr); }
-.tc-h { margin: 0; font: 900 32px/1.1 "Noto Serif TC", var(--serif); }
+.tc-h { margin: 0; font: 900 32px/1.1 var(--serif); }
 .tc-hl { display: flex; flex-direction: column; gap: 4px; }
 .tc-hl figure { margin: 0; display: flex; flex-direction: column; gap: 3px; }
 .tc-hl img { width: 100%; height: 96px; object-fit: cover; border: 1px solid var(--pi); display: block; }
@@ -817,7 +818,7 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
 .tc-vt { display: flex; flex-direction: column; gap: 5px; border-top: 1px solid var(--pi); padding: 6px 10px 0 0; border-right: 1px solid var(--pi); }
 .tc-v { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "n a" "b b"; gap: 1px 6px; align-items: center; font-size: 13px; }
 .tc-pic { display: none; }
-.tc-n { grid-area: n; font: 900 13px "Noto Serif TC", var(--serif); white-space: nowrap; }
+.tc-n { grid-area: n; font: 900 13px var(--serif); white-space: nowrap; }
 .tc-b { grid-area: b; display: block; height: 10px; background: var(--pt); }
 .tc-b i { display: block; height: 100%; background: var(--k-chen); }
 .tc-v.s1 .tc-b i { background: var(--k-soong); } .tc-v.s2 .tc-b i { background: var(--k-lien); }
@@ -845,7 +846,7 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
 .tc-prog i { display: block; height: 100%; width: 0; background: #a8322a; animation: tc-run 1500ms linear both; }
 .tc-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .tc-hint { font-size: 12px; color: var(--pm); }
-.tc-go { font: 900 15px "Noto Serif TC", var(--serif); letter-spacing: 2px; color: var(--pp); background: var(--pi); border: none; border-radius: 0; padding: 0 18px; min-height: 44px; cursor: pointer; }
+.tc-go { font: 900 15px var(--serif); letter-spacing: 2px; color: var(--pp); background: var(--pi); border: none; border-radius: 0; padding: 0 18px; min-height: 44px; cursor: pointer; }
 :lang(en) .tc-mast { font-size: 32px; letter-spacing: 0; padding-left: 0; }
 :lang(en) .tc-ear { letter-spacing: 0; }
 :lang(en) .tc-h { font-size: 26px; line-height: 1.1; } :lang(en) .tc-lbl, :lang(en) .tc-ordr .tc-lbl { letter-spacing: 1px; }
@@ -860,7 +861,7 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
   .tc-ears { grid-template-columns: 150px minmax(0, 1fr) 150px; grid-template-areas: "l m r"; gap: 12px; }
   .tc-ear { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 5px 4px; border: 1px solid var(--pi); font-size: 11px; letter-spacing: 0; text-align: center; }
   .tc-ear.r { text-align: center; }
-  .tc-ear.l b, .tc-ear.r b { font: 900 17px/1.2 "Noto Serif TC", var(--serif); color: var(--pi); }
+  .tc-ear.l b, .tc-ear.r b { font: 900 17px/1.2 var(--serif); color: var(--pi); }
   .tc-ear.l i { display: none; } .tc-ear.r b { font-size: 14px; white-space: nowrap; } :lang(en) .tc-ear.r b { white-space: normal; }
   .tc-mast { font-size: 56px; letter-spacing: 12px; padding-left: 12px; }
   :lang(en) .tc-mast { font-size: 46px; letter-spacing: 0; padding-left: 0; }
@@ -913,9 +914,9 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
 @media (min-width: 768px) { .rp-box { width: 232px; left: 46%; } }
 /* #50: the endorsement key under the map and the note in a county's box */
 .tw-endkey { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #4a3a2a; }
-.tw-stampkey { flex: none; width: 15px; height: 15px; border-radius: 50%; background: #6a5a48; border: 1.5px solid #fbf6e9; box-shadow: 0 0 0 .5px #6a5a48; color: #fff; font: 900 9px/12px "Noto Serif TC", serif; text-align: center; font-style: normal; }
+.tw-stampkey { flex: none; width: 15px; height: 15px; border-radius: 50%; background: #6a5a48; border: 1.5px solid #fbf6e9; box-shadow: 0 0 0 .5px #6a5a48; color: #fff; font: 900 9px/12px var(--serif); text-align: center; font-style: normal; }
 .pop-end { margin: 0; display: flex; align-items: flex-start; gap: 7px; font-size: 12.5px; line-height: 1.45; font-weight: 700; color: var(--m-ink); }
-.pop-end i { flex: none; width: 18px; height: 18px; border-radius: 50%; background: var(--c); color: #fff; font: 900 11px/18px "Noto Serif TC", serif; text-align: center; font-style: normal; }
+.pop-end i { flex: none; width: 18px; height: 18px; border-radius: 50%; background: var(--c); color: #fff; font: 900 11px/18px var(--serif); text-align: center; font-style: normal; }
 @media (prefers-reduced-motion: reduce) { .rp-card, .rp-stamp { transition-property: opacity !important; } .t-now li.rp-flash { animation: none; } }
 
 /* #53: the issue leader (v0.5) under the three slots: each candidate's total over the three issues, who leads. */
@@ -1358,4 +1359,46 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
 @media (max-width: 1099px) {
   .tbl:not(.end) .pl-tag { left: 19px; top: 0; padding: 0 4px 1px; border-radius: 0 0 4px 4px; font-size: 9px; line-height: 12px; }
   .tbl:not(.end) .pl-tn { display: none; }
+}
+
+/* iOS 15 (#88). Safari 15.0-15.3 has no :has(), 15.0-15.3 has no dvh, and no 15.x has container queries; the table's layout leans on all three.
+   Each block is a fallback for what a browser cannot read, behind an @supports test that a current browser fails, so a current browser takes none of it.
+   Only the table (.tbl:not(.end)) is touched: the count page scrolls as before. drawing.js marks the elements the :has() rules look for
+   (x-tbl, x-cgs ...) and keeps --app-h = the visible height (iOS's 100vh is the height with the toolbars away). */
+@supports not selector(:has(a)) {
+  .wrap.game.x-tbl { height: var(--app-h, 100vh); padding: 2px var(--pad) 0; gap: 0; overflow: hidden; }
+  .wrap.game.x-tbl > #stage, .wrap.game.x-tbl > #rstage { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .tbl:not(.end) .t-notes.x-auto { max-width: 29%; }
+  .tbl:not(.end) .t-notes.x-auto .t-toast { -webkit-line-clamp: 1; }
+  .tbl:not(.end) .t-act.x-cgs > .t-undo { grid-column: 1 / -1; grid-row: 9; }
+  #solo.x-setup { padding-top: 6px; padding-bottom: 6px; gap: 6px; }
+  @media (max-width: 1099px) {
+    .tbl:not(.end) .t-act.x-cgs, .tbl:not(.end) .t-act.x-cbar { z-index: 21; left: calc(-1 * var(--pad)); right: calc(-1 * var(--pad)); bottom: 0; max-height: calc(100% - 154px); padding: 8px var(--pad) calc(8px + env(safe-area-inset-bottom, 0px)); border-radius: 10px 10px 0 0; }
+    .tbl:not(.end) .t-act.x-cgs { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; column-gap: 8px; row-gap: 2px; align-content: center; align-items: center; min-height: calc(var(--trayd) + env(safe-area-inset-bottom, 0px)); }
+    .tbl:not(.end) .t-act.x-cgs.x-cgso { align-content: start; }
+    .tbl:not(.end) .t-act.x-cgs > * { min-width: 0; }
+    .tbl:not(.end) .t-act.x-cgs > .pr { grid-column: 1; grid-row: 1; font-size: 13px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .tbl:not(.end) .t-act.x-cgs > .ct { grid-column: 1; grid-row: 2; font-size: 11px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+    .tbl:not(.end) .t-act.x-cgs > .opts:not(:last-child) { grid-column: 1 / -1; grid-row: 3; }
+    .tbl:not(.end) .t-act.x-cgs > .cgs { grid-column: 2; grid-row: 1 / span 2; }
+    .tbl:not(.end) .t-act.x-cgs > .opts:last-child { grid-column: 3; grid-row: 1 / span 2; align-self: stretch; }
+    .tbl:not(.end) .t-act.x-cgs > .opts:last-child .opt { height: 100%; min-height: 40px; }
+    .tbl:not(.end) .t-act.x-cgs > .cgs[open] { grid-column: 1 / -1; grid-row: 4; }
+    .tbl:not(.end) .t-act.x-cgs > .cgs[open] ~ .opts:last-child { grid-column: 1 / -1; grid-row: 5; }
+  }
+}
+@supports not (height: 100dvh) {
+  .pop { max-height: calc(var(--app-h, 100vh) - 54px - var(--trayd, 78px) - 8px); }
+  .pop-art { height: clamp(72px, calc(var(--app-h, 100vh) * .15), 118px); }
+  @media (min-width: 700px) { .pop-art { height: clamp(100px, calc(var(--app-h, 100vh) * .18), 150px); } }
+  .tc { padding: max(12px, calc(var(--app-h, 100vh) * .04)) 18px; }
+}
+/* No container query unit: the map frame is the larger of what the free height (the window less the rows above, 152px, and the tray below) and the width allow. */
+@supports not (width: 1cqw) {
+  @media (max-width: 1099px) {
+    .tbl:not(.end) .tw-box { width: min(100%, calc((var(--app-h, 100vh) - 152px - max(var(--trayd), var(--barh, 0px)) + 8px) * var(--aw) / var(--ah))); }
+  }
+  @media (min-width: 1100px) {
+    .tbl:not(.end) .tw-box { height: 100%; width: auto; max-width: 100%; }
+  }
 }

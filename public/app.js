@@ -48,11 +48,13 @@ if (typeof document !== "undefined") {
   const soloPage = qs.has("play") || qs.has("tutorial");
   if (!soloPage && (qs.has("host") || qs.has("join") || qs.has("room"))) {
     mountRoom({ T, lang: code, qs, store, $ });
+    document.documentElement.classList.remove("boot");
   } else if (!soloPage) {
     document.title = T.title;
   } else {
     $("#land").hidden = true;
     $("#solo").hidden = false;
+    document.documentElement.classList.remove("boot");
     document.title = S.land.solo + " · " + T.title;
     const stage = $("#stage");
     $("#gmenub").setAttribute("aria-label", S.menu.label);
