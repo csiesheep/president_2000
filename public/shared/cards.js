@@ -41,7 +41,7 @@ export const EVENTS = [
   { id: "poll_lead", owner: "soong", deck: "early", cp: 2, icon: "clean", name: "民調領先", county: "新竹縣", text: "僅第 1–3 回合可當事件出：宋士氣 +10%", turnMax: 3 },
   { id: "million_signatures", owner: "soong", deck: "early", cp: 2, icon: "clean", name: "百萬連署", county: "嘉義縣", text: "宋士氣 +15%" },
   { id: "hakka_vote", owner: "soong", deck: "early", cp: 2, icon: "econ", name: "客家票", county: "苗栗縣", text: "新竹縣、苗栗各 +1 免檢定" },
-  { id: "east_coast", owner: "soong", deck: "early", cp: 2, icon: "econ", name: "花東原鄉", county: "花蓮縣", text: "花蓮、台東各 +1 免檢定" },
+  { id: "east_coast", owner: "soong", deck: "early", cp: 2, icon: "econ", name: "花東鄉親", county: "花蓮縣", text: "花蓮、台東各 +1 免檢定" },
   { id: "veterans_village", owner: "soong", deck: "early", cp: 3, icon: "cross", name: "外省眷村", county: "嘉義市", text: "宋在任 2 個縣市各 +1 需檢定，且同縣市連若有方塊各 −1" },
   { id: "quake_bond", owner: "soong", deck: "early", cp: 3, icon: "econ", name: "災區情誼", county: "南投縣", text: "南投、台中縣各 +1 免檢定" },
   { id: "li_ao_endorses", owner: "soong", deck: "early", cp: 2, icon: "cross", name: "李敖勸選宋", county: "台北市", text: "台北市、新竹市：連各 −1、宋各 +1（免檢定）" },
@@ -51,7 +51,7 @@ export const EVENTS = [
   { id: "new_party_backs_soong", owner: "soong", deck: "late", cp: 3, icon: "cross", name: "新黨全力挺宋", county: "台北市", text: "北北基任 2 個縣市各 +1 免檢定" },
   { id: "chang_doctors", owner: "soong", deck: "late", cp: 2, icon: "econ", name: "張昭雄的醫界", county: "南投縣", text: "任一議題宋 +1；宋士氣 +10%" },
   { id: "soong_friends", owner: "soong", deck: "late", cp: 2, icon: "econ", name: "宋友會", county: "台北縣", text: "宋士氣 +5%；宋在任 1 個空的藍營游離塊放方塊免檢定" },
-  { id: "kneel_for_votes", owner: "soong", deck: "late", cp: 3, icon: "clean", name: "跪票", county: "雲林縣", text: "宋士氣 +10%；宋在任 2 個縣市各 +1 需檢定" },
+  { id: "kneel_for_votes", owner: "soong", deck: "late", cp: 3, icon: "clean", name: "選前之夜催票", county: "雲林縣", text: "宋士氣 +10%；宋在任 2 個縣市各 +1 需檢定" },
   // v0.3
   { id: "provincial_build", owner: "soong", deck: "early", cp: 3, icon: "econ", name: "省政建設", county: "台中縣", text: "經濟議題宋 +2" },
   { id: "military_civil", owner: "soong", deck: "early", cp: 2, icon: "econ", name: "軍公教警", county: "桃園縣", text: "宋在任 2 個縣市各 +1 需檢定；宋士氣 +10%" },
@@ -59,7 +59,7 @@ export const EVENTS = [
   // 連戰 (21)
   { id: "expel_soong", owner: "lien", deck: "early", cp: 3, icon: "clean", name: "開除宋楚瑜黨籍", county: "台北市", text: "宋在任一議題 −2；宋士氣 +5%" },
   { id: "yang_exposes", owner: "lien", deck: "early", cp: 4, icon: "clean", name: "楊吉雄爆料", county: "台北市", text: "宋移除 4 顆盤上方塊（連選）；宋失去清廉議題全部方塊；宋士氣 −30%", must: true },
-  { id: "shifting_story", owner: "lien", deck: "early", cp: 3, icon: "clean", name: "說法反覆", county: "台北市", text: "僅在「李登輝授意說」出過後可當事件出：宋移除 2 顆盤上方塊（連選）；宋士氣 −10%", cond: "lee_authorized" },
+  { id: "shifting_story", owner: "lien", deck: "early", cp: 3, icon: "clean", name: "興票案說法反覆", county: "台北市", text: "僅在「李登輝授意說」出過後可當事件出：宋移除 2 顆盤上方塊（連選）；宋士氣 −10%", cond: "lee_authorized" },
   { id: "party_machine", owner: "lien", deck: "early", cp: 4, icon: "econ", name: "黨機器動員", county: "台北縣", text: "連在任 3 個縣市各 +1 免檢定" },
   { id: "party_assets_ads", owner: "lien", deck: "early", cp: 3, icon: "econ", name: "黨產廣告", county: "基隆市", text: "任一議題連 +2" },
   { id: "lien_siew", owner: "lien", deck: "early", cp: 3, icon: "econ", name: "連蕭配", county: "台北縣", text: "經濟議題連 +2" },
@@ -72,7 +72,7 @@ export const EVENTS = [
   { id: "ma_campaigns", owner: "lien", deck: "early", cp: 2, icon: "clean", name: "馬英九站台", county: "台北市", text: "台北市 +2 需檢定" },
   { id: "party_unity", owner: "lien", deck: "early", cp: 3, icon: "cross", name: "黨內整合", county: "台北縣", text: "任一縣市：宋 −1、連 +1（需檢定）" },
   { id: "massive_ads", owner: "lien", deck: "late", cp: 4, icon: "econ", name: "鉅額文宣", county: "桃園縣", text: "任一議題連 +3" },
-  { id: "ma_leaks_polls", owner: "lien", deck: "late", cp: 3, icon: "clean", name: "馬英九公布民調", county: "台北市", text: "法定競選期：連在任 2 個縣市各 +1 需檢定；宋、陳士氣各 +5%", lawful: true },
+  { id: "ma_leaks_polls", owner: "lien", deck: "late", cp: 3, icon: "clean", name: "馬英九選前民調談話", county: "台北市", text: "法定競選期：連在任 2 個縣市各 +1 需檢定；宋、陳士氣各 +5%", lawful: true },
   { id: "lee_alarm", owner: "lien", deck: "late", cp: 3, icon: "cross", name: "李登輝告急", county: "台中市", text: "連在任 3 個縣市各 +1 需檢定" },
   { id: "party_congress", owner: "lien", deck: "late", cp: 2, icon: "econ", name: "黨員大會", county: "台北市", text: "連士氣 +20%" },
   // v0.3
@@ -86,7 +86,7 @@ export const EVENTS = [
   { id: "zhu_rongji", owner: "ext", deck: "late", cp: 4, icon: "cross", name: "朱鎔基「沒有好下場」", county: "屏東縣", text: "陳在任 3 個縣市各 +1 免檢定" },
   { id: "us_congress", owner: "ext", deck: "late", cp: 2, icon: "cross", name: "美國國會譴責北京", county: "嘉義縣", text: "兩岸議題：陳 +1，連 +1" },
   { id: "stock_crash", owner: "ext", deck: "late", cp: 2, icon: "econ", name: "股市重挫", county: "台北縣", text: "經濟議題連 +1；所有人士氣 −5%" },
-  { id: "lee_secret_help", owner: "ext", deck: "late", cp: 3, icon: "clean", name: "李登輝暗助", county: "高雄縣", text: "陳在任 2 個縣市各 +1 免檢定" },
+  { id: "lee_secret_help", owner: "ext", deck: "late", cp: 3, icon: "clean", name: "李登輝暗助說", county: "高雄縣", text: "陳在任 2 個縣市各 +1 免檢定" },
   // v0.3
   { id: "tvbs_poll", owner: "ext", deck: "early", cp: 2, icon: "clean", name: "TVBS 民調", county: "台中市", text: "士氣最低者 +5%（平手由出牌者選）" },
   { id: "pla_drill_rumor", owner: "ext", deck: "early", cp: 3, icon: "cross", name: "中共軍演傳聞", county: "金馬", text: "兩岸議題連 +1、宋 +1；陳士氣 −5%" },
