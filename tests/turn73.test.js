@@ -64,7 +64,7 @@ const order = (st) => (Array.isArray(st.order) && st.order.length === 3 ? st.ord
 const GATE = POOL.some((p) => boards(S.screen(p.s, "zh-Hant")).some((b) => has(b.tag, "data-turn")));
 const gate = (fn) => () => {
   const ne = nonEmpty(POOL.length, "牌桌的狀態"); if (ne !== true) return ne;
-  if (!GATE) return "TODO: 候選人板還沒有 data-turn（輪到誰）";
+  if (!GATE) return "候選人板沒有 data-turn（輪到誰）（#73 已上線，419f1bb；這是退步，不是尚未實作）";
   return fn();
 };
 
