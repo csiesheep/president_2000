@@ -3,7 +3,8 @@
 //   node tests/sim.js <games> [levels=3,3,3] [seed=1] [rotate=1] [workers=N] [quiet=1] [rules=v0.4|v0.5|v0.6|v0.7] [fill=candidate|free]
 //                     [luck=a,b,c] [issues=lead] [momentum=none] [trigger=always|never] [morale=1|full]
 //
-// Game i (0-based) uses seed + i. levels[s] plays seat s (1 樁腳, 2 總幹事, 3 操盤手).
+// Game i (0-based) uses seed + i. levels[s] plays seat s (0 新手, 1 樁腳, 2 總幹事, 3 操盤手). #83: a level-0 seat is told
+// { humans: the seats whose level is not 0 }: they stand in for the people it gives way to, as in tools/balance83.mjs.
 // rotate=1: the first level in `levels` is the hero and the other two its
 // opponents; the hero sits 陳 for the first third of the games, 宋 for the
 // second and 連 for the last (#10 §三.3: "主角輪流坐三個位子各 100 局").
@@ -53,6 +54,7 @@ export function playGame(seed, levels, rules, fill, extra = null) {
   if (extra && extra.trigger) opts.trigger = extra.trigger;
   if (extra && extra.moraleCards) opts.moraleCards = extra.moraleCards; // #77 (true), #79 ("full")
   let st = E.createGame(seed, opts);
+  const humans = [0, 1, 2].filter((p) => levels[p] !== 0); // #83
   let leadsAtVote = null; // #58: the issues each seat led on the state the conversion read
   const R = rng(seed * 977 + 13);
   let ms = 0, decisions = 0, debateCP = null;
@@ -63,7 +65,7 @@ export function playGame(seed, levels, rules, fill, extra = null) {
     const seat = E.mustAct(st)[0];
     if (seat == null) throw new Error(`seed ${seed}: nobody to act in ${st.phase}`);
     const t0 = performance.now();
-    const out = B.chooseMove(st, seat, levels[seat], R);
+    const out = levels[seat] === 0 ? B.chooseMove(st, seat, 0, R, { humans }) : B.chooseMove(st, seat, levels[seat], R);
     ms += performance.now() - t0; decisions++;
     if (out.move.type === "action" && st.pending) cp[seat][out.move.kind] += st.pending.cp;
     why[out.why.key] = (why[out.why.key] || 0) + 1;
@@ -123,7 +125,7 @@ function parseArgs(argv) {
     else throw new Error("sim: unknown option " + a);
   }
   if (!(o.games > 0)) throw new Error("sim: games must be a positive number");
-  if (o.levels.length !== 3 || o.levels.some((x) => ![1, 2, 3].includes(x))) throw new Error("sim: levels must be three of 1/2/3");
+  if (o.levels.length !== 3 || o.levels.some((x) => ![0, 1, 2, 3].includes(x))) throw new Error("sim: levels must be three of 0/1/2/3");
   if (o.luck && (o.luck.length !== 3 || o.luck.some((x) => !Number.isInteger(x)))) throw new Error("sim: luck must be three whole numbers");
   return o;
 }

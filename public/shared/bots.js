@@ -1159,6 +1159,99 @@ class Bot {
     if (m.type === "remove") why.target = SEATS[m.target];
     return { move: m, why };
   }
+
+  // ---------------------------------------------------------------- 新手 (level 0, #83)
+  //
+  // A slip: the move of someone who knows the rules but not the game. It is always a move a person could give a
+  // reason for: any card in hand (one of a person's own cards first, NOVICE_GIFT: it does not see that the card's
+  // event goes to its owner), the issue action instead of campaigning (NOVICE_ISSUE), the candidate sent off to
+  // another region where there is room before campaigning (NOVICE_TRAVEL), a cube on any block with room, a debate
+  // card on any issue. Never an end with CP and room left, a steal, or a cube taken off the board on election day.
+  // null: no slip here, the 助選員's move stands.
+  slip(legal) {
+    const v = this.v, pick = (xs) => xs[Math.floor(this.rng() * xs.length) % xs.length];
+    const place = (xs, key, extra = {}) => {
+      if (!xs.length) return null;
+      const m = pick(xs);
+      return { move: m, why: { key: key(m), county: COUNTIES[m.county][0], gain: 0, ...extra } };
+    };
+    if (v.phase === "debate") {
+      if (v.debate && v.debate.award) return place(legal.filter((m) => m.type === "fill" || m.type === "cross"), () => "award_place");
+      const m = pick(legal);
+      return { move: m, why: { key: "debate_card", card: m.card, issue: m.issue } };
+    }
+    if (v.phase === "election") {
+      // a success on election day goes on an empty block of the county, any colour
+      if (!v.election.choose) return null;
+      return place(legal.filter((m) => m.type !== "remove"), () => "canvass_place");
+    }
+    if (v.phase !== "action") return null;
+    const pd = v.pending;
+    if (!pd) {
+      // any card in hand, for its CP or (when it may) its event
+      const plays = legal.filter((x) => !x.block);
+      const gift = plays.filter((x) => x.card && (this.humans || []).includes(SEATS.indexOf(CARD[x.card].owner)));
+      const m = gift.length && this.rng() < NOVICE_GIFT[this.p] ? pick(gift) : pick(plays);
+      if (m.type === "candidate") return { move: m, why: { key: "play_candidate", cp: v.v07 && this.p === LIEN ? 4 : CANDIDATE_CARDS[SEATS[this.p]].cp } };
+      const c = CARD[m.card];
+      if (c.must) return { move: m, why: { key: "play_must", card: m.card } };
+      if (c.owner === "ext") return { move: m, why: { key: "play_external", card: m.card, value: 0 } };
+      if (m.mode === "event") return { move: m, why: { key: "play_event", card: m.card, value: 0 } };
+      return { move: m, why: { key: "play_cp", card: m.card, kind: "campaign" } };
+    }
+    if (pd.stage === "kind") {
+      const m = legal.find((x) => x.kind === (this.rng() < NOVICE_ISSUE[this.p] ? "issue" : "campaign"));
+      return m ? { move: m, why: { key: m.kind === "issue" ? "issue_action" : "campaign", cp: pd.cp, value: 0 } } : null;
+    }
+    if (pd.stage === "issue") {
+      // a cube of its own on any issue while the CP lasts
+      const xs = legal.filter((m) => m.type === "issue" && m.target == null);
+      if (!xs.length) return null;
+      const m = pick(xs);
+      return { move: m, why: { key: "issue_lead", issue: m.issue, gain: 0 } };
+    }
+    if (pd.stage === "campaign") {
+      // the candidate goes off to another region (leaving a CP to spend there), or a cube anywhere there is room
+      // in the region; with the region full, the 助選員 moves on
+      const room = (k) => v.counties[k].G + v.counties[k].B > 0;
+      const go = legal.filter((m) => m.type === "move" && REG[m.to] !== REG[v.pos[this.p]] && regionCost(this.p, v.pos[this.p], REG[m.to]) < pd.cp && room(m.to));
+      if (go.length && this.rng() < NOVICE_TRAVEL[this.p]) {
+        const m = pick(go);
+        return { move: m, why: { key: "move_region", region: REGIONS[REG[m.to]], county: COUNTIES[m.to][0], value: 0 } };
+      }
+      return place(legal.filter((m) => m.type === "fill" || m.type === "cross"), (m) => (m.type === "cross" ? "cross_fill" : "fill_open"));
+    }
+    if (pd.stage === "local") return place(legal, () => "local_place");
+    if (pd.stage === "effect") {
+      const xs = legal.filter((m) => m.type === "fill" || m.type === "cross" || m.type === "remove" || m.type === "convert");
+      if (!xs.length) return null;
+      const m = pick(xs), why = { key: m.type === "remove" ? "effect_remove" : m.type === "convert" ? "effect_convert" : "effect_place", card: pd.fx.card, gain: 0 };
+      why.county = COUNTIES[m.county][0];
+      return { move: m, why };
+    }
+    return null;
+  }
+}
+
+// 新手 (level 0, #83): how often each 新手 slips, by where the person sits (rows 陳, 宋, 連) and where the 新手
+// sits (columns). A person is a 新手 too, so the seats are far apart: against two 助選員 one such person (half of
+// the decisions the 助選員's, half a random legal move) won 0.7 % as 陳, 22.7 % as 宋, 0 % as 連, and 宋's
+// 助選員 is the one to hold back most. Measured with tools/balance83.mjs's games (seeds 1–300 a seat, the #83
+// handover has the runs); the target is 30–50 % in every seat. NOVICE_ANY: the person's seat not known (no ctx,
+// or nobody in ctx.humans), about the mean of the column; with more than one person, the mean of their rows.
+const NOVICE_SLIP = [
+  [0, 1, 1],       // the person is 陳
+  [0.2, 0, 0.2],   // 宋
+  [0.75, 1, 0],    // 連
+];
+const NOVICE_ANY = [0.5, 1, 0.6];
+// What a slip does, by the 新手's seat: the issue action instead of a campaign (宋 most: the strongest seat at this
+// level), the candidate sent off first, a person's card picked first.
+const NOVICE_ISSUE = [0.3, 0.7, 0.3], NOVICE_TRAVEL = [1, 1, 1], NOVICE_GIFT = [1, 1, 1];
+function noviceSlip(seat, humans) {
+  const hs = Array.isArray(humans) ? humans.filter((h) => h === CHEN || h === SOONG || h === LIEN) : [];
+  if (!hs.length) return NOVICE_ANY[seat];
+  return hs.reduce((a, h) => a + (h === seat ? NOVICE_ANY[seat] : NOVICE_SLIP[h][seat]), 0) / hs.length;
 }
 
 // ------------------------------------------------------------------ event values (§14.3)
@@ -1304,23 +1397,31 @@ const EV_MORALE = {
 // argument is changed, and a view that went through JSON gives the same
 // advice. Without an rng it uses a fresh generator with a fixed seed, so the
 // same position always gets the same advice.
-export function advise(view, legal, level = 3, rng = fixedRng()) {
+//
+// Level 0 新手 (#83) is the 助選員 who, at each decision, slips with the odds in NOVICE_SLIP (one rng() draw, then
+// Bot.slip). Those odds depend on where the person sits: ctx.humans lists the seats people play (in a room, every
+// seat that is not a bot). Without it the 新手 plays NOVICE_ANY. Levels 1–3 never read ctx.
+export const BOT_LEVELS = [0, 1, 2, 3];
+export function advise(view, legal, level = 3, rng = fixedRng(), ctx = {}) {
   const seat = view.seat;
   if (!legal.length) throw new Error(`bots: seat ${seat} has nothing to do in phase ${view.phase}`);
   if (legal.length === 1) return { move: legal[0], why: { key: "only_move" } };
-  const bot = new Bot(view, level === 1 || level === 2 ? level : 3, rng);
+  const bot = new Bot(view, level === 0 || level === 1 ? 1 : level === 2 ? 2 : 3, rng);
   if (view.flags && typeof view.flags.yangReturned === "number") bot.yang = view.flags.yangReturned; // public: 爆料's count
-  const out = bot.decide(legal);
+  if (level === 0) bot.humans = ctx && Array.isArray(ctx.humans) ? ctx.humans : [];
+  // an issue action once chosen is played through (the 助選員 would end it at once)
+  const slipped = level === 0 && ((view.pending && view.pending.stage === "issue") || rng() < noviceSlip(seat, ctx && ctx.humans)) ? bot.slip(legal) : null;
+  const out = slipped || bot.decide(legal);
   if (!out || !out.move || !legal.includes(out.move)) throw new Error(`bots: no decision in phase ${view.phase} (${view.pending ? view.pending.stage : "-"})`);
   return out;
 }
 
 // The bot is the advisor fed the seat's view: it cannot read what the view hides.
 // (A forced move skips building the view; advise answers it the same way.)
-export function chooseMove(st, seat, level, rng) {
+export function chooseMove(st, seat, level, rng, ctx = {}) {
   const legal = E.legalMoves(st, seat);
   if (legal.length === 1) return { move: legal[0], why: { key: "only_move" } };
-  return advise(E.view(st, seat), legal, level, rng);
+  return advise(E.view(st, seat), legal, level, rng, ctx);
 }
 
 // mulberry32 with a fixed seed: advise()'s rng when the caller gives none.
