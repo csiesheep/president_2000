@@ -77,7 +77,7 @@ const countyChips = (html) => tags(html, "data-act-chip").filter((t) => attr(t.t
 const GATE = POOL.some((p) => tags(S.screen(p.s, "zh-Hant"), "data-act-mark").length);
 const gate = (fn) => () => {
   const ne = nonEmpty(POOL.length, "牌桌的狀態"); if (ne !== true) return ne;
-  if (!GATE) return "TODO: 地圖上還沒有每個動作的記號（data-act-mark）";
+  if (!GATE) return "地圖上沒有每個動作的記號（data-act-mark）（#72 已上線，bea65f2；這是退步，不是尚未實作）";
   return fn();
 };
 
