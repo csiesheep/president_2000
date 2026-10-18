@@ -73,6 +73,14 @@ export function bind(lang) {
 // ---------------------------------------------------------------- whose turn it is (#73)
 // The seat the game waits for: mustAct with exactly one seat (the actor; or whoever answers a card's choice); null when it waits
 // for several (keeping cards, the debate) or the game is over. It reads a view as well as a state.
+// #78: the tag on the lit board. Its text is whole ("連 行動中", "Your move", "Soong acting"); on a phone CSS hides the .pl-tn part
+// (the name, which the board already shows; in English the "r move" of "Your move"), so what is left fits the strip between the number and the votes.
+function tagHtml(x, v, p) {
+  const w = x.S.hdr.who;
+  if (p === v.seat) return x.lang === "en" && /^Your move$/.test(w.you) ? `You<span class="pl-tn">r move</span>` : esc(w.you);
+  const [a, b] = w.acting.split("{who}");
+  return `${esc(a)}<span class="pl-tn">${esc(x.short(p))}</span>${esc(b == null ? "" : b)}`;
+}
 export function turnSeat(v) {
   if (!v || v.phase === "end") return null;
   try {
@@ -677,7 +685,7 @@ function playersHTML(v, x, o = {}) {
       return `<span class="pl-lk${prov ? " prov" : ""}${elect ? " elect" : ""}"><small>${esc(elect ? L.canvassW : L.luckW)}</small> <b>${luckNow(v, q)}%</b></span>`;
     };
     return `<article class="pl s${p}${p === v.seat ? " me" : ""}${first(p) ? " first" : ""}"${ts === p ? ` data-turn="${SEATS[p]}"` : ""}>` +
-      `<div class="pl-card" data-seat="${p}"${v7 ? ` data-luck="${luckNow(v, p)}"` : ""}>${ts === p ? `<b class="pl-tag" data-turn-tag>${esc(p === v.seat ? x.S.hdr.who.you : fill(x.S.hdr.who.acting, { who: x.short(p) }))}</b>` : ""}<button type="button" class="pl-tap" data-detail="${p}" aria-expanded="false" aria-label="${esc(`${x.full(p)} · ${fill(L.cubes, { n })} · ${L.mom} ${mom}`)}">` +
+      `<div class="pl-card" data-seat="${p}"${v7 ? ` data-luck="${luckNow(v, p)}"` : ""}>${ts === p ? `<b class="pl-tag" data-turn-tag>${tagHtml(x, v, p)}</b>` : ""}<button type="button" class="pl-tap" data-detail="${p}" aria-expanded="false" aria-label="${esc(`${x.full(p)} · ${fill(L.cubes, { n })} · ${L.mom} ${mom}`)}">` +
       `<span class="pl-pic"><img src="art/candidates/${SEATS[p]}.webp" alt="${esc(x.full(p))}" width="480" height="640" loading="lazy" decoding="async"></span><b class="no">${NO[p]}</b>${p === leadP ? `<i class="pl-lead">${esc(x.d.ui.look.board.leadTag)}</i>` : ""}` +
       `<span class="pl-t"><span class="pl-n">${first(p) ? `<i class="flag-i" role="img" aria-label="${esc(flag)}" title="${esc(flag)}">⚑</i>` : ""}${esc(x.lang === "en" ? x.short(p) : x.full(p))}</span>` +
       `<span class="pl-v">${votes}</span><span class="pl-mm">${esc(L.mom)} ${dots}</span>${v7 ? lk(p) : ""}</span></button></div>` +
