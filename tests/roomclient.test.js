@@ -69,7 +69,10 @@ c15("大廳：空位才有「入座」；入座後房主才有「開局」（三
   r = eq(sits("B"), "0,2", "A 坐 1 之後，B 能坐的位子"); if (r !== true) return r;
   w.click("B", { t: "sit", seat: 2 });
   const starts = (conn) => C.actions(w.clients[conn], "zh-Hant").filter((a) => a.data && a.data.t === "start").map((a) => a.data.level).sort().join(",");
-  r = eq(starts("A"), "1,2,3", "房主 A 的開局選項（bot 等級）"); if (r !== true) return r;
+  // #87: once the room core takes level 0 (新手), the host offers it too: 0,1,2,3; before, 1,2,3. Whether the core takes
+  // it is read from the core (a start with level 0 in a scratch room), not from the lobby being checked.
+  const takes0 = (() => { const v = table(); v.join("Z", "Zed"); v.click("Z", { t: "sit", seat: 0 }); v.click("Z", { t: "start", level: 0 }); return v.room.started && v.room.level === 0; })();
+  r = eq(starts("A"), takes0 ? "0,1,2,3" : "1,2,3", "房主 A 的開局選項（bot 等級）"); if (r !== true) return r;
   r = eq(starts("B"), "", "不是房主的 B 的開局選項"); if (r !== true) return r;
   const tok = w.clients.A.token;
   r = eq(typeof tok === "string" && tok.length >= 8, true, "client.token 是 hello 給的 token"); if (r !== true) return r;
