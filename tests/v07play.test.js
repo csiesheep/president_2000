@@ -37,7 +37,9 @@ const c60 = (name, fn) => check(name, () => (READY ? fn() : "S.newSolo 開的不
 const LANGS = ["zh-Hant", "en"];
 const SHORT = { "zh-Hant": ["陳", "宋", "連"], en: ["Chen", "Soong", "Lien"] };
 const FORBID = { "zh-Hant": /袋|休息方塊|休息區|補袋/, en: /\bbags?\b|rest[- ]cubes?|rest area/i };
-const LUCKW = { "zh-Hant": (n) => `運氣 ${n}%`, en: (n) => `Luck ${n}%` };
+// #76: 運氣 is renamed 士氣 (Luck → Morale); either word, until it lands.
+const LUCKW = { "zh-Hant": (n) => [`運氣 ${n}%`, `士氣 ${n}%`], en: (n) => [`Luck ${n}%`, `Morale ${n}%`] };
+const hasAny = (html, list) => list.some((w) => html.includes(w));
 const text = (html) => (html.replace(/<[^>]+>/g, " ") + " " + [...html.matchAll(/\b(?:aria-label|title|alt)="([^"]*)"/g)].map((m) => m[1]).join(" ")).replace(/\s+/g, " ");
 const V7 = (st) => `${st.rules} ${st.issueLuck} ${st.luck}`;
 const WANT = "v0.7 lead 50,50,60";
@@ -115,7 +117,7 @@ c60("候選人板寫出各家的運氣：「運氣 N%」（省府舊部那一回
     const ps = panels(S.screen(s, lang)); if (ps.length !== 3) throw new Error(`第 ${s.st.turn} 回合：候選人板 ${ps.length} 個`);
     for (const p of ps) {
       const ok50 = p.seat === 2 && (s.st.active || []).includes("provincial_staff");
-      if (!p.html.includes(LUCKW[lang](s.st.luck[p.seat])) && !(ok50 && p.html.includes(LUCKW[lang](50)))) throw new Error(`${lang} 第 ${s.st.turn} 回合：${SHORT[lang][p.seat]}的板子沒有「${LUCKW[lang](s.st.luck[p.seat])}」：${text(p.html).slice(0, 120)}`);
+      if (!hasAny(p.html, LUCKW[lang](s.st.luck[p.seat])) && !(ok50 && hasAny(p.html, LUCKW[lang](50)))) throw new Error(`${lang} 第 ${s.st.turn} 回合：${SHORT[lang][p.seat]}的板子沒有「${LUCKW[lang](s.st.luck[p.seat])}」：${text(p.html).slice(0, 120)}`);
     }
     n++;
   });
@@ -191,7 +193,7 @@ const HAS_DATA_LUCK = (() => { try { return /class="pl-card[^"]*" data-seat="\d"
 c60("候選人板的 data-luck 與字：行動階段是運氣、投票日是催票運氣「催票 N%」（中英；#61）", () => {
   if (!HAS_DATA_LUCK) return "TODO: 候選人板還沒有 data-luck（#61）";
   let act = 0, elect = 0;
-  const WORD = { "zh-Hant": { luck: "運氣", canvass: "催票" }, en: { luck: "Luck", canvass: "Canvass" } };
+  const WORD = { "zh-Hant": { luck: ["運氣", "士氣"], canvass: ["催票"] }, en: { luck: ["Luck", "Morale"], canvass: ["Canvass"] } };
   for (const lang of LANGS) for (const seed of [72, 73]) walk(S.newSolo({ seat: seed % 3, level: 2, seed }), lang, seed + 11, (s) => {
     const inElection = s.st.phase === "election" && s.st.election;
     if (s.st.phase !== "action" && !inElection) return;
@@ -200,7 +202,7 @@ c60("候選人板的 data-luck 與字：行動階段是運氣、投票日是催�
       const want = inElection ? canvassOf(s.st, p.seat) : p.seat === 2 && (s.st.active || []).includes("provincial_staff") ? 50 : s.st.luck[p.seat];
       const dl = (p.html.match(/data-luck="(\d+)"/) || [])[1], word = WORD[lang][inElection ? "canvass" : "luck"];
       if (Number(dl) !== want) throw new Error(`${lang} 第 ${s.st.turn} 回合（${s.st.phase}）：${SHORT[lang][p.seat]}的 data-luck 是 ${dl}（應為 ${want}）`);
-      if (!text(p.html).includes(`${word} ${want}%`)) throw new Error(`${lang} 第 ${s.st.turn} 回合（${s.st.phase}）：${SHORT[lang][p.seat]}的板子沒有「${word} ${want}%」：${text(p.html).slice(0, 120)}`);
+      if (!word.some((w) => text(p.html).includes(`${w} ${want}%`))) throw new Error(`${lang} 第 ${s.st.turn} 回合（${s.st.phase}）：${SHORT[lang][p.seat]}的板子沒有「${word} ${want}%」：${text(p.html).slice(0, 120)}`);
       if (inElection) elect++; else act++;
     }
   });
@@ -214,7 +216,7 @@ c60("候選人板的 data-luck 與字：行動階段是運氣、投票日是催�
     const lien = panels(S.screen(s, lang)).find((p) => p.seat === 2);
     if (!lien) return `${lang}：省府舊部的局面畫不出連的板子`;
     const dl = (lien.html.match(/data-luck="(\d+)"/) || [])[1];
-    if (Number(dl) !== 50 || !text(lien.html).includes(`${WORD[lang].luck} 50%`)) return `${lang} 省府舊部那一回合：連的 data-luck 是 ${dl}、字是「${text(lien.html).slice(0, 80)}」（應為 50、「${WORD[lang].luck} 50%」）`;
+    if (Number(dl) !== 50 || !WORD[lang].luck.some((w) => text(lien.html).includes(`${w} 50%`))) return `${lang} 省府舊部那一回合：連的 data-luck 是 ${dl}、字是「${text(lien.html).slice(0, 80)}」（應為 50、「${WORD[lang].luck} 50%」）`;
   }
   return ok(true, `${act} 塊行動階段的板子寫運氣、${elect} 塊投票日的板子寫催票運氣，data-luck 都對；省府舊部那一回合連寫 50（中英，人為局面）`);
 });

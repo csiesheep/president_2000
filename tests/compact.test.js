@@ -382,7 +382,8 @@ check("票數：候選人板寫盤上方塊換成的票，中文 n 接 0萬票�
 
 // v0.7 (#60) has no bag: its panels show the luck instead (「運氣 N%」 / "Luck N%"; 連 may show 50 in a turn of 省府舊部),
 // the wording tests/v07play.test.js asks for. A game saved on v0.6 or before still shows the bag.
-const luckOn = (lang, n) => (lang === "en" ? `Luck ${n}%` : `運氣 ${n}%`);
+// #76: 運氣 is renamed 士氣 (Luck → Morale); either word, until it lands.
+const luckOn = (lang, n) => (lang === "en" ? [`Luck ${n}%`, `Morale ${n}%`] : [`運氣 ${n}%`, `士氣 ${n}%`]);
 check("動能、手牌、袋子（v0.7：運氣）還在：每塊候選人板有 動能/Momentum 與動能數，手牌 · 已留、袋中的字跟現在一樣（v0.7 是運氣 N%）", panelGate(() => {
   let n = 0, nBag = 0, nLuck = 0;
   for (const p of POOL.filter((x, i) => i % 3 === 0)) {
@@ -405,7 +406,7 @@ check("動能、手牌、袋子（v0.7：運氣）還在：每塊候選人板有
         // #61: on election day the panel may show the canvassing luck instead (「催票 N%」 / "Canvass N%").
         const ev = p.v.phase === "election" && p.v.election ? Math.min(95, Math.min(80, p.v.luck[s] + 10 * p.v.election.mom[s]) + 10 * ((p.v.election.leads || [0, 0, 0])[s])) : null;
         const canv = ev == null ? null : p.lang === "en" ? `Canvass ${ev}%` : `催票 ${ev}%`;
-        if (!hay.includes(want) && !(alt && hay.includes(alt)) && !(canv && hay.includes(canv))) return `${p.where}：${SEAT[s]} 板上找不到「${want}」（v0.7）`;
+        if (!want.some((w) => hay.includes(w)) && !(alt && alt.some((w) => hay.includes(w))) && !(canv && hay.includes(canv))) return `${p.where}：${SEAT[s]} 板上找不到「${want[0]}」（v0.7）`;
         nLuck++;
       }
       n++;

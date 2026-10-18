@@ -134,8 +134,8 @@ check("九張改寫的牌：中文牌文照規則書 v0.5 §十四一字不差�
   for (const [id, want] of Object.entries(CARD_TEXT)) {
     const c = EVENTS.find((e) => e.id === id);
     if (!c) { bad.push(`${id} 不在牌庫`); continue; }
-    const w = /運氣/.test(all(zh)) && CARD_TEXT_V07[id] ? CARD_TEXT_V07[id] : want;
-    if (c.text !== w) bad.push(`${id}：「${c.text}」（${w}）`);
+    const w = /運氣|士氣/.test(all(zh)) && CARD_TEXT_V07[id] ? CARD_TEXT_V07[id] : want;
+    if (c.text.split("士氣").join("運氣") !== w) bad.push(`${id}：「${c.text}」（${w}）`);
     const t = get(en, `cards.${id}.text`) || "";
     if (!/issue/i.test(t)) bad.push(`${id} 英文：「${t}」沒寫 issue`);
   }
@@ -211,7 +211,7 @@ section("59 規則與文字 v0.7");
 const V06_ONLY = new Set(["ui.solo.hdr.bag", "ui.solo.help.bag", "ui.restCubes", "ui.solo.f.convert", "ui.look.board.bag", "terms.rest"]);
 const FORBID7 = { zh: /袋|休息方塊|休息區|補袋/, en: /\bbags?\b|rest[- ]cubes?|rest area/i };
 const LUCK_CARDS = ["chang_yung_fa", "chang_chiu", "million_signatures", "provincial_staff", "chang_doctors", "military_civil", "local_factions", "party_congress", "econ_cabinet"];
-const gate7 = (fn) => () => (/運氣/.test(all(zh)) ? fn() : "TODO: 規則頁還是 v0.6（沒有「運氣」，#59）");
+const gate7 = (fn) => () => (/運氣|士氣/.test(all(zh)) ? fn() : "TODO: 規則頁還是 v0.6（沒有「運氣」，#59）");
 
 check("沒有袋子也沒有休息方塊：中英所有字串、所有中文牌文（只有 v0.6 以前的舊局才會用到的那些除外）", gate7(() => {
   const left = [];
@@ -228,28 +228,28 @@ check("十二張改寫的牌：中文牌文照規則書 v0.7 §十四一字不�
   for (const [id, want] of Object.entries(CARD_TEXT_V07)) {
     const c = EVENTS.find((e) => e.id === id);
     if (!c) { bad.push(`${id} 不在牌庫`); continue; }
-    if (c.text !== want) bad.push(`${id}：「${c.text}」（${want}）`);
+    if (c.text.split("士氣").join("運氣") !== want) bad.push(`${id}：「${c.text}」（${want}）`); // #76: 士氣 reads as 運氣
   }
-  for (const id of LUCK_CARDS) { const t = get(en, `cards.${id}.text`) || ""; if (!/luck/i.test(t)) bad.push(`${id} 英文：「${t}」沒寫 luck`); }
+  for (const id of LUCK_CARDS) { const t = get(en, `cards.${id}.text`) || ""; if (!/luck|morale/i.test(t)) bad.push(`${id} 英文：「${t}」沒寫 luck`); }
   return bad.length ? bad.join("；") : ok(true, "十二張中文牌文都對，九張運氣牌的英文都寫 luck");
 }));
 check("規則頁講 v0.7：運氣 陳 50%、宋 50%、連 60%；我 ÷（我 + 對手）；20%–80%；催票運氣算領先的議題、最多 95%（中英）", gate7(() => {
   const z = all(zh), e = all(en);
   if (!/陳 ?50%[^。]{0,8}宋 ?50%[^。]{0,8}連 ?60%/.test(z)) return "zh 規則頁沒寫出開局運氣 陳 50%、宋 50%、連 60%";
-  if (!/÷/.test(z) || !/對手的運氣/.test(z)) return "zh 規則頁沒寫出有特定對手時的成功率（我 ÷（我 + 對手））";
+  if (!/÷/.test(z) || !/對手的(運氣|士氣)/.test(z)) return "zh 規則頁沒寫出有特定對手時的成功率（我 ÷（我 + 對手））";
   if (!/20%[^。]{0,4}80%/.test(z)) return "zh 規則頁沒寫出運氣 20%–80%";
-  if (!/催票運氣/.test(z) || !/領先的議題/.test(z) || !/95%/.test(z)) return "zh 規則頁沒寫出催票運氣（領先的議題、最多 95%）";
-  if (!/luck/i.test(e) || !/÷|divided by/i.test(e) || !/95 ?%/.test(e)) return "en 規則頁沒寫出 luck、÷（divided by）或 95%";
+  if (!/催票(運氣|士氣)/.test(z) || !/領先的議題/.test(z) || !/95%/.test(z)) return "zh 規則頁沒寫出催票運氣（領先的議題、最多 95%）";
+  if (!/luck|morale/i.test(e) || !/÷|divided by/i.test(e) || !/95 ?%/.test(e)) return "en 規則頁沒寫出 luck、÷（divided by）或 95%";
   return ok(true, "中英都有開局運氣、對手的運氣、上下限、催票運氣與 95%");
 }));
 check("候選人表：連的候選人牌 4 CP，有一列起始運氣；連的簡介講 60% 的運氣（中英）", gate7(() => {
   const z = all(zh), e = all(en);
-  if (!/起始運氣/.test(z) || !/start\w* luck/i.test(e)) return "候選人表沒有起始運氣那一列（中：起始運氣；英：starting luck）";
+  if (!/起始(運氣|士氣)/.test(z) || !/start\w* (luck|morale)/i.test(e)) return "候選人表沒有起始運氣那一列（中：起始運氣；英：starting luck）";
   const rows = (d) => flat(d.rules, "rules").filter(([k]) => /table\.rows/.test(k)).map(([, v]) => v);
   if (!rows(zh).some((v) => /^4 CP/.test(v)) || !rows(en).some((v) => /^4 CP/.test(v))) return "候選人表裡沒有一格以 4 CP 開頭（連的候選人牌）";
   const zb = get(zh, "ui.solo.cand.lien.blurb") || "", eb = get(en, "ui.solo.cand.lien.blurb") || "";
-  if (!/運氣/.test(zb) || !/60%/.test(zb)) return `zh 連的簡介沒講 60% 的運氣：「${zb}」`;
-  if (!/luck/i.test(eb) || !/60 ?%/.test(eb)) return `en 連的簡介沒講 60% luck：「${eb}」`;
+  if (!/運氣|士氣/.test(zb) || !/60%/.test(zb)) return `zh 連的簡介沒講 60% 的運氣：「${zb}」`;
+  if (!/luck|morale/i.test(eb) || !/60 ?%/.test(eb)) return `en 連的簡介沒講 60% luck：「${eb}」`;
   return ok(true, "候選人表有 4 CP 與起始運氣；連的簡介講 60%");
 }));
 
