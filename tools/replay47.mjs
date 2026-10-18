@@ -119,6 +119,11 @@ const load = async (t, s, speed = "normal") => {
   // (it may be drawn a moment after the map: count it gone only after 0.4 s in a row without it)
   for (let i = 0, clear = 0; i < 160 && clear < 8; i++) { let up = true; try { up = await t.ev(`(() => { const c = document.querySelector("[data-turncard]"); if (!c) return false; const r = c.getBoundingClientRect(); return r.width > 0 && Number(getComputedStyle(c).opacity) > 0.05; })()`); } catch { /* navigating */ } clear = up ? 0 : clear + 1; await sleep(50); }
 };
+// #82: on v0.8 the game findGame picks has longer rival turns (17 steps; the FE's timings on #82: the fourth card at
+// 18.5 s normal, 8.8 s fast, 26.9 s slow), past the fixed waits; wait instead until as many cards as the log has were
+// shown and the last one has gone, and as many stamps as the log has checks came up (on the #81 tree they come after the
+// last card), then 600 ms; or the cap. Fewer cards or stamps than the log still read red.
+const untilShown = async (t, cap) => { const t0 = Date.now(); for (;;) { const m = await read(t); const n = m.rep.length; if ((n >= WANT_IDS.length && m.rep[n - 1].off != null && m.stamps.length >= WANT_HIT + WANT_MISS) || Date.now() - t0 > cap) break; await sleep(200); } await sleep(600); };
 const read = async (t) => JSON.parse(await t.ev(`JSON.stringify({ now: performance.now(), rep: (window.__rep || []).map((r) => ({ id: r.id, on: r.on, off: r.off })), stamps: window.__stamps || [], sounds: window.__sounds || [], saves: window.__saves || [] })`));
 const dur = (r, now) => Math.round((r.off == null ? now : r.off) - r.on);
 // A spot on the table that is no button: the centre of the 剛剛 (just now) block's heading.
@@ -178,7 +183,7 @@ try {
     if (!game) break;
     const t = await tab(br, w, h, mob);
     await load(t, game.queued);
-    await sleep(Math.max(9000, WANT_IDS.length * 2500));
+    await untilShown(t, 45000);
     const m = await read(t), ids = m.rep.map((r) => r.id), ds = m.rep.map((r) => dur(r, m.now));
     rule(ids.join(",") === WANT_IDS.join(",") && ds.every((d) => d >= 700 && d <= 2000), `${w} normal: cards shown ${ids.join(",") || "none"} (log: ${WANT_IDS.join(",")}), each ${ds.join("/") || "—"} ms (700–2000)`);
     const hit = m.stamps.filter((s) => s.type === "hit").length, miss = m.stamps.filter((s) => s.type === "miss").length;
@@ -190,7 +195,7 @@ try {
     for (const [sp, okd, txt] of [["fast", (d) => d <= 450, "≤ 450"], ["slow", (d) => d >= 1100, "≥ 1100"]]) {
       const t = await tab(br, 390, 844, true);
       await load(t, game.queued, sp);
-      await sleep(sp === "slow" ? Math.max(12000, WANT_IDS.length * 3500) : 6000);
+      await untilShown(t, sp === "slow" ? 60000 : 25000);
       const m = await read(t), ids = m.rep.map((r) => r.id), ds = m.rep.map((r) => dur(r, m.now));
       rule(ids.join(",") === WANT_IDS.join(",") && ds.every(okd), `390 ${sp}: cards ${ids.join(",") || "none"}, each ${ds.join("/") || "—"} ms (${txt})`);
       t.close();
