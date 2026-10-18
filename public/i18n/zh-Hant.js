@@ -121,7 +121,8 @@ export default {
           "花蓮縣": "花蓮", "台東縣": "台東", "澎湖縣": "澎湖", "金馬": "金馬",
         },
       },
-      hl: { lead: "{who}領先", tie: "{who}平手", none: "無人表態", reward: { 1: "+1 動能、抽背書", 2: "抽背書", 3: "+1 動能" } },
+      hl: { lead: "{who}領先", tie: "{who}平手", none: "無人表態", reward: { 1: "+1 動能、抽背書", 2: "抽背書", 3: "+1 動能" },
+        rewardM: { 1: "抽背書", 2: "抽背書", 3: "沒有獎勵" } }, // v0.8 (#82): the stories of a game with no momentum
       help: {
         mom: "動能：你的氣勢。每回合結束先減半（捨去），再給議題總領先者 +1，最後依議題領先加分；可以花動能來觸發對手拿去當 CP 的你的牌，投票日還能換成方塊。",
         bag: "袋子：支持檢定從這裡抽一顆方塊，抽到自己的顏色就成功；抽到別人的就失敗，那顆回到它的主人手上。數字是袋裡各色的方塊數。",
@@ -135,6 +136,8 @@ export default {
         turnOrder: "第 {n} 回合開始 · 票少的先：{order} · 發到 {cards} 張牌", turnOrderNoDeal: "第 {n} 回合開始 · 票少的先：{order}", shuffle: "議題重排（頭條到三條）：{text}",
         turnDebate: "第 {n} 回合：公辦政見發表會開始", turnElection: "第 {n} 回合：投票日開始",
         decay: "回合結算 · 動能減半：{text}", mediaBonus: "媒體領先 {who} +1 動能", leadBonus: "議題總領先者 {who} +1 動能", slot1: "頭條「{issue}」{who}領先：+1 動能，抽 1 張背書", slot3: "三條「{issue}」{who}領先：+1 動能",
+        talkMorale: { effect_tvbs: "{card}要選一位加士氣，我們選{seat}。" }, // v0.8 (#82): said instead of talk.effect_tvbs in a game with no momentum
+        slotM1: "頭條「{issue}」{who}領先：抽 1 張背書", slotM2: "二條「{issue}」{who}領先：抽 1 張背書",
         issueDecay: "各條議題的領先者少 1 顆方塊", momNow: "結算後動能：{text}", group: "{head}：{what}", times: "×{n}",
         p: {
           fill: "{county} +{n}", cross: "{county} 跨營 +{n}", steal: "{county} 搶{target} {n} 顆", remove: "{county} 移除{target} {n} 顆", grey: "{county} 無色塊 +{n}",
@@ -170,7 +173,7 @@ export default {
         media: "廣告成功：放 1 顆自己的媒體，或移除對手的 1 顆。", issue: "議題：剩 {cp} CP。",
         local: "在 {county} 放 1 顆方塊。",
         fxPlace: "放置方塊（還要 {left} 顆）。", fxRemove: "移除{who}的方塊（還要 {left} 顆）。", fxMedia: "放媒體（還要 {left} 顆）。",
-        fxMediaRemove: "移除{who}的媒體（還要 {left} 顆）。", fxConvert: "把無色塊轉成綠營游離塊（還要 {left} 塊）。", fxTvbs: "選一位加 1 動能。", fxIssue: "選一個議題，放 {n} 顆{who}的方塊。", fxIssueRemove: "選一個議題，移除{who}的方塊（最多 {n} 顆）。",
+        fxMediaRemove: "移除{who}的媒體（還要 {left} 顆）。", fxConvert: "把無色塊轉成綠營游離塊（還要 {left} 塊）。", fxTvbs: "選一位加 1 動能。", fxTvbsMorale: "選一位士氣 +5%。", fxIssue: "選一個議題，放 {n} 顆{who}的方塊。", fxIssueRemove: "選一個議題，移除{who}的方塊（最多 {n} 顆）。",
         swap: "你是議題總領先者：可以交換相鄰兩條議題。", reward: "你領先二條的議題：選 1 動能，或抽 1 張背書。",
         destDebate: "政見發表會", destElection: "投票日",
         autoDebate: "只剩這一張留牌：面朝下打出，三人都選好才一起翻開。", autoElection: "只剩這一張留牌：在牌上的縣市催票，做 3 次檢定。", autoAction: "只剩這一張牌能打：選一種打法。",
@@ -199,7 +202,7 @@ export default {
         issuePlace: "{issue} · 放 1 顆（{cost} CP）", issueRemove: "{issue} · 移除{who} 1 顆（{cost} CP）",
         swap: "交換第 {a}、{b} 條議題", noswap: "不交換", rewardMom: "+1 動能", rewardEndorse: "抽 1 張背書",
         save: "留下：{cards}", reveal: "翻開「{card}」→ {issue}", canvass: "催票：{card}（{county}）",
-        grey: "{county} · 填 1 塊無色塊", remove: "{county} · 移除{who} 1 顆（{kind}）", convert: "{county} · 把 1 塊無色塊轉成綠營游離塊", pick: "{who} +1 動能",
+        grey: "{county} · 填 1 塊無色塊", remove: "{county} · 移除{who} 1 顆（{kind}）", convert: "{county} · 把 1 塊無色塊轉成綠營游離塊", pick: "{who} +1 動能", pickMorale: "{who} 士氣 +5%",
         block: { G: "綠營游離塊", B: "藍營游離塊", N: "無色塊" }, unknown: "—",
       },
       debate: {
@@ -215,11 +218,11 @@ export default {
         move: "{who}移到{county}", adOk: "{who}的廣告成功", adFail: "{who}的廣告沒中",
         mediaPlace: "{who}在全國媒體放了 1 顆", mediaRemove: "{who}移除了{target}的 1 顆媒體",
         issuePlace: "{who}在「{issue}」放了 1 顆", issueRemove: "{who}移除了{target}在「{issue}」的 1 顆",
-        swap: "{who}交換了兩條議題", rewardMom: "{who}領了 1 動能", rewardEndorse: "{who}抽了背書", endorseOne: "{who}拿下{region}的背書", pickMom: "{who}加 1 動能",
+        swap: "{who}交換了兩條議題", rewardMom: "{who}領了 1 動能", rewardEndorse: "{who}抽了背書", endorseOne: "{who}拿下{region}的背書", pickMom: "{who}加 1 動能", pickMorale: "{who}士氣 +5%",
         save: "{who}留了 {n} 張牌", pick: "{who}選好了牌",
         reveal: "翻牌：{who}「{card}」→ {issue}", dead: "翻牌：{who}「{card}」→ {issue}（已結算，沒有效果）", settle: "「{issue}」結算：{who}贏，放 {n} 顆",
         canvass: "{who}催票：{county}", convert: "投票日：議題、動能都換成袋中的方塊",
-        convertLuck: "投票日：動能換成催票士氣：{text}", convertLuckLead: "投票日：動能和領先的議題換成催票士氣：{text}",
+        convertMorale: "投票日：領先的議題換成催票士氣：{text}", convertLuck: "投票日：動能換成催票士氣：{text}", convertLuckLead: "投票日：動能和領先的議題換成催票士氣：{text}",
         strategic: "棄保：游離票流向 {text}", strategicHalf: "第一次棄保（一半）：{text}", strategicNone: "棄保：沒有游離票流動", endorse: "背書：無色塊 {text}", result: "開票完畢",
       },
       end: {

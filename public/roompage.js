@@ -114,7 +114,7 @@ export function mount({ T, lang, qs, store, $ }) {
     rep.push(beats);
   };
   Replay.bindTaps({ active: () => rep.active(), onStep: () => { rep.skipStep(); }, onAll: () => { rep.skipAll(); draw(); },
-    ignore: "[data-menu], [data-menu-top], #rmenu, .mset, [data-turncard], [data-handoff], [data-rp-next], a, input, textarea, form, .t-chat" });
+    ignore: "[data-menu], [data-menu-top], #rmenu, .mset, [data-feed-toggle], [data-turncard], [data-handoff], [data-rp-next], a, input, textarea, form, .t-chat" });
   addEventListener("p2000:settings", () => { if (Sound.getSpeed() !== "step") rep.skipStep(); });
   const draw = () => {
     if (gone) {
