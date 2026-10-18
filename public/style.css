@@ -1353,3 +1353,9 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
 .ho .ho-ord li.now { background: var(--c); color: #fff; }
 .ho-hint { grid-column: 1 / -1; margin: 0; text-align: center; font: 600 10px/1.2 var(--sans); color: var(--faint); }
 @media (prefers-reduced-motion: reduce) { .ho.fresh .ho-card { animation: none; } .ho, .pl-card { transition: none; } }
+/* #78: on a phone the board's words fill it, so the tag drops the name (it is the board it sits on): 「行動中」, "acting", "You"; it hangs from the top edge on
+   the picture, right of the ballot number, short enough to stop before the votes. The desk keeps the whole words. */
+@media (max-width: 1099px) {
+  .tbl:not(.end) .pl-tag { left: 19px; top: 0; padding: 0 4px 1px; border-radius: 0 0 4px 4px; font-size: 9px; line-height: 12px; }
+  .tbl:not(.end) .pl-tn { display: none; }
+}
