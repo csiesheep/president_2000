@@ -90,7 +90,7 @@ export function mount({ T, lang, qs, store, $ }) {
   // a state adds. The map is already the last picture; the stamps sit beside the card. A decision the player makes skips the rest.
   // The handoff card (#73 乙): when the seat the game waits for changes (the server has already run the computer), a small card over
   // the map names it for about a second. It holds nothing back: the move clock keeps running. A tap closes it.
-  const HAND_HOLD = 600, HAND_FADE = 150;
+  const HAND_HOLD = 520, HAND_FADE = 150;
   let hoff = null, handSeen = null;
   const handView = () => { const v = client.state && client.state.view; return v && v.phase !== "end" ? v : null; };
   const closeHand = (tapped) => {
