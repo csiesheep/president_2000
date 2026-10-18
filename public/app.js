@@ -7,6 +7,7 @@ import * as Solo from "./solo.js";
 import * as Tut from "./tutorial.js";
 import * as Sound from "./sound.js";
 import * as Replay from "./replay.js";
+import * as E from "./shared/engine.js";
 import { mount as mountRoom } from "./roompage.js";
 import { drawInto, deskNow, narrowNow, watchNarrow, bindCounty, bindSeat, bindMenu, placeTutorial } from "./drawing.js";
 
@@ -95,7 +96,7 @@ if (typeof document !== "undefined") {
       heard = { seed: session.seed, st: session.st };
     };
     // The rivals' moves shown big (#47). Not in the tutorial: it has its own steps for the rivals' turn and keeps the old way.
-    const rep = Replay.createReplay({ labels: { hit: S.replay.hit, miss: S.replay.miss }, lang: code, rules: () => session && session.st && session.st.rules, onIdle: () => { if (!card && cardWanted()) pump(); else if (autoWanted() && !autoTimer) pump(); else if (Sound.gap() == null && session && session.st && !Solo.botsToMove(session).length && stage.querySelector("[data-botnext]")) draw(); } });
+    const rep = Replay.createReplay({ labels: { hit: S.replay.hit, miss: S.replay.miss }, lang: code, rules: () => session && session.st && session.st.rules, onIdle: () => { if (!card && cardWanted()) pump(); else if (handWanted()) pump(); else if (autoWanted() && !autoTimer) pump(); else if (Sound.gap() == null && session && session.st && !Solo.botsToMove(session).length && stage.querySelector("[data-botnext]")) draw(); } });
     const stepOpt = () => (Sound.gap() == null && session.st && (Solo.botsToMove(session).length || rep.active()) ? { botnext: S.menu.next } : {});
     // The turn card (#44): each turn opens with it, once. It holds the rivals back, stays about 1.5 s and fades out; a tap
     // anywhere closes it (that is not the skip: the rivals only start after it has gone, one step at a time as before).
@@ -121,21 +122,45 @@ if (typeof document !== "undefined") {
       card.hold = setTimeout(() => closeCard(false), CARD_HOLD);
       if (!stepped) Sound.play("turn");
     };
+    // The handoff card (#73 乙): each time the turn passes to another seat, a small card over the map says whose turn it is, for about
+    // a second. It comes after the turn card and after the replay of the step before it, holds the rivals back like the turn card does,
+    // and a tap closes it (that is not the skip). handSeen is the seat the last card was for: the same seat acting again brings none.
+    const HAND_HOLD = 600, HAND_FADE = 150;
+    let hoff = null, handSeen = null; // hoff: { seat, t0, hold, gone, out } while it shows
+    const turnOf = () => { if (!session || !session.st || session.tut || session.st.phase === "end") return null; const m = E.mustAct(session.st); return m.length === 1 ? m[0] : null; };
+    const handDue = () => { const a = turnOf(); return !hoff && !card && a != null && a !== handSeen; };
+    const handWanted = () => handDue() && !rep.active();
+    const dropHand = () => { if (hoff) { clearTimeout(hoff.hold); clearTimeout(hoff.gone); hoff = null; } };
+    const closeHand = (tapped) => {
+      if (!hoff || hoff.out) return;
+      hoff.out = true; clearTimeout(hoff.hold);
+      if (tapped) Sound.play("tap");
+      const el = stage.querySelector("[data-handoff]");
+      if (el) el.classList.add("out");
+      hoff.gone = setTimeout(() => { hoff = null; pump(); }, HAND_FADE);
+    };
+    const openHand = () => {
+      const seat = turnOf();
+      handSeen = seat;
+      hoff = { seat, t0: performance.now(), out: false };
+      // (the hold is counted from the end of the draw that shows it: a cold draw can take 200 ms, which must not be taken off the hold)
+    };
     const draw = () => {
       syncUrl();
       hear();
       // The tutorial's "player board" step is about the hand and the bag: on a phone that board shows them while it is on.
       const boardStep = !!(session.tut && Tut.step(session, code).id === "board");
-      drawInto(stage, Solo.screen(session, code, { feedOpen: ui.feed, raise: ui.raise, sel: ui.sel, picks: ui.picks, help: ui.help, moves: ui.moves, confirm: ui.confirm, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow, turnCard: !!card && !card.out, cardAge: card ? performance.now() - card.t0 : 0, ...stepOpt() }), { seat: boardStep ? session.seat : ui.seat, menu: menu.isOpen() });
+      drawInto(stage, Solo.screen(session, code, { feedOpen: ui.feed, raise: ui.raise, sel: ui.sel, picks: ui.picks, help: ui.help, moves: ui.moves, confirm: ui.confirm, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow, turnCard: !!card && !card.out, cardAge: card ? performance.now() - card.t0 : 0, handoff: hoff && !hoff.out ? hoff.seat : undefined, handoffAge: hoff ? performance.now() - hoff.t0 : 0, ...stepOpt() }), { seat: boardStep ? session.seat : ui.seat, menu: menu.isOpen() });
       $("#solo").classList.add("intable");
       $("#quit").hidden = false;
       placeTutorial(stage);
+      if (hoff && !hoff.hold && !hoff.out) hoff.hold = setTimeout(() => closeHand(false), HAND_HOLD);
     };
     // #70: a decision with one option only is made by the page itself, one beat (about 0.7 s) after it is the player's turn:
     // the turn card is gone, the rivals' replay is over, nobody is to move. Never in the tutorial (Solo.autoChoice says null).
     const AUTO_WAIT = 700;
     let autoTimer = null;
-    const autoWanted = () => !!(session && session.st && !session.tut && !card && !rep.active() && !Solo.botsToMove(session).length && Solo.autoChoice(session, code));
+    const autoWanted = () => !!(session && session.st && !session.tut && !card && !hoff && !rep.active() && !Solo.botsToMove(session).length && Solo.autoChoice(session, code));
     const autoMake = () => {
       autoTimer = null;
       if (!autoWanted()) return;
@@ -147,8 +172,10 @@ if (typeof document !== "undefined") {
     const pump = () => {
       clearTimeout(autoTimer); autoTimer = null;
       if (!card && cardWanted()) openCard();
+      if (!card && handWanted()) openHand();
       draw();
-      if (card) return; // the rivals wait for the card
+      if (card || hoff) return; // the rivals wait for the cards
+      if (handDue()) return; // a seat change waits for the replay on show to end (onIdle calls this again), then its handoff card
       if (autoWanted()) { autoTimer = setTimeout(autoMake, AUTO_WAIT); return; }
       const wait = Sound.gap(); // the rivals' speed (#42); null = step by step, they wait for 下一步
       if (timer || wait == null || !Solo.botsToMove(session).length) return;
@@ -194,7 +221,7 @@ if (typeof document !== "undefined") {
     let swallow = false;
     Replay.bindTaps({ active: () => !!session && !!session.st && (!!timer || (!session.tut && rep.active())),
       onStep: () => { swallow = !!timer; setTimeout(() => { swallow = false; }, 0); if (session.tut) skipAll(); else skipStep(); }, onAll: () => { swallow = !!timer; setTimeout(() => { swallow = false; }, 0); skipAll(); },
-      ignore: "[data-menu], [data-menu-top], #gmenu, .mset, [data-botnext], [data-turncard], [data-rp-next], a, input, textarea" });
+      ignore: "[data-menu], [data-menu-top], #gmenu, .mset, [data-botnext], [data-turncard], [data-handoff], [data-rp-next], a, input, textarea" });
     // (in the tutorial the bubble decides what scrolls)
     // (#66: the table is one screen that never scrolls, so a tapped card or a question does not scroll to the decision any more)
 
@@ -222,7 +249,12 @@ if (typeof document !== "undefined") {
       ev.stopImmediatePropagation(); ev.stopPropagation();
       closeCard(true);
     });
-    addEventListener("keydown", (ev) => { if (ev.key === "Escape" && card && !card.out) closeCard(true); });
+    stage.addEventListener("click", (ev) => {
+      if (!ev.target.closest("[data-handoff]")) return;
+      ev.stopImmediatePropagation(); ev.stopPropagation();
+      closeHand(true);
+    });
+    addEventListener("keydown", (ev) => { if (ev.key === "Escape" && card && !card.out) closeCard(true); else if (ev.key === "Escape" && hoff && !hoff.out) closeHand(true); });
     // A hand card or a county tapped makes its small sound (a tap that only skips the animation does not).
     stage.addEventListener("click", (ev) => {
       if (timer || rep.active()) return;
@@ -262,6 +294,7 @@ if (typeof document !== "undefined") {
         const seed = crypto.getRandomValues(new Uint32Array(1))[0];
         session = Solo.setAdvisor(Solo.advance(Solo.newSolo({ seat: p.seat, level: p.level, seed })), store.get(ADV) === true);
         ui = { feed: deskNow(), raise: false, sel: null, picks: [], help: null, moves: false, confirm: null, county: null, seat: null, narrow: narrowNow() };
+        dropHand(); handSeen = null;
         save(); pump(); window.scrollTo(0, 0);
       } else if (d.advisor != null) {
         session = Solo.setAdvisor(session, d.advisor === "on"); store.set(ADV, session.advisor);
@@ -273,6 +306,7 @@ if (typeof document !== "undefined") {
         if (!session.tut && Solo.canUndo(session)) {
           session = Solo.undo(session);
           ui = { ...ui, raise: false, sel: null, picks: [], moves: false, confirm: null, county: null };
+          handSeen = turnOf(); // (going back is not the turn passing)
           save(); pump(); window.scrollTo({ top: 0 }); notice(S.undo.done);
         }
       } else if (d.move) {
@@ -289,7 +323,7 @@ if (typeof document !== "undefined") {
       else if (d.pick != null) {
         ui.picks = ui.picks.includes(d.pick) ? ui.picks.filter((x) => x !== d.pick) : [...ui.picks, d.pick];
         draw();
-      } else if (d.act === "again") { store.del(KEY); session = null; setup(); window.scrollTo(0, 0); }
+      } else if (d.act === "again") { dropHand(); handSeen = null; store.del(KEY); session = null; setup(); window.scrollTo(0, 0); }
     });
     // The map: a county opens its box; the phone and the desktop board are different drawings.
     bindCounty(stage, { get: () => ui.county, set: (k) => {
@@ -303,9 +337,9 @@ if (typeof document !== "undefined") {
       if (!confirm(S.menu.confirm)) return;
       if (timer) { clearTimeout(timer); timer = null; }
       rep.skipAll();
-      dropCard(); store.del(KEY); session = null; setup();
+      dropCard(); dropHand(); handSeen = null; store.del(KEY); session = null; setup();
     });
 
-    if (session && session.st) pump(); else setup();
+    if (session && session.st) { if (turnOf() === session.seat) handSeen = session.seat; pump(); } else setup();
   }
 }

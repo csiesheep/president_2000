@@ -101,6 +101,7 @@ export default {
       hdr: {
         ph: { action: "行動 {n}/4", order: "選順位", momentum: "動能階段", save: "留牌", debate: "政見發表會", election: "投票日", end: "開票結果" },
         turn: "第 {n} 回合", endDate: "3 月 18 日", initiative: "主動權 {who}", order: "{who}先走", first: "第一個行動", star: "主動權", mom: "動能", bag: "袋子", luck: "運氣", feed: "紀錄", feedNew: "紀錄，{n} 則新的", feedClose: "收起 ×", momL: "動能", slotsL: "議題頭條", issueTotal: "議題總數", leadIs: "議題總領先者：{who}", leadNone: "議題總領先者：沒有（平手）", tap: "點一下看說明",
+        who: { you: "輪到你", acting: "{who} 行動中", card: "輪到 {name}", order: "這回合的順序", hint: "點一下收起" },
         yourTurn: "輪到你", busy: "{who} 行動中…", waitHint: "對手行動中。你可以先翻看手牌。",
         slot: { 1: "頭條", 2: "二條", 3: "三條" },
         phase: { action: "行動階段 {n} / 4", order: "選行動順位", momentum: "動能階段", save: "留牌", debate: "公辦政見發表會", election: "投票日 · 催票", end: "開票結果" },

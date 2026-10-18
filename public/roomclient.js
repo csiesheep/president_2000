@@ -324,7 +324,7 @@ export function screen(client, lang, opts = {}) {
       advisor: { on: !!client.advisor, why: d.why },
       clock: clockOf(client, opts, T),
       again: view.phase === "end" ? (acts.find((a) => a.data.t === "rematch") || null) : null, againWait: U.game.waitAgain,
-      open: opts.open, sel: opts.sel, picks: opts.picks, county: opts.county, narrow: opts.narrow, turnCard: opts.turnCard, cardAge: opts.cardAge,
+      open: opts.open, sel: opts.sel, picks: opts.picks, county: opts.county, narrow: opts.narrow, turnCard: opts.turnCard, cardAge: opts.cardAge, handoff: opts.handoff, handoffAge: opts.handoffAge,
       feedOpen: opts.feedOpen, raise: opts.raise, chat: chatHTML(client, lang, opts, T), // #66: the table talk is part of the record's drawer
     });
     return errorHTML(client, T) + body;
