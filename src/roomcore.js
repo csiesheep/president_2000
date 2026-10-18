@@ -181,7 +181,7 @@ export function handle(room0, ev, now) {
       if (room.started) return err(room0, ev.conn, "started");
       if (token !== room.host) return err(room0, ev.conn, "not_host");
       if (p.seat == null) return err(room0, ev.conn, "not_seated");
-      if (![1, 2, 3].includes(d.level)) return err(room0, ev.conn, "bad_level");
+      if (![0, 1, 2, 3].includes(d.level)) return err(room0, ev.conn, "bad_level");
       room.started = true; room.level = d.level;
       for (let s = 0; s < 3; s++) if (room.seats[s].kind === "empty") room.seats[s] = { kind: "bot", token: null };
       room.st = E.createGame(derive(room, "engine")[0], { rules: "v0.7", issueLuck: "lead", momentum: "none", trigger: "always", moraleCards: "full", luck: [50, 50, 50] });
@@ -276,7 +276,7 @@ function botPlays(room, s, now) {
 function botMove(room, s, bots) {
   const rng = E.makeRng(0); rng.state = room.botRng;
   let move, why;
-  try { ({ move, why } = chooseMove(room.st, s, room.level, rng.next)); } catch { move = E.legalMoves(room.st, s)[0]; why = { key: "only_move" }; }
+  try { ({ move, why } = chooseMove(room.st, s, room.level, rng.next, { humans: [0, 1, 2].filter((x) => room.seats[x].kind === "human") })); } catch { move = E.legalMoves(room.st, s)[0]; why = { key: "only_move" }; }
   room.botRng = rng.state;
   bots.push({ seat: s, move: E.clone(move), why: { ...why } });
   room.st = E.apply(room.st, s, move);

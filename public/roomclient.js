@@ -231,7 +231,7 @@ export function actions(client, lang) {
     if (s.kind === "empty") out.push({ label: fill(client.seat == null ? U.lobby.sit : U.lobby.moveTo, { who: T.ui.solo.cand[SEATS[seat]].short }), data: { t: "sit", seat } });
   });
   if (client.seat != null && room.host === client.seat) {
-    for (const level of [1, 2, 3]) out.push({ label: fill(U.lobby.start, { bot: T.bots[level] }), data: { t: "start", level } });
+    for (const level of [0, 1, 2, 3]) out.push({ label: fill(U.lobby.start, { bot: T.bots[level] }), data: { t: "start", level } });
   }
   return out;
 }
@@ -288,8 +288,8 @@ function lobbyHTML(client, lang, opts, T) {
   const isHost = client.seat != null && room.host === client.seat;
   let foot;
   if (isHost) {
-    const level = [1, 2, 3].includes(opts.level) ? opts.level : 2;
-    const lv = [1, 2, 3].map((n) => `<button type="button" class="lv${level === n ? " on" : ""}" data-level="${n}" aria-pressed="${level === n}">${esc(T.bots[n])}</button>`).join("");
+    const level = [0, 1, 2, 3].includes(opts.level) ? opts.level : 0;
+    const lv = [0, 1, 2, 3].map((n) => `<button type="button" class="lv${level === n ? " on" : ""}" data-level="${n}" aria-pressed="${level === n}">${esc(T.bots[n])}</button>`).join("");
     const go = acts.find((a) => a.data.t === "start" && a.data.level === level);
     foot = `<h2 class="lh">${esc(S.setup.level)}</h2><div class="lvs">${lv}</div><p class="sub">${esc(S.setup.levelNote[level])}</p>` +
       `<button type="button" class="big go" data-msg="${esc(JSON.stringify(go.data))}">${esc(L.startBig)}</button>`;
