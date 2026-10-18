@@ -38,11 +38,13 @@
 // its own:
 //   (a) 總幹事 (level 2), seed P2000_SEED_A (default 2): opens on a card to pick, so this round has the 58 rows a run had
 //       before #87 (should the seed stop opening on a card to pick, a row says so and fails);
-//   (b) 新手 (level 0), seed P2000_SEED_B (default 10): the level a first visit gets; this game opens on a card to pick
-//       too, with 連's chip on a headline. About one game in four at level 0 opens on a sheet instead (seeds 1, 4, 5, 7,
-//       12, 15, 18, … of 1–60: a rival's CP play triggers one of your cards): those skip the hand's rows (3 fewer a page),
-//       and on the phone in English the toast and the totals then sit on 台東 and 高雄縣 (2026-10-18; P2000_SEED_B=1
-//       shows it).
+//   (b) 新手 (level 0), seed P2000_SEED_B (default 12): the level a first visit gets. About one game in four at level 0
+//       opens on a sheet (seeds 1, 4, 5, 7, 12, 15, 18, … of 1–60: a rival's CP play triggers one of your cards), and
+//       seed 12 is one: it skips the hand's rows (3 fewer a page) and checks the floats with a sheet open. Before #89 the
+//       toast and the totals sat on 台東 and 高雄縣 on the phone in English; without #89's `@supports (width: 1cqw)` block
+//       this seed's float rows go red ("toast: over 21"), while seed 1 no longer bites under #89's layout. Its phone map
+//       is only 1 px over the 290 minimum (2026-10-18). P2000_SEED_B=10 opens on a card to pick, with 連's chip on a
+//       headline.
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 
@@ -80,7 +82,7 @@ const START = `(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.
 // The two rounds (see the head of this file): the level and the seed the start button gets, and a check that it got them.
 const ROUNDS = [
   { tag: "a 總幹事", level: 2, seed: Number(process.env.P2000_SEED_A || 2) >>> 0, pick: true },
-  { tag: "b 新手", level: 0, seed: Number(process.env.P2000_SEED_B || 10) >>> 0, pick: false },
+  { tag: "b 新手", level: 0, seed: Number(process.env.P2000_SEED_B || 12) >>> 0, pick: false },
 ];
 const FIX = (r) => `(()=>{ sessionStorage.setItem("p2000.solo.setup", JSON.stringify({ seat: 0, level: ${r.level} })); crypto.getRandomValues = (a) => { a[0] = ${r.seed}; return a; }; return 1; })()`;
 const GOT = `(()=>{ try { const s = JSON.parse(sessionStorage.getItem("p2000.solo.session")); return s ? s.seed + "/" + s.level : "no game"; } catch { return "no game"; } })()`;
