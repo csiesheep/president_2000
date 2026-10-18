@@ -143,7 +143,7 @@ if (typeof document !== "undefined") {
       const seat = turnOf();
       handSeen = seat;
       hoff = { seat, t0: performance.now(), out: false };
-      hoff.hold = setTimeout(() => closeHand(false), HAND_HOLD);
+      // (the hold is counted from the end of the draw that shows it: a cold draw can take 200 ms, which must not be taken off the hold)
     };
     const draw = () => {
       syncUrl();
@@ -154,6 +154,7 @@ if (typeof document !== "undefined") {
       $("#solo").classList.add("intable");
       $("#quit").hidden = false;
       placeTutorial(stage);
+      if (hoff && !hoff.hold && !hoff.out) hoff.hold = setTimeout(() => closeHand(false), HAND_HOLD);
     };
     // #70: a decision with one option only is made by the page itself, one beat (about 0.7 s) after it is the player's turn:
     // the turn card is gone, the rivals' replay is over, nobody is to move. Never in the tutorial (Solo.autoChoice says null).

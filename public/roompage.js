@@ -134,7 +134,7 @@ export function mount({ T, lang, qs, store, $ }) {
     if (!hoff && !card && ha != null && ha !== handSeen && !rep.running()) {
       handSeen = ha;
       hoff = { seat: ha, t0: performance.now(), out: false };
-      hoff.hold = setTimeout(() => closeHand(false), HAND_HOLD);
+      // (the hold is counted from the end of the draw that shows it: a cold draw can take 200 ms, which must not be taken off the hold)
     }
     // A redraw replaces the chat box: keep what is typed, and the caret if the box had focus.
     const box = $("#chatin"), had = box && document.activeElement === box, caret = had ? [box.selectionStart, box.selectionEnd] : null;
@@ -146,6 +146,7 @@ export function mount({ T, lang, qs, store, $ }) {
     if (nb && had) { nb.focus({ preventScroll: true }); try { nb.setSelectionRange(caret[0], caret[1]); } catch { /* not a text field */ } }
     const nl = stage.querySelector(".chatlog");
     if (nl && pinned) nl.scrollTop = nl.scrollHeight;
+    if (hoff && !hoff.hold && !hoff.out) hoff.hold = setTimeout(() => closeHand(false), HAND_HOLD);
     autoCheck();
   };
   // #70: a decision with one option only is sent by the page itself, one beat (about 0.7 s) after it is this seat's turn: the
