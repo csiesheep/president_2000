@@ -125,7 +125,7 @@ if (typeof document !== "undefined") {
     // The handoff card (#73 乙): each time the turn passes to another seat, a small card over the map says whose turn it is, for about
     // a second. It comes after the turn card and after the replay of the step before it, holds the rivals back like the turn card does,
     // and a tap closes it (that is not the skip). handSeen is the seat the last card was for: the same seat acting again brings none.
-    const HAND_HOLD = 520, HAND_FADE = 150;
+    const HAND_HOLD = 600, HAND_FADE = 150;
     let hoff = null, handSeen = null; // hoff: { seat, t0, hold, gone, out } while it shows
     const turnOf = () => { if (!session || !session.st || session.tut || session.st.phase === "end") return null; const m = E.mustAct(session.st); return m.length === 1 ? m[0] : null; };
     const handDue = () => { const a = turnOf(); return !hoff && !card && a != null && a !== handSeen; };
