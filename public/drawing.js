@@ -46,6 +46,29 @@ function applyState(root, state) {
   if (m) m.setAttribute("aria-expanded", String(!!state.menu));
 }
 
+// iOS 15 (#88): the table's CSS has fallbacks for a browser without :has() (Safari 15.0-15.3) and without dvh (15.0-15.3); they hang on these marks and on
+// --app-h, the visible height (iOS's 100vh is the height with the toolbars away). Set always, harmless where :has() and dvh exist: the style.css rules that use
+// them sit behind @supports tests that such a browser fails.
+const HAS_MARKS = [
+  [".wrap.game", ".tbl:not(.end)", "x-tbl"], ["#solo", ".setup", "x-setup"], [".t-notes", "[data-auto-note]", "x-auto"],
+  [".t-act", ".cgs", "x-cgs"], [".t-act", ".cgs[open]", "x-cgso"], [".t-act", ".cbar", "x-cbar"],
+];
+function markHas(root) {
+  const top = root.closest("main") || root.parentElement || root;
+  for (const [outer, inner, cls] of HAS_MARKS) {
+    const list = top.matches(outer) ? [top] : [...top.querySelectorAll(outer)];
+    for (const el of list) el.classList.toggle(cls, !!el.querySelector(inner));
+  }
+}
+function appHeight() { document.documentElement.style.setProperty("--app-h", window.innerHeight + "px"); }
+if (typeof window !== "undefined" && typeof document !== "undefined") {
+  appHeight();
+  window.addEventListener("resize", appHeight);
+  window.addEventListener("orientationchange", appHeight);
+  // A <details> opened or closed by hand does not redraw the page: keep its mark in step.
+  document.addEventListener("toggle", (e) => { const d = e.target; if (d && d.classList && d.classList.contains("cgs")) { const act = d.closest(".t-act"); if (act) act.classList.toggle("x-cgso", d.open); } }, true);
+}
+
 export function drawInto(root, html, state = {}) {
   const old = root.querySelector(".hs"), left = old ? old.scrollLeft : 0;
   // A folded note the player opened (the end page's election-day record, #33) stays open across a redraw.
@@ -53,6 +76,7 @@ export function drawInto(root, html, state = {}) {
   keepImages(root, html);
   for (const d of root.querySelectorAll("details[data-keep]")) if (opened.has(d.dataset.keep)) d.open = true;
   applyState(root, state);
+  markHas(root);
   fitBar(root);
   fitPop(root);
   fitChips(root);

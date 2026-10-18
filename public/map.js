@@ -35,6 +35,8 @@ const NO = [5, 1, 2]; // the ballot numbers on the 1999 flags
 const SHOW_ORDER = [1, 2, 0];
 const TINT = ["#e6d3b3", "#dfe2c2", "#ead0c6", "#f0e2b2", "#dcc9ad", "#cfe0d3", "#e0dccd"];
 export const REGION_TINT = TINT;
+// Smaller copies of the art (#88): src stays the whole picture (older browsers, and what the tests read), srcset the same picture at 1x, 2x, ... so a phone does not fetch a 480 px face for a 22 px pawn.
+export const artSet = (dir, name, ws) => `src="art/${dir}/${name}.webp" srcset="${ws.map((w, i) => `art/small/${dir}/${name}-${w}.webp ${i + 1}x`).join(", ")}"`;
 
 // ---------------------------------------------------------------- the hand-drawn geometry
 
@@ -199,17 +201,17 @@ function pawns(v, k, d, right, top, m, turn) {
       `<ellipse cx="${f1(cx + 1)}" cy="${f1(cy + R + 2)}" rx="${f1(R * 0.9)}" ry="2.6" fill="rgba(43,33,24,.35)"/>` +
       `<circle cx="${f1(cx)}" cy="${f1(cy)}" r="${R + 2.6}" fill="${SEAT_COL[p]}" stroke="${PAPER}" stroke-width="1.4"/>` +
       `<circle cx="${f1(bx)}" cy="${f1(by)}" r="5.6" fill="${SEAT_COL[p]}" stroke="${PAPER}" stroke-width="1.2"/>` +
-      `<text x="${f1(bx)}" y="${f1(by + 3.1)}" text-anchor="middle" font-size="8.5" font-weight="900" fill="#fff" font-family="'Noto Serif TC', serif">${NO[p]}</text>`;
+      `<text x="${f1(bx)}" y="${f1(by + 3.1)}" text-anchor="middle" font-size="8.5" font-weight="900" fill="#fff" font-family="'Noto Serif TC','Songti TC','Noto Serif CJK TC','PMingLiU',serif">${NO[p]}</text>`;
     if (me) {
       const w = youW(d), tx = cx - R - 5 - w;
       s += `<rect x="${f1(tx)}" y="${f1(cy - 14)}" width="${w}" height="13" rx="2.5" fill="${RED}"/>` +
-        `<text x="${f1(tx + w / 2)}" y="${f1(cy - 4.2)}" text-anchor="middle" font-size="9" font-weight="900" fill="#fbf6e9" font-family="'Noto Sans TC', sans-serif">${esc(d.ui.solo.map.you)}</text>`;
+        `<text x="${f1(tx + w / 2)}" y="${f1(cy - 4.2)}" text-anchor="middle" font-size="9" font-weight="900" fill="#fbf6e9" font-family="'PingFang TC','Microsoft JhengHei','Noto Sans CJK TC','Noto Sans TC',sans-serif">${esc(d.ui.solo.map.you)}</text>`;
     }
     s += `</g>`;
     const bd = [R + R * 0.78, R + R * 0.72, 6.2], holes = [bd];
     if (j + 1 < here.length) holes.push([R - STEP, R, R + 3.3], [bd[0] - STEP, bd[1], 6.2]);
     const pc = (n, of) => Math.round((n / of) * 100000) / 1000;
-    pics += `<img data-pawn-pic="${SEATS[p]}" data-of="${k}" src="art/candidates/${SEATS[p]}.webp" alt="" draggable="false" style="${mask(holes)};left:${pc(cx - R, m.w)}%;top:${pc(cy - R, m.h)}%;width:${pc(2 * R, m.w)}%;height:${pc(2 * R, m.h)}%">`;
+    pics += `<img data-pawn-pic="${SEATS[p]}" data-of="${k}" ${artSet("candidates", SEATS[p], [48, 128])} alt="" draggable="false" style="${mask(holes)};left:${pc(cx - R, m.w)}%;top:${pc(cy - R, m.h)}%;width:${pc(2 * R, m.w)}%;height:${pc(2 * R, m.h)}%">`;
   });
   return { svg: s, pics };
 }
@@ -222,7 +224,7 @@ const holderOf = (v, k) => (v.endorse ? v.endorse[COUNTIES[k][1]] : -1);
 function stamp(h, right, bottom, d) {
   const cx = f1(right + ST.off), cy = f1(bottom + ST.off);
   return `<g data-endorse-stamp="${h}" aria-hidden="true"><circle cx="${cx}" cy="${cy}" r="${ST.d / 2}" fill="${SEAT_COL[h]}" stroke="${PAPER}" stroke-width="1.5"/>` +
-    `<text x="${cx}" y="${f1(cy + 3.3)}" text-anchor="middle" font-size="9" font-weight="900" fill="#fff" font-family="'Noto Serif TC', serif">${esc(d.ui.solo.map.stamp)}</text></g>`;
+    `<text x="${cx}" y="${f1(cy + 3.3)}" text-anchor="middle" font-size="9" font-weight="900" fill="#fff" font-family="'Noto Serif TC','Songti TC','Noto Serif CJK TC','PMingLiU',serif">${esc(d.ui.solo.map.stamp)}</text></g>`;
 }
 
 function labelOf(v, k, d, lang) {
@@ -250,7 +252,7 @@ function paper(v, k, d, lang, o, mode, s, m, pics) {
   t += `<rect class="tw-paper" data-paper="${k}" x="${f1(x0)}" y="${f1(y0)}" width="${f1(s.w)}" height="${f1(s.h)}" rx="2.5" fill="${PAPER}" stroke="${INK}" stroke-width="${s.bold ? 1.3 : 0.9}" filter="url(#tw-sh)"/>`;
   const act = (o.acts || {})[k];
   if (act) t += `<rect class="tw-glow" data-glow="${SEATS[act.who]}" x="${f1(x0 - 1.5)}" y="${f1(y0 - 1.5)}" width="${f1(s.w + 3)}" height="${f1(s.h + 3)}" rx="4" fill="none" stroke="${SEAT_COL[act.who]}" stroke-width="2.4" pointer-events="none"/>`;
-  t += `<text x="${f1(x0 + 4)}" y="${f1(y0 + font + 1)}" font-family="'Noto Serif TC', serif" font-size="${font}" font-weight="900" fill="${INK}">${esc(label)}</text>`;
+  t += `<text x="${f1(x0 + 4)}" y="${f1(y0 + font + 1)}" font-family="'Noto Serif TC','Songti TC','Noto Serif CJK TC','PMingLiU',serif" font-size="${font}" font-weight="900" fill="${INK}">${esc(label)}</text>`;
   sl.forEach((kind, i) => { t += slotRect(kind, k, x0 + 4 + (i % c) * (sz + gap), y0 + font + 4 + Math.floor(i / c) * (sz + gap), sz); });
   const pw = pawns(v, k, d, x0 + s.w, y0, m, o.turn);
   t += pw.svg; pics.push(pw.pics);
@@ -361,7 +363,7 @@ export function taiwanMap(view, lang, opts = {}) {
   const v = view, d = dict(lang), o = opts, M = d.ui.solo.map;
   const mode = o.narrow ? "phone" : "desk";
   const L = layout(mode, lang), { m, g } = L;
-  let svg = `<svg class="tw tw-${mode}" viewBox="0 0 ${m.w} ${m.h}" role="group" aria-label="${esc(M.board)}" font-family="'Noto Sans TC', sans-serif">` +
+  let svg = `<svg class="tw tw-${mode}" viewBox="0 0 ${m.w} ${m.h}" role="group" aria-label="${esc(M.board)}" font-family="'PingFang TC','Microsoft JhengHei','Noto Sans CJK TC','Noto Sans TC',sans-serif">` +
     `<defs><filter id="tw-sh" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="1" stdDeviation=".8" flood-color="#3c2410" flood-opacity=".35"/></filter>` +
     `<pattern id="tw-wv" width="40" height="18" patternUnits="userSpaceOnUse"><path d="M2 12q4-5 9 0t9 0" fill="none" stroke="#9fb3b0" stroke-width=".9" opacity=".5"/></pattern>` +
     `<clipPath id="tw-cl"><path d="${g.coast}"/></clipPath></defs>` +

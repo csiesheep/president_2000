@@ -9,10 +9,23 @@
 <link rel="canonical" href="https://games.csiesheep.com/president_2000/">
 <meta name="theme-color" content="#5b3a22">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Noto+Serif+TC:wght@700;900&display=swap">
+<style>
+html { background: #5b3a22; }
+body { margin: 0; background: linear-gradient(180deg, #6d4527, #5b3a22 50%, #6a4426); }
+#boot { display: none; }
+html.boot #boot { display: block; padding: 18px 16px; text-align: center; font: 900 18px/1 "Noto Serif TC", "Songti TC", "Noto Serif CJK TC", "PMingLiU", serif; letter-spacing: 1px; color: #efe6d2; }
+html.away #land { display: none; }
+</style>
+<script>
+if (/[?&](play|tutorial|host|join|room)(=|&|$)/.test(location.search)) document.documentElement.className += " away boot";
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@900&text=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz%E9%81%B8%E6%88%B0%E6%97%A5%E5%A0%B1%E7%B8%BD%E7%B5%B1%E7%9A%84%E8%AA%95%E7%94%9F%E5%96%AE%E4%BA%BA%E9%96%8B%E6%89%93%E6%96%B0%E6%89%8B%E6%95%99%E5%AD%B8%E6%88%BF%E5%8A%A0%E5%85%A5&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div id="boot" aria-hidden="true">2000</div>
 <main class="wrap home" id="land">
   <div class="topbar"><span></span><a id="lang" class="btn" href="?lang=en">EN</a></div>
   <section class="lid">

@@ -7,7 +7,7 @@ import en from "./i18n/en.js";
 import zh from "./i18n/zh-Hant.js";
 import { COUNTIES, REGIONS, REGION_EDGES, SEATS, BOSS_THRESHOLD, ISSUES } from "./shared/board.js";
 import { EVENTS, localCards, CANDIDATE_CARDS } from "./shared/cards.js";
-import { taiwanMap, popPlace } from "./map.js";
+import { taiwanMap, popPlace, artSet } from "./map.js";
 import { stubHTML } from "./stub.js";
 import { mustAct } from "./shared/engine.js";
 
@@ -35,8 +35,9 @@ const COUNTY_SLUG = {
 const cardArt = (id) => (CARD[id].owner === "local" ? `art/local/${COUNTY_SLUG[CARD[id].county]}.webp` : `art/cards/${id}.webp`);
 // Event and local pictures are 600x400, issues 640x480, candidates 480x640: the sizes are written on the
 // <img> so the page does not jump when a picture arrives.
+const handImg = (id, x) => `<img src="${cardArt(id)}" srcset="${cardArt(id).replace(/^art\//, "art/small/").replace(/\.webp$/, "-360.webp")} 1x" alt="${esc(x.card(id))}" width="600" height="400" loading="lazy" decoding="async">`;
 const cardImg = (id, x) => `<img src="${cardArt(id)}" alt="${esc(x.card(id))}" width="600" height="400" loading="lazy" decoding="async">`;
-const issueImg = (name, x) => `<img src="art/issues/${name}.webp" alt="${esc(x.issue(name))}" width="640" height="480" loading="lazy" decoding="async">`;
+const issueImg = (name, x) => `<img ${artSet("issues", name, [64, 128, 192])} alt="${esc(x.issue(name))}" width="640" height="480" loading="lazy" decoding="async">`;
 
 export const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 const fill = (s, vars = {}) => s.replace(/\{(\w+)(?:#([^|}]*)\|([^}]*))?\}/g, (m, k, one, many) => (!(k in vars) ? m : one === undefined ? vars[k] : Number(vars[k]) === 1 ? one : many)); // "{n#block|blocks}": the singular at 1 (#30)
@@ -99,7 +100,7 @@ function handoffHTML(v, x, o) {
   const age = Math.max(0, Math.round(o.handoffAge || 0));
   const says = a === v.seat ? W.you : fill(W.card, { name: x.full(a) });
   return `<div class="ho s${a}${age ? "" : " fresh"}" data-handoff="${key}" role="status" aria-live="polite"><div class="ho-card">` +
-    `<img class="ho-pic" src="art/candidates/${key}.webp" alt="" width="48" height="64">` +
+    `<img class="ho-pic" ${artSet("candidates", key, [48, 128])} alt="" width="48" height="64">` +
     `<div class="ho-t"><b class="ho-n">${esc(says)}</b><span class="ho-r">${esc(x.tr("hdr.turn", { n: v.turn }))}</span></div>` +
     `<ol class="ho-ord" aria-label="${esc(W.order)}">` + ord.map((p) => `<li class="s${p}${p === a ? " now" : ""}" data-order="${SEATS[p]}">${esc(x.short(p))}</li>`).join("") + `</ol>` +
     `<p class="ho-hint">${esc(W.hint)}</p></div></div>`;
@@ -494,7 +495,7 @@ function miniCard(id, x, cls, attr, star = false, fan = null) {
   const style = fan ? ` style="--r:${fan.r}deg;--y:${fan.y}px"` : "";
   return `<button type="button" class="hc ${band}${cls ? " " + cls : ""}${star ? " adv" : ""}" data-camp="${band}" ${attr}${style}>` +
     (star ? starHTML(x) : "") +
-    `<span class="ha">${cardImg(id, x)}</span>` +
+    `<span class="ha">${handImg(id, x)}</span>` +
     `<span class="cp-tab" data-cp="${c.cp}" aria-label="${c.cp} ${esc(u.cpUnit)}"><b>${c.cp}</b><small>${esc(u.cpUnit)}</small></span>` +
     `<span class="hb"><span class="hm">${esc(c.owner === "local" ? who : who + " · " + u.kind.event)}${c.must ? `<em>${esc(u.must)}</em>` : ""}</span>` +
     `<span class="hn">${esc(x.card(id))}</span><span class="ht">${esc(x.cardText(id))}</span>` +
@@ -508,7 +509,7 @@ function candCard(v, ch, x) {
   const me = v.seat, can = ch.find((c) => c.move.type === "candidate"), used = !!v.candidateUsed[me];
   if (v.phase === "debate" || v.phase === "election" || v.phase === "end" || v.phase === "save") return "";
   const L = x.d.ui.look.card, key = SEATS[me], cp = candCp(v, me);
-  const head = `<span class="ha"><img src="art/candidates/${key}.webp" alt="" draggable="false"></span>` +
+  const head = `<span class="ha"><img ${artSet("candidates", key, [192, 384])} alt="" draggable="false"></span>` +
     `<span class="cp-tab" data-cp="${cp}"><b>${cp}</b><small>${esc(x.d.ui.cpUnit)}</small></span>` +
     `<span class="cc-s">${esc(used ? L.used : L.seal)}</span>` +
     `<span class="hb"><span class="cc-k">${esc(x.tr("card.cand"))}</span><span class="cc-n">${esc(x.full(me))}</span></span>`;
@@ -687,7 +688,7 @@ function playersHTML(v, x, o = {}) {
     };
     return `<article class="pl s${p}${p === v.seat ? " me" : ""}${first(p) ? " first" : ""}"${ts === p ? ` data-turn="${SEATS[p]}"` : ""}>` +
       `<div class="pl-card" data-seat="${p}"${v7 ? ` data-luck="${luckNow(v, p)}"` : ""}>${ts === p ? `<b class="pl-tag" data-turn-tag>${tagHtml(x, v, p)}</b>` : ""}<button type="button" class="pl-tap" data-detail="${p}" aria-expanded="false" aria-label="${esc(`${x.full(p)} · ${fill(L.cubes, { n })}${nm ? "" : ` · ${L.mom} ${mom}`}`)}">` +
-      `<span class="pl-pic"><img src="art/candidates/${SEATS[p]}.webp" alt="${esc(x.full(p))}" width="480" height="640" loading="lazy" decoding="async"></span><b class="no">${NO[p]}</b>${p === leadP ? `<i class="pl-lead">${esc(x.d.ui.look.board.leadTag)}</i>` : ""}` +
+      `<span class="pl-pic"><img ${artSet("candidates", SEATS[p], [192, 384])} alt="${esc(x.full(p))}" width="480" height="640" loading="lazy" decoding="async"></span><b class="no">${NO[p]}</b>${p === leadP ? `<i class="pl-lead">${esc(x.d.ui.look.board.leadTag)}</i>` : ""}` +
       `<span class="pl-t"><span class="pl-n">${first(p) ? `<i class="flag-i" role="img" aria-label="${esc(flag)}" title="${esc(flag)}">⚑</i>` : ""}${esc(x.lang === "en" ? x.short(p) : x.full(p))}</span>` +
       `<span class="pl-v">${votes}</span>${nm ? "" : `<span class="pl-mm">${esc(L.mom)} ${dots}</span>`}${v7 ? lk(p) : ""}</span></button></div>` +
       `<div class="pl-d"><span class="pl-h">${esc(fill(L.hand, { n: inHand(p), k: kept(p) }))}</span>` +
@@ -1247,7 +1248,7 @@ function turnCardHTML(v, x, o) {
   const special = n === 1 || n === 6 || n === 9;
   const date = fill(n === 9 ? T.day : dd <= 10 ? T.early : dd <= 20 ? T.mid : T.late, { y: dy, m: dm, d: dd });
   const sub = n === 9 ? T.today : fill(T.weeks, { n: (9 - n) * 2 });
-  const pic = (p, c) => `<img class="${c}" src="art/candidates/${SEATS[p]}.webp" alt="" width="48" height="64">`;
+  const pic = (p, c) => `<img class="${c}" ${artSet("candidates", SEATS[p], [48, 128])} alt="" width="48" height="64">`;
   // The paper's head (#64): the ears (which turn, how long to go), the name, and the dateline under a double rule.
   const masthead = `<div class="tc-ears"><div class="tc-ear l"><b>${esc(fill(T.ear1, { n }))}</b><i>${esc(T.earSep)}</i><span>${esc(T.ear2)}</span></div>` +
     `<h1 class="tc-mast" data-masthead>${esc(T.paper)}</h1><div class="tc-ear r"><b>${esc(sub)}</b></div></div>` +
@@ -1267,7 +1268,7 @@ function turnCardHTML(v, x, o) {
     sp = `<h2 class="tc-h">${esc(T["t" + n].name)}</h2>`;
     if (n === 9) sp += `<ol class="tc-steps">${T.t9.steps.map((st) => `<li>${esc(st)}</li>`).join("")}</ol>`;
     else sp += `<p class="tc-body">${esc(T["t" + n].body)}</p>`;
-    if (n === 6) sp += `<div class="tc-iss">${(v.issues || []).map((i) => `<span><img src="art/issues/${esc(i.name)}.webp" alt="" width="64" height="48"><b>${esc(x.issue(i.name))}</b></span>`).join("")}</div>`;
+    if (n === 6) sp += `<div class="tc-iss">${(v.issues || []).map((i) => `<span><img ${artSet("issues", esc(i.name), [64, 128, 192])} alt="" width="64" height="48"><b>${esc(x.issue(i.name))}</b></span>`).join("")}</div>`;
   }
   if (hl) {
     const who = x.short(hl.seat), name = x.card(hl.card);
