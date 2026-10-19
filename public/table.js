@@ -829,18 +829,19 @@ function fxPrompt(v, x) {
   else if (s.op === "convert") line = x.tr("p.fxConvert", { left });
   else if (s.op === "anyIssue") line = s.target < 0 ? x.tr("p.fxIssue", { n: s.n, who: x.short(s.p) }) : x.tr("p.fxIssueRemove", { n: s.n, who: x.short(s.target) });
   else line = x.tr(noMom(v) ? "p.fxTvbsMorale" : "p.fxTvbs");
-  return `<p class="pr"><b>${esc(cardName)}</b> · ${esc(line)}</p><p class="ct">${esc(x.cardText(pd.fx.card))}</p>${triggerNote(v, x)}`;
+  // #92: when a rival played this card for CP the head line says so, in the same one line (the map's height is what the bar leaves it, #89)
+  const by = playedBy(v), why = by < 0 ? "" : ` · ${esc(x.tr("p.triggerNote", { who: x.short(by) }))}`;
+  return `<p class="pr"${by < 0 ? "" : " data-trigger-note"}><b>${esc(cardName)}</b>${why} · ${esc(line)}</p><p class="ct">${esc(x.cardText(pd.fx.card))}</p>`;
 }
 
 // #92: a rival played your event for CP and it happens for you: who, and which card (the pending effect is that card's).
-function triggerNote(v, x) {
+function playedBy(v) {
   const card = v.pending && v.pending.fx && v.pending.fx.card, log = v.log || [];
-  if (!card || !CARD[card] || SEATS.indexOf(CARD[card].owner) !== v.seat) return "";
+  if (!card || !CARD[card] || SEATS.indexOf(CARD[card].owner) !== v.seat) return -1;
   const ti = log.map((e) => e.t === "trigger" && e.card === card && e.seat === v.seat).lastIndexOf(true);
-  if (ti < 0) return "";
+  if (ti < 0) return -1;
   const pl = [...log.slice(0, ti)].reverse().find((e) => e.t === "play" && e.card === card);
-  if (!pl || pl.seat === v.seat) return "";
-  return `<p class="ct note" data-trigger-note>${esc(x.tr("p.triggerNote", { who: x.short(pl.seat), card: x.card(card) }))}</p>`;
+  return !pl || pl.seat === v.seat ? -1 : pl.seat;
 }
 
 // #92: a rival's event card opened where it can be played for CP: the event happens for its owner, so say what they get, how the morale

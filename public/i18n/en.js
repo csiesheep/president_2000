@@ -170,7 +170,7 @@ export default {
         play: "Card {n} of 4: pick a card from your hand, or use your candidate card.",
         pickCard: "Tap a card below to see it and how to play it.", pickCardDebate: "Tap a card below to choose which one to turn over.", pickCardElection: "Tap a card below to choose which one to canvass first.",
         trigger: "{card} is your card, and an opponent played it for CP. Spend 1 momentum to trigger its event?",
-        triggerNote: "{who} played your {card} for CP, so its event happens for you, and the choice is yours.",
+        triggerNote: "{who}'s CP play",
         giftTitle: "This is {who}'s card", giftLead: "You can use its {cp} CP, but the event happens for {who}.", giftGets: "{who} gets: {text}",
         giftMorale: "Morale (now → after): {list}", giftRate: "Taking {who}'s blocks, your chance drops from {a}% to {b}%.", giftNoMove: "Morale is already at its limit, so nothing changes.",
         kind: "What will you do with {cp} CP?", campaign: "Campaign: move, fill, take. {cp} CP left.", ads: "Advertising: one support check per CP. {cp} CP left.",

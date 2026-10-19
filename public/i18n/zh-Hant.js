@@ -169,7 +169,7 @@ export default {
         play: "第 {n} / 4 次出牌：選一張手牌，或用候選人牌。",
         pickCard: "點下面的手牌看牌面與打法。", pickCardDebate: "點下面的留牌，選哪一張要翻開。", pickCardElection: "點下面的留牌，選要先催哪一張。",
         trigger: "{card} 是你的牌，對手拿去當 CP 用了。花 1 動能觸發它的事件嗎？",
-        triggerNote: "{who}拿你的「{card}」當 CP，所以這個事件替你發生，輪到你選。",
+        triggerNote: "{who}拿它當 CP",
         giftTitle: "這是{who}的牌", giftLead: "你可以拿它的 {cp} CP 來用，但事件會替{who}發生。", giftGets: "{who}會得到：{text}",
         giftMorale: "士氣（現在 → 之後）：{list}", giftRate: "你搶{who}的方塊，成功率從 {a}% 掉到 {b}%。", giftNoMove: "士氣已在上下限，不會變。",
         kind: "{cp} CP 要做什麼？", campaign: "競選：移動、填塊、搶塊。剩 {cp} CP。", ads: "廣告：每 1 CP 抽一次檢定。剩 {cp} CP。",

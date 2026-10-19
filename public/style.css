@@ -1435,4 +1435,3 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
 .gift p { margin: 0; }
 .gift .gh b { font: 900 14px var(--serif); margin-right: 4px; }
 .gift .gm, .gift .gr { font-weight: 700; }
-[data-trigger-note] { color: var(--red); font-weight: 700; }
