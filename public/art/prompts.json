@@ -732,5 +732,23 @@
   "subject": "結局頁主視覺「開票之夜」（連當選）",
   "aspect": "3:2 (Photo)",
   "note": "owner-selected v1 of 3; resized 1248x832 -> 900x600"
+ },
+ "news/studio.webp": {
+  "prompt": "A modern television news studio on election night, an empty curved anchor desk in polished dark wood and glass at centre, a huge video wall of blank glowing deep blue screens behind it, thin red and gold accent light strips, two broadcast cameras on pedestals at the sides, glossy dark floor reflecting the lights, wide shot, photorealistic, cinematic broadcast lighting. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature, no on-screen graphics with writing. No people, no faces, no human figures.",
+  "seed": 2000088001,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "開票夜主播台",
+  "aspect": "16:9 1280x720",
+  "negative_prompt": "text, letters, characters, numbers, logo, watermark, signature, people, faces, hands, human figures, news anchor, presenter, flag emblem, subtitles, captions",
+  "settings": "15 steps, euler/simple, cfg 1.0, generated 1344x768 then cover-cropped to size, WebP q96"
+ },
+ "news/wall.webp": {
+  "prompt": "An empty national television news studio, symmetrical front view: a long anchor desk with a soft red glow on its front panel, behind it a wall of large blank blue screens arranged in a grid, golden spotlights from the ceiling, a dark navy and crimson colour scheme, photorealistic, broadcast quality. Absolutely no text, no Chinese characters, no letters, no numbers, no logos, no watermark, no signature, no on-screen graphics with writing. No people, no faces, no human figures.",
+  "seed": 2000088002,
+  "model": "qwen-image-2.1-UC-Q8_0.gguf",
+  "subject": "開票夜螢幕牆",
+  "aspect": "8:5 1280x800",
+  "negative_prompt": "text, letters, characters, numbers, logo, watermark, signature, people, faces, hands, human figures, news anchor, presenter, flag emblem, subtitles, captions",
+  "settings": "15 steps, euler/simple, cfg 1.0, generated 1344x768 then cover-cropped to size, WebP q96"
  }
 }
