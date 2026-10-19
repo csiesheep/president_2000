@@ -34,7 +34,7 @@
 //     the same on screen, the map at least 260×370, the anchor desk at least 700×390. ("No scroll" is the count night
 //     itself: its root inside the screen and nothing in it to scroll; a page behind an overlay may be long.) A picture
 //     that never loads is broken; one caught while loading is not.
-// Every row reports 尚未實作 until [data-count] appears after a game ends on the page.
+// Since #93 landed (76b5e20), no [data-count] after a game ends on the page is a failure, not 尚未實作.
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import * as S from "../public/solo.js";
@@ -182,7 +182,7 @@ async function pass(br, G, cfg) {
     }
     out.waitS = ((endAt || Date.now()) - t0) / 1000;
     phase = await t.ev(PHASE);
-    if (!s || !s.stage) { if (phase === "end") out.todo = "局在頁面上下完了（phase end），之後 20 秒沒有出現 [data-count]"; else out.err = `局在 120 秒內沒有在頁面上下完（phase ${phase}）`; return out; }
+    if (!s || !s.stage) { if (phase === "end") out.err = "局在頁面上下完了（phase end），之後 20 秒沒有出現 [data-count]：#93 已上線（76b5e20），這是退步，不是尚未實作"; else out.err = `局在 120 秒內沒有在頁面上下完（phase ${phase}）`; return out; }
     out.pageVotes = await t.ev(`(()=>{ try { return JSON.parse(sessionStorage.getItem("p2000.solo.session")).st.result.votes; } catch { return null; } })()`);
     out.snaps.push(s);
     // open → tally: by itself, or tapped
