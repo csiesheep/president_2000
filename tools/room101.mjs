@@ -140,7 +140,7 @@ async function page(code, ip) {
 const rows = [];
 const row = (name, fn) => { try { const r = fn(); rows.push(r === true ? { name, ok: true } : typeof r === "string" && r.startsWith("TODO:") ? { name, todo: r.slice(5).trim() } : r && r.pass ? { name, ok: true, msg: r.msg } : { name, ok: false, msg: String(r) }); } catch (e) { rows.push({ name, ok: false, msg: `instrument: ${e.message}` }); } };
 const okm = (c, msg) => (c ? { pass: true, msg } : msg);
-const pre = () => (M.err ? `儀器中途停下：${M.err}（instrument；同一個 wrangler 跑過的話，這次用的位址不一樣，不會被上一次擋住）` : M.speaksJoin === false ? "TODO: 伺服器還不懂第一則的 join（#105 之前）：名字與 token 不在網址裡就入不了座" : null);
+const pre = () => (M.err ? `儀器中途停下：${M.err}（instrument；同一個 wrangler 跑過的話，這次用的位址不一樣，不會被上一次擋住）` : M.speaksJoin === false ? "#105 上線之後是失敗：伺服器不懂第一則的 join，名字與 token 不在網址裡就入不了座" : null);
 const any = () => [...(M.misses || []), M.after, M.miss21, ...(M.creates || []), ...(M.flood || [])].includes("rate_limited");
 row("猜代碼：同一個位址 20 次加入不存在的房間都回 no_room；之後沒帶 token 加入存在的房間、或再猜一次，都回 rate_limited", () => {
   const p = pre(); if (p) return p;

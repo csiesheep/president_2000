@@ -14,7 +14,7 @@
 // given up within 15 s (the client sees an error or the close, whichever comes first) and gets nothing of the room before
 // (ruling on #105 after the BE's notes).
 // Measured with two browser profiles (two players); every WebSocket each opens is read off CDP.
-// Reports 尚未實作 while the pages put the name or the token in the URL (as on main).
+// #105 landed (0c81e8e): a name or token in the URL, or a socket never given up, is a failure now (it reported 尚未實作 before).
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 
@@ -118,7 +118,7 @@ row("每一條房間連線的網址都不帶名字與 token（開房、加入、
   const ws = (M.urls || []).filter(([, u]) => /\/ws\?/.test(u));
   if (ws.length < 3) return `只看到 ${ws.length} 條房間連線（instrument）`;
   const bad = ws.map(([who, u]) => [who, u, leaks(u)]).filter(([, , l]) => l.length);
-  if (bad.length === ws.length) return `TODO: 每一條都還帶著（例：${bad[0][0]} ${bad[0][1].replace(/^.*\/ws/, "/ws").slice(0, 90)}）`;
+  if (bad.length === ws.length) return `#105 上線之後是失敗：每一條都還帶著（例：${bad[0][0]} ${bad[0][1].replace(/^.*\/ws/, "/ws").slice(0, 90)}）`;
   return okm(!bad.length, bad.length ? `${bad.length}/${ws.length} 條還帶著：${bad.map(([w, , l]) => `${w} ${l.join("、")}`).join("；")}` : `${ws.length} 條都沒有（例：${ws[0][1].replace(/^.*\/ws/, "/ws")}）`);
 });
 row("照樣能玩：房主入座、另一個玩家用名字加入並入座、兩邊的座位上都看得到兩個名字、房主重新整理坐回同一席", () => {
@@ -137,7 +137,7 @@ row("連上之後一直不送第一則訊息的連線：15 秒內被關掉，在
   const x = M.idle || {};
   if (x.err) return `開不了連線：${x.err}（instrument）`;
   const roomish = (x.got || []).filter((t) => ["hello", "room", "state", "chat"].includes(t));
-  if (roomish.includes("hello") && !Number.isFinite(x.closedAfter)) return `TODO: 沒送 join 也拿到 hello、連線一直開著（收到 ${roomish.join("、")}）`;
+  if (roomish.includes("hello") && !Number.isFinite(x.closedAfter)) return `#105 上線之後是失敗：沒送 join 也拿到 hello、連線一直開著（收到 ${roomish.join("、")}）`;
   const bad = [];
   if (!Number.isFinite(x.closedAfter) || x.closedAfter > 15000) bad.push(`15 秒內伺服器沒有放棄這條連線（${Number.isFinite(x.closedAfter) ? x.closedAfter + " ms" : "20 秒都開著、沒有 error"}）`);
   if (roomish.length) bad.push(`關掉之前收到 ${roomish.join("、")}`);
