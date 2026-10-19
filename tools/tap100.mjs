@@ -17,7 +17,8 @@
 // Measured at 390×844, rivals' speed slow: the replay is up, it is the human's card play, a hand card is tapped where it
 // shows, then its play button about 220 ms later (≤ 440 ms, read off the page's own click times); the move is made (solo: the
 // card leaves the hand in the saved game) or sent (room: a "move" with that card on the socket).
-// Reports 尚未實作 while the move is swallowed (as on main).
+// #100 landed (af7769c, deployed with ab147f1): a swallowed move or a hidden decision is a failure now (it reported
+// 尚未實作 before the work was done).
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import * as S from "../public/solo.js";
@@ -282,7 +283,7 @@ const judge = (x, made, what) => {
   if (!x.up1) return "點手牌的時候重播已經不在了，量不到（instrument）";
   if (x.gap == null || x.gap > 440) return `兩下隔了 ${x.gap} ms，不在 450 ms 內，量不到（instrument）`;
   const how = `兩下隔 ${x.gap} ms、相距 ${x.far} px，${x.taps}`;
-  if (!made) return `TODO: 出牌被當成連點的第二下吃掉了（${how}；${what}）`;
+  if (!made) return `#100 上線之後是失敗：出牌被當成連點的第二下吃掉了（${how}；${what}）`;
   return okm(true, `${how}；${what}`);
 };
 row("單人「選行動」那一步：真的點開一張手牌之後，原本按得到的每一顆決定按鈕都還按得到", () => {
@@ -292,7 +293,7 @@ row("單人「選行動」那一步：真的點開一張手牌之後，原本按
   if (!x.before.length) return `打開牌之前就沒有按得到的決定按鈕（${M.action}）（instrument）`;
   if (!x.tapped || !x.opened) return `「${M.action}」${x.tapped ? "點了但沒有打開" : "在手牌裡沒有露出來可以點的地方"}（instrument）`;
   const lost = x.before.filter((m) => !x.after.includes(m));
-  if (lost.length === x.before.length) return `TODO: 打開的牌蓋住了決定（${M.action}：${x.before.length} 顆都按不到）`;
+  if (lost.length === x.before.length) return `#100 上線之後是失敗：打開的牌蓋住了決定（${M.action}：${x.before.length} 顆都按不到）`;
   return okm(!lost.length, lost.length ? `${M.action}：打開後 ${lost.length} / ${x.before.length} 顆按不到（${lost.slice(0, 3).join("、")}）` : `${M.action}：${x.before.length} 顆都還按得到`);
 });
 row("#47 照舊：在放大的牌上快點兩下（同一點），第二下落在牌底下的決定按鈕上，也不會做那一步", () => {
@@ -311,7 +312,7 @@ row("房間：同上，那一步送給伺服器", () => {
   const x = M.room; return judge(x, x && x.sent >= 1, x && !x.err ? `「${x.card}」${x.sent ? `送出 ${x.sent} 次` : "沒有送出"}${x.other > x.sent ? `，另送了 ${x.other - x.sent} 個別的` : ""}` : "");
 });
 row("房間：那一步只送一次", () => {
-  const x = M.room; if (!x || x.err || !x.sent) return "TODO: 還沒有送出";
+  const x = M.room; if (!x || x.err) return `${x && x.err ? x.err : "沒有量到"}（instrument）`; if (!x.sent) return "#100 上線之後是失敗：沒有送出";
   return okm(x.sent === 1 && x.other === 1, `送了 ${x.other} 個 move，其中 ${x.sent} 個是這張牌`);
 });
 

@@ -15,7 +15,8 @@
 //   - a path under /president_2000/ that does not exist (a page or an asset) answers 404 with an HTML page: lang set,
 //     the game's name in both languages, a link back to the home page, <meta name="robots" content="noindex">; the
 //     pages and assets that do exist still answer 200.
-// Reports 尚未實作 while it all behaves as on main.
+// #102 landed (9aabb53, deployed with ab147f1): a missing image, icon or 404 page is a failure now (it reported 尚未實作
+// before the work was done).
 const base = (process.argv[2] || "").replace(/\/?$/, "/");
 if (!process.argv[2]) { console.log("usage: node tools/icons102.mjs <base url ending in /president_2000/>"); process.exit(2); }
 async function get(path) { const r = await fetch(base + path, { redirect: "manual" }); return { status: r.status, type: r.headers.get("content-type") || "", body: Buffer.from(await r.arrayBuffer()) }; }
@@ -50,14 +51,14 @@ const okm = (c, msg) => (c ? { pass: true, msg } : msg);
 const pre = () => (M.err ? `儀器中途停下：${M.err}` : null);
 row("分享圖：art/share-zh.png、art/share-en.png 是 1200×630 的 PNG，各 ≤ 400 KB", () => {
   const p = pre(); if (p) return p;
-  if (Object.values(M.share).every((x) => x.status !== 200)) return "TODO: 兩張分享圖都還沒有";
+  if (Object.values(M.share).every((x) => x.status !== 200)) return "#102 上線之後是失敗：兩張分享圖都沒有";
   const bad = [], d = [];
   for (const [k, x] of Object.entries(M.share)) { const s = `${k} ${x.status} ${x.size ? `${x.size.w}×${x.size.h}` : "不是 PNG"} ${(x.bytes / 1024).toFixed(0)} KB`; d.push(s); if (!(x.status === 200 && x.size && x.size.w === 1200 && x.size.h === 630 && x.bytes <= 400 * 1024)) bad.push(s); }
   return okm(!bad.length, bad.join("；") || d.join("、"));
 });
 row("圖示：favicon.ico（含 16 與 32）、apple-touch-icon 180、icon-192、icon-512 都在而且是那個大小", () => {
   const p = pre(); if (p) return p;
-  if (M.ico.status !== 200 && Object.values(M.icons).every((x) => x.status !== 200)) return "TODO: 只有 favicon.svg";
+  if (M.ico.status !== 200 && Object.values(M.icons).every((x) => x.status !== 200)) return "#102 上線之後是失敗：只有 favicon.svg";
   const bad = [];
   if (M.ico.status !== 200 || !M.ico.sizes) bad.push(`favicon.ico ${M.ico.status}${M.ico.status === 200 ? " 不是 ICO" : ""}`);
   else for (const s of ["16x16", "32x32"]) if (!M.ico.sizes.includes(s)) bad.push(`favicon.ico 裡沒有 ${s}（有 ${M.ico.sizes.join("、")}）`);
@@ -67,7 +68,7 @@ row("圖示：favicon.ico（含 16 與 32）、apple-touch-icon 180、icon-192�
 row("首頁與規則頁（中英）的 head 連到 favicon.ico 與 apple-touch-icon.png，favicon.svg 照舊", () => {
   const p = pre(); if (p) return p;
   const has = (ls, rel, href) => ls.some((l) => (l.rel || "").toLowerCase().split(/\s+/).includes(rel) && (l.href || "").replace(/^\.\//, "").endsWith(href));
-  if (Object.values(M.heads).every((h) => !has(h.links, "apple-touch-icon", "apple-touch-icon.png"))) return "TODO: 頁面還沒有連 apple-touch-icon";
+  if (Object.values(M.heads).every((h) => !has(h.links, "apple-touch-icon", "apple-touch-icon.png"))) return "#102 上線之後是失敗：頁面沒有連 apple-touch-icon";
   const bad = [];
   for (const [k, h] of Object.entries(M.heads)) {
     if (h.status !== 200) { bad.push(`${k} ${h.status}`); continue; }
@@ -79,7 +80,7 @@ row("首頁與規則頁（中英）的 head 連到 favicon.ico 與 apple-touch-i
 });
 row("不存在的路徑（頁面或圖）回 404 的 HTML 頁：有 lang、中英遊戲名、回首頁的連結、noindex；存在的照舊 200", () => {
   const p = pre(); if (p) return p;
-  if (Object.values(M.missing).every((x) => x.len < 50 && !x.zh)) return `TODO: 不存在的路徑回的是 ${[...new Set(Object.values(M.missing).map((x) => `${x.status} ${x.len} 字`))].join("、")}`;
+  if (Object.values(M.missing).every((x) => x.len < 50 && !x.zh)) return `#102 上線之後是失敗：不存在的路徑回的是 ${[...new Set(Object.values(M.missing).map((x) => `${x.status} ${x.len} 字`))].join("、")}`;
   const bad = [];
   for (const [k, x] of Object.entries(M.missing)) {
     const miss = [x.status !== 404 && `狀態 ${x.status}`, !x.type.includes("text/html") && `類型 ${x.type}`, !x.lang && "沒有 lang", !x.zh && "沒有中文名", !x.en && "沒有英文名", !x.home && "沒有回首頁的連結", !x.noindex && "沒有 noindex"].filter(Boolean);

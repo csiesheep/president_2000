@@ -9,8 +9,8 @@
 // action 124 of 124 such screens lost every button, issue 99 of 99, steal 96 of 96, fill 37 of 56, cross 8 of 17.
 // Contract (orchestrator, #100): on the human's decision that is not a card play, Solo.screen with a hand card opened
 // ({ sel: <card> }) draws every decision button ([data-move]) it draws with nothing opened (the same moves); the card
-// itself may still show. Reports 尚未實作 while the screens behave as on main (nearly every one draws none of the
-// decision's buttons), a failure when any screen loses one or more.
+// itself may still show. A failure when any screen loses one or more (since #100 landed, af7769c, also when they all
+// do; before, that reported 尚未實作).
 import test from "node:test";
 import assert from "node:assert/strict";
 import { R, section, check, ok, nonEmpty, summary } from "./harness.js";
@@ -52,7 +52,7 @@ check("不是出牌的決定：打開一張手牌時，沒打開時畫的每一�
   const z = nonEmpty(n, "不是出牌、手上有牌、有兩個以上選項的決定"); if (z !== true) return z;
   const table = Object.entries(kinds).map(([k, v]) => `${k} ${v.lost}/${v.n}`).join("、");
   // as on main: (nearly) every such screen draws none of the decision's buttons
-  if (none >= 0.9 * n) return `TODO: 打開的牌還會蓋住決定（${none}/${n} 個畫面一顆決定按鈕都沒有：${table}）`;
+  if (none >= 0.9 * n) return `#100 上線之後是失敗：打開的牌還會蓋住決定（${none}/${n} 個畫面一顆決定按鈕都沒有：${table}）`;
   return ok(!hidden, hidden ? `${hidden}/${n} 個畫面少了按鈕（${table}）；例：${bad.join("；")}` : `${n} 個畫面都在（${table}）`);
 });
 
