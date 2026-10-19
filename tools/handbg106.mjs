@@ -9,8 +9,8 @@
 // Contract (orchestrator, #106): at desktop widths (1100×720, 1280×800, 1440×900) the hand tray ([.t-hand] of the
 // table) has no background colour (alpha 0), no background image and no line along its top; the cards still show (at
 // least four card tops on screen) and the two buttons above them (the hand count and 「規則」) keep their own dark pill
-// so they stay readable. On a phone (390×844) nothing changes: the tray keeps its dark background (alpha ≥ .6), where it
-// keeps the cards readable over the map.
+// so they stay readable. (Its phone row, "the dark band stays on a phone", is gone: the owner asked for it away there too,
+// #107, measured by tools/handbg107.mjs.)
 // #106 landed (0c8d153): the band at every desktop width is a failure now (it reported 尚未實作 before).
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
@@ -66,7 +66,7 @@ const READ = `JSON.stringify((() => {
 const M = {};
 const br = await launch();
 try {
-  for (const [w, hgt] of [...DESK, PHONE]) {
+  for (const [w, hgt] of DESK) {
     const t = await tab(br, w, hgt);
     await t.go(base, 1200);
     await t.ev(`(()=>{ sessionStorage.setItem("p2000.solo.session", ${JSON.stringify(JSON.stringify(game))}); return 1; })()`);
@@ -99,11 +99,6 @@ row("桌機：牌照舊在畫面上（至少 4 張的上緣），「手牌 N」�
     for (const p of [x.count, x.rules]) if (!p) bad.push(`${k} 少了一顆按鈕`); else if (p.alpha < 0.6) bad.push(`${k}「${p.text}」的底不夠深（${p.alpha}）`);
   }
   return okm(!bad.length, bad.join("；") || desk().map(([k, x]) => `${k} ${x.cards} 張`).join("、"));
-});
-row("手機 390×844：手牌那一條的深色底照舊（不透明度 ≥ 0.6）", () => {
-  if (M.err) return `儀器中途停下：${M.err}`;
-  const x = M[`${PHONE[0]}x${PHONE[1]}`]; if (!x) return "手機沒有牌桌的手牌（instrument）";
-  return okm(x.bg >= 0.6, `底色 ${x.bgColor}`);
 });
 
 let bad = 0, pend = 0;
