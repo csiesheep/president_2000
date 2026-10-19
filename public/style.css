@@ -1108,6 +1108,7 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
 /* the hand: a tray along the bottom edge, the top of the cards showing; a pick (or the handle) raises it */
 .tbl:not(.end) .t-hand { position: absolute; z-index: 20; left: calc(-1 * var(--pad)); right: calc(-1 * var(--pad)); bottom: 0; height: calc(var(--tray) + env(safe-area-inset-bottom, 0px)); margin: 0; padding: 0; display: block; background: rgba(20, 12, 4, .74); border-top: 1px solid rgba(255, 220, 170, .25); pointer-events: auto; transition: height .16s ease-out; }
 @media (prefers-reduced-motion: reduce) { .tbl:not(.end) .t-hand { transition: none; } }
+@media (min-width: 1100px) { .tbl:not(.end) .t-hand { background: none; border-top-color: transparent; } }
 .tbl:not(.end) .t-hand .hh { position: absolute; left: 0; right: 0; top: -13px; height: 26px; padding: 0 var(--pad); display: flex; align-items: center; justify-content: space-between; gap: 8px; z-index: 3; pointer-events: none; }
 .tbl:not(.end) .t-hand .hh > * { pointer-events: auto; }
 .tbl:not(.end) .t-hand .hh > .hh-n { flex: 1; min-width: 0; padding: 0; background: none; pointer-events: none; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; font-size: 10px; line-height: 1.25; color: #f0e2c0; text-shadow: 0 1px 2px rgba(0, 0, 0, .7); }
