@@ -85,7 +85,8 @@ try {
   // B: the same room in a second tab (its own empty sessionStorage, the same localStorage)
   const B = await tab(br, `${base}?room=${code}`);
   M.bTable = await waitFor(B, (s) => s.table || s.form, 10000); M.bSeat = B.seat();
-  M.aElse = await waitFor(A, (s) => s.elsewhere, 6000);
+  // 15 s: on a cold wrangler dev (the first tool after a fresh --persist-to) the replaced tab took longer than 6 s twice (FE #102, BE #104)
+  M.aElse = await waitFor(A, (s) => s.elsewhere, 15000);
   step(`A else ${M.aElse.ok}, B ${JSON.stringify(M.bTable.s)}`);
   const aSock0 = A.log.sockets, bSock0 = B.log.sockets;
   await sleep(20000);
@@ -97,7 +98,7 @@ try {
   // A takes the seat back
   M.tookOver = await A.tapSel("[data-room-takeover]");
   M.aBack = await waitFor(A, (s) => s.table && !s.elsewhere, 6000); M.aSeat2 = A.seat();
-  M.bElse = await waitFor(B, (s) => s.elsewhere, 6000);
+  M.bElse = await waitFor(B, (s) => s.elsewhere, 15000);
   const aSock1 = A.log.sockets, bSock1 = B.log.sockets;
   await sleep(12000);
   M.loop = { a: A.log.sockets - aSock1, b: B.log.sockets - bSock1, aState: await A.ev(STATE), bState: await B.ev(STATE) };
