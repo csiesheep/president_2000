@@ -4,7 +4,8 @@ export default {
   title: "2000：總統的誕生",
   tagline: "九個回合，一張選票。三位候選人、一座島，和決定一切的分裂。",
   building: "建設中。先做引擎，再做牌桌。",
-  credit: "同人作品，非官方。靈感來自 Christian Leonhard 與 Jason Matthews 設計的 1960: The Making of the President；規則與機制不受著作權保護，本作為獨立實作、自創名稱與美術。",
+  credit: "同人作品，非官方。靈感來自 Christian Leonhard 與 Jason Matthews 設計的 1960: The Making of the President；規則與機制不受著作權保護，本作為獨立實作、自創名稱。牌圖與插圖由 AI 生成（Qwen-Image，依 Qwen Research License 僅限非商業使用）。",
+  privacy: "隱私權政策",
   nav: { rules: "規則", hub: "csiesheep games", lang: "EN" },
   ui: {
     home: "← 首頁",

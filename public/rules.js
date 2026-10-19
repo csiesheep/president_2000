@@ -93,6 +93,7 @@ if (typeof document !== "undefined") {
   set("#kicker", (el) => { el.textContent = t.ui.kicker; });
   set("#title", (el) => { el.textContent = t.ui.pageTitle; });
   set("#credit", (el) => { el.textContent = t.credit; });
+  set("#privacy", (el) => { el.textContent = t.privacy; });
   set("#content", (el) => {
     el.innerHTML = rulesHTML(lang);
     const jump = () => { if (location.hash) document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView(); };

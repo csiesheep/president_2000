@@ -2,7 +2,7 @@
 
 A browser card-driven election game for three players, set in Taiwan's 2000 presidential race: 陳水扁, 宋楚瑜 and 連戰 fight nine turns over 154 vote blocks across 25 counties, from the November 1999 expulsion to election night. Play solo against AI, or open an online room and share a four-letter code with friends; bots fill any empty seats. English and Traditional Chinese.
 
-A free fan project, not affiliated with any publisher. All art and prose are our own. The play is inspired by *1960: The Making of the President*, designed by Christian Leonhard and Jason Matthews; game rules and mechanics are not copyrightable, and this is an independent implementation under its own name and setting.
+A free fan project, not affiliated with any publisher. The text is our own; the art (cards and illustrations) was generated with Qwen-Image, under the Qwen Research License, for non-commercial use only. The play is inspired by *1960: The Making of the President*, designed by Christian Leonhard and Jason Matthews; game rules and mechanics are not copyrightable, and this is an independent implementation under its own name and setting.
 
 Live at https://games.csiesheep.com/president_2000/ (placeholder until M3).
 
