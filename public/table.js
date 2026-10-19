@@ -943,7 +943,7 @@ function sheetFor(v, ch, x, o) {
   }
   const cardMoves = ch.filter((c) => c.move.card && (c.move.type === "play" || c.move.type === "reveal" || c.move.type === "canvass"));
   // A hand card tapped in a step that plays no card (order, momentum, keeping all) still opens its face (with "not now"), as it does when waiting.
-  if (o.sel && hand.includes(o.sel) && !cardMoves.length && !ch.some((c) => c.move.type === "candidate") && !(v.phase === "save" && ch.length > 1)) return wrap(sheetHTML(v, ch, x, o.sel), o.sel);
+  if (o.sel && hand.includes(o.sel) && !cardMoves.length && !ch.some((c) => c.move.type === "candidate") && !(v.phase === "save" && ch.length > 1)) return wrap(decisionSheet(v, ch, x, o), o.sel);
   if (v.phase === "save") return wrap(savePanel(v, ch, x, o));
   if (cardMoves.length || ch.some((c) => c.move.type === "candidate")) {
     const cards = [...new Set(cardMoves.map((c) => c.move.card))];
@@ -965,6 +965,15 @@ function sheetFor(v, ch, x, o) {
   }
   if (ch.some(isPlace)) return wrap(countyBar(v, ch, x, o));
   return wrap(prompt(v, ch, x) + groupedList(v, ch, x, o));
+}
+
+// #100: a hand card opened in a step that plays no card (the kind of action, the issue, where to place, whom to take from): the
+// step's own buttons are drawn exactly as when nothing is opened (same moves), with the card's face beside them. On a short phone
+// screen style.css folds the face away (a decision comes first: a room's clock runs).
+function decisionSheet(v, ch, x, o) {
+  const body = ch.some(isPlace) ? countyBar(v, ch, x, o) : prompt(v, ch, x) + groupedList(v, ch, x, o);
+  return `<div class="sheet dec"><button type="button" class="pc-hit" data-camp="${CARD[o.sel].owner === "local" ? "local" : CARD[o.sel].owner}" data-sel="${esc(o.sel)}">${cardFace(o.sel, x)}</button><div class="sh-r">${body}` +
+    `<button type="button" class="back" data-sel="">${esc(x.tr("p.back"))}</button></div></div>`;
 }
 
 // A card opened: the card face on the left, its plays (or "not now") and the way back on the right. `auto`: the table opened it
@@ -1492,7 +1501,12 @@ function tipHTML(t, v, x) {
 }
 
 export function tableHTML(view, choices, lang, opts = {}) {
-  const x = bind(lang), v = view, o = opts;
+  const x = bind(lang), v = view;
+  // #100: on a short phone screen (iPhone Safari with its toolbar, about 664 high) an opened card and a long list of decision buttons
+  // do not fit above the hand: the decision comes first (a room's clock runs), so the card stays closed in a step that plays no card.
+  const short = opts.narrow && typeof innerHeight === "number" && innerHeight < 740;
+  const noPlay = !choices.some((c) => c.move.card || c.move.type === "candidate");
+  const o = short && opts.sel && noPlay && choices.length >= 4 && !choices.some(isPlace) && v.phase !== "save" ? { ...opts, sel: null } : opts;
   x.v7 = isV07(v); // v0.7: no rest cubes on the stubs
   // #66: what the rivals did since the human last decided is on the map (a halo and a chip on each county they touched), on the
   // headlines (a flash and a chip) and in one line at the map's top (the toast); all of it is read off o.rec (session.rec).
