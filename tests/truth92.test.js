@@ -1,14 +1,14 @@
-// The screen tells the truth (issue #93): what a rival gets when you play its card for CP, why you are placing for an
+// The screen tells the truth (issue #92): what a rival gets when you play its card for CP, why you are placing for an
 // event a rival played, what a policy forum really placed, and nothing of a face-down forum pick before it is turned
 // over. Orchestrator's file: a peer may run it and falsify against it, and does not edit it.
 //
-//   node --test tests/truth93.test.js      (or `npm test`)
+//   node --test tests/truth92.test.js      (or `npm test`)
 //
 // Owner, 2026-10-18, to the wave-2 design canvas (⑤ 畫面說真話：拿對手的牌當 CP 會送他什麼): 「可以 開工」. The audit
 // (商業盤點 A, v0.8): a rival's card played for CP always happens for the rival and the screen never said so (9 and 12
 // times in two games); a triggered event asked you to place blocks without saying why; the record said 「放 4 顆」 when no
 // block could be placed (40 games claimed 356, placed 21); the rivals' sayings named the issue of a face-down forum pick.
-// Contract (orchestrator, #93), on the solo table as Solo.screen draws it (node; the page draws the same string):
+// Contract (orchestrator, #92), on the solo table as Solo.screen draws it (node; the page draws the same string):
 //   - a rival's event card (owner 陳/宋/連, not yours) opened in your hand where it can be played for CP: the sheet has
 //     one [data-gift="<owner's seat key>"] element whose text names the owner (short name), gives the card's text (the
 //     language's own) as what the owner gets, and for every seat whose 士氣 the card moves by a fixed amount
@@ -217,7 +217,7 @@ check("發表會結束後，紀錄裡每個結算的議題寫的是真的放下�
   const z = nonEmpty(n, "發表會之後紀錄裡的結算行"); if (z !== true) return z;
   if (!zero || !some) return `看到的結算行裡沒有「一塊都沒放」（${zero}）或「有放」（${some}）的，分不出對錯`;
   const msg = bad.slice(0, 4).join("；") + (bad.length > 4 ? `……共 ${bad.length} 行` : "");
-  if (bad.length && GIFT_READY()) return `TODO: 還沒修（#93 的送分提醒也還沒有）；現在量到：${msg}`;
+  if (bad.length && GIFT_READY()) return `TODO: 還沒修（#92 的送分提醒也還沒有）；現在量到：${msg}`;
   return ok(!bad.length, bad.length ? msg : `${n} 行都對（沒放 ${zero}、有放 ${some}）`);
 });
 
@@ -233,11 +233,11 @@ check("對手的牌還蓋著時，畫面上沒有他那句「翻這張，某議�
     if (text(p.html).includes(said)) bad.push(`${p.lang} ${x.short(p.q)} 押「${x.issue(p.issue)}」：畫面上有「${said}」`);
   }
   const msg = `${bad.length} 個畫面洩漏，例：${bad.slice(0, 2).join("；")}`;
-  if (bad.length && GIFT_READY()) return `TODO: 還沒修（#93 的送分提醒也還沒有）；現在量到：${msg}`;
+  if (bad.length && GIFT_READY()) return `TODO: 還沒修（#92 的送分提醒也還沒有）；現在量到：${msg}`;
   return ok(!bad.length, bad.length ? msg : `${all.length} 個畫面都沒有洩漏`);
 });
 
-test("truth93", () => {
+test("truth92", () => {
   const s = summary();
   for (const p of R.pass) console.log(`  ✓ ${p.label}${p.msg ? " — " + p.msg : ""}`);
   for (const t of s.todos) console.log(`  … ${t.label} — ${t.msg}`);
