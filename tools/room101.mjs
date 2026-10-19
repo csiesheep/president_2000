@@ -7,7 +7,9 @@
 // The audit (商業盤點 E, multiplayer): no rate limit of any kind; four-letter codes (32 letters: about a million) and a
 // `no_room` answer let anyone find the rooms that are open by trying codes one after another.
 // Contract (orchestrator, #101). The address is CF-Connecting-IP (set by Cloudflare; `wrangler dev` passes on what the
-// client sends, so each scenario here uses its own documentation address, 2001:db8::/32, and never limits 127.0.0.1):
+// client sends, so each scenario here uses its own documentation address, 2001:db8::/32, and never limits 127.0.0.1).
+// An IPv6 address counts as its /64 (one home or phone holds a whole /64 and could use a new address for every guess;
+// orchestrator's ruling on #101 after the BE's question); an IPv4 address counts as itself:
 //   - joins without a valid token: an address that has had 20 joins naming a room that does not exist within 10 minutes
 //     is answered { t: "error", code: "rate_limited" } (and the socket closed) on every further join without a valid
 //     token, to a room that exists or not, until it has fewer; a refused join counts as a miss (trying on keeps it out);
@@ -25,7 +27,8 @@ const CHROME = process.env.CHROME || "C:/Program Files/Google/Chrome/Application
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const step = (k) => { if (process.env.ROOM101_DEBUG) console.log(`  · ${k}`); };
 const wsBase = base.replace(/^http/, "ws").replace(/\/?$/, "/") + "ws";
-const run = Date.now().toString(16).slice(-6), addr = (k) => `2001:db8:${run.slice(0, 3)}:${run.slice(3)}::${k}`;
+// every scenario its own /64 (IPv6 is counted per /64, #101 ruling after the BE's question): 2001:db8:<run>:<scenario>::<host>
+const run = Date.now().toString(16).slice(-4), addr = (k, host = 1) => `2001:db8:${run}:${k}::${host}`;
 const CODE = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const zh = (await import(new URL("../public/i18n/zh-Hant.js", import.meta.url).href)).default;
 const LIMIT_TEXT = zh.errors && zh.errors.rate_limited;
@@ -80,6 +83,14 @@ try {
     setTimeout(() => { try { ws.close(); } catch { /* closed */ } res(codes); }, 5000);
   });
   step(`flood ${JSON.stringify(M.flood)}`);
+  // 4b. IPv6 per /64: 20 misses from one host of a /64, then a join without a token from another host of the same /64, and
+  // one from a host of another /64
+  const taken2 = new Set([M.code]);
+  for (let i = 0; i < 20; i++) { const c = freeCode(taken2); taken2.add(c); await connect(`room=${c}&name=x`, addr("a4", 1), { until: firstAnswer, ms: 3000 }); }
+  const same = await connect(`room=${M.code}&name=x`, addr("a4", 2), { until: firstAnswer });
+  const other = await connect(`room=${M.code}&name=x`, addr("a5", 1), { until: firstAnswer });
+  M.v6 = { same: helloOf(same) ? "hello" : errOf(same) || same.why, other: helloOf(other) ? "hello" : errOf(other) || other.why };
+  step(`v6 ${JSON.stringify(M.v6)}`);
   // 5. the page, from address a1 (refused): what it shows, and whether it tries again
   M.page = await page(M.code, addr("a1"));
   step(`page ${JSON.stringify(M.page)}`);
@@ -143,6 +154,12 @@ row("一條連線一口氣送 40 則：前 30 則照常處理（bad_message）�
   const f = M.flood || [], bm = f.filter((c) => c === "bad_message").length, rl = f.filter((c) => c === "rate_limited").length;
   if (!any()) return `TODO: 40 則都照常處理（bad_message ${bm}）`;
   return okm(bm === 30 && rl === 10, `bad_message ${bm}、rate_limited ${rl}（共收到 ${f.length} 個錯誤）`);
+});
+row("IPv6 以 /64 為一組：同一個 /64 的一台猜錯 20 次，另一台沒帶 token 加入也被擋；另一個 /64 照常", () => {
+  const p = pre(); if (p) return p;
+  if (!any()) return "TODO: 還沒有限制";
+  const x = M.v6 || {};
+  return okm(x.same === "rate_limited" && x.other === "hello", `同一個 /64 的另一台：${x.same}（應是 rate_limited）；另一個 /64：${x.other}（應是 hello）`);
 });
 row("房間頁：被擋的位址打開 ?room=<代碼>，畫面寫出 errors.rate_limited，40 秒內不再開新連線", () => {
   const p = pre(); if (p) return p;
