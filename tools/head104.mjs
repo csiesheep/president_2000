@@ -23,7 +23,7 @@
 //   - sitemap.xml lists the four URLs;
 //   - <meta name="robots" content="noindex, nofollow"> stays on every page until the owner says go (a guard: it passes
 //     on main and must keep passing).
-// Reports 尚未實作 while the pages behave as on main.
+// #104 landed (bd746fb): a page that behaves as before it is a failure now (it reported 尚未實作 before the work was done).
 const base = (process.argv[2] || "").replace(/\/?$/, "/");
 if (!process.argv[2]) { console.log("usage: node tools/head104.mjs <base url ending in /president_2000/>"); process.exit(2); }
 const SITE = "https://games.csiesheep.com/president_2000/";
@@ -81,7 +81,7 @@ const P = (k) => M.pages[k];
 const pre = () => (M.err ? `儀器中途停下：${M.err}` : PAGES.some((p) => P(p.key).status !== 200) ? `有頁面不是 200：${PAGES.map((p) => `${p.key} ${P(p.key).status}`).join("、")}（instrument）` : null);
 row("四頁的 <html lang>、標題、描述是那一頁的語言；描述 20–200 字（規則頁也有描述）", () => {
   const p = pre(); if (p) return p;
-  if (P("home en").lang === "zh-Hant" && P("rules en").lang === "zh-Hant") return `TODO: 英文頁送出去還是 lang="zh-Hant"（標題「${P("home en").title}」）`;
+  if (P("home en").lang === "zh-Hant" && P("rules en").lang === "zh-Hant") return `#104 上線之後是失敗：英文頁送出去還是 lang="zh-Hant"（標題「${P("home en").title}」）`;
   const bad = [];
   for (const x of PAGES) {
     const g = P(x.key), d = g.meta("description");
@@ -93,7 +93,7 @@ row("四頁的 <html lang>、標題、描述是那一頁的語言；描述 20–
 });
 row("canonical：每一頁是自己的網址（英文帶 ?lang=en）；?play、?tutorial、?room= 指回它所屬的那一頁", () => {
   const p = pre(); if (p) return p;
-  if (P("home en").canonical === SITE && P("rules en").canonical === SITE + "rules") return "TODO: 英文頁的 canonical 還是中文頁";
+  if (P("home en").canonical === SITE && P("rules en").canonical === SITE + "rules") return "#104 上線之後是失敗：英文頁的 canonical 還是中文頁";
   const bad = [];
   for (const x of PAGES) if (P(x.key).canonical !== x.canon) bad.push(`${x.key} 是 ${P(x.key).canonical}`);
   for (const [q, g] of Object.entries(M.queries)) if (g.canonical !== g.want) bad.push(`${q} 是 ${g.canonical}（應是 ${g.want}）`);
@@ -101,7 +101,7 @@ row("canonical：每一頁是自己的網址（英文帶 ?lang=en）；?play、?
 });
 row("hreflang：每一頁都列出 zh-Hant、en、x-default（= zh-Hant）", () => {
   const p = pre(); if (p) return p;
-  if (PAGES.every((x) => !P(x.key).alternates.length)) return "TODO: 沒有任何 hreflang";
+  if (PAGES.every((x) => !P(x.key).alternates.length)) return "#104 上線之後是失敗：沒有任何 hreflang";
   const bad = [];
   for (const x of PAGES) {
     const pairOf = PAGES.filter((y) => y.pair === x.pair), want = { "zh-Hant": pairOf.find((y) => y.lang === "zh-Hant").canon, en: pairOf.find((y) => y.lang === "en").canon, "x-default": pairOf.find((y) => y.lang === "zh-Hant").canon };
@@ -111,7 +111,7 @@ row("hreflang：每一頁都列出 zh-Hant、en、x-default（= zh-Hant）", () 
 });
 row("OG 與 Twitter 卡：type、site_name、title、description、url（= canonical）、locale、image 與 1200×630；summary_large_image", () => {
   const p = pre(); if (p) return p;
-  if (PAGES.every((x) => !P(x.key).meta("og:title"))) return "TODO: 沒有任何 og: 標籤";
+  if (PAGES.every((x) => !P(x.key).meta("og:title"))) return "#104 上線之後是失敗：沒有任何 og: 標籤";
   const bad = [];
   for (const x of PAGES) {
     const g = P(x.key), m = (k) => g.meta(k);
@@ -128,7 +128,7 @@ row("OG 與 Twitter 卡：type、site_name、title、description、url（= canon
 });
 row("分享圖：四頁的 og:image 每一張都回 200，是 1200×630 的 PNG 或 JPEG", () => {
   const p = pre(); if (p) return p;
-  if (!M.images.length) return "TODO: 沒有一頁有 og:image";
+  if (!M.images.length) return "#104 上線之後是失敗：沒有一頁有 og:image";
   const bad = [], seen = [];
   for (const x of M.images) {
     if (!x.status) { bad.push(`og:image 不在 ${SITE} 底下：${x.url}`); continue; }
@@ -139,7 +139,7 @@ row("分享圖：四頁的 og:image 每一張都回 200，是 1200×630 的 PNG 
 });
 row("JSON-LD：首頁（中英）各有一段能解析的 VideoGame，name、url（= canonical）、inLanguage", () => {
   const p = pre(); if (p) return p;
-  if (!P("home zh").ld.length && !P("home en").ld.length) return "TODO: 首頁沒有 application/ld+json";
+  if (!P("home zh").ld.length && !P("home en").ld.length) return "#104 上線之後是失敗：首頁沒有 application/ld+json";
   const bad = [];
   for (const k of ["home zh", "home en"]) {
     const g = P(k), want = PAGES.find((x) => x.key === k);
@@ -155,7 +155,7 @@ row("JSON-LD：首頁（中英）各有一段能解析的 VideoGame，name、url
 row("sitemap.xml 列出四個網址（中英 × 首頁與規則）", () => {
   const p = pre(); if (p) return p;
   const want = PAGES.map((x) => x.canon), has = want.filter((u) => (M.sitemap || []).includes(u));
-  if (has.length === 2 && (M.sitemap || []).length === 2) return `TODO: 只列了 ${M.sitemap.join("、")}`;
+  if (has.length === 2 && (M.sitemap || []).length === 2) return `#104 上線之後是失敗：只列了 ${M.sitemap.join("、")}`;
   return okm(has.length === 4, `列了 ${(M.sitemap || []).length} 個，四個裡有 ${has.length} 個`);
 });
 row("noindex 照舊在每一頁（owner 說 go 才拿掉）", () => {
