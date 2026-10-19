@@ -18,7 +18,7 @@
 //   - the rules page's HTML, as served (no script run), already carries the Chinese credit;
 //   - README.md no longer says "All art and prose are our own" and says the art was made with Qwen-Image under a
 //     non-commercial license ("Qwen", "non-commercial").
-// Reports 尚未實作 while no page names Qwen.
+// #103 landed (c496ac6, deployed with 16e4d8c): no page naming Qwen is a failure now (it reported 尚未實作 before the work was done).
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import * as S from "../public/solo.js";
@@ -111,7 +111,7 @@ const disclosed = (text, en) => (en ? /\bAI\b/.test(text) && text.includes("Qwen
 const PLACES = [["home zh", false], ["home en", true], ["rules zh", false], ["rules en", true], ["end zh", false], ["end en", true], ["solo zh", false], ["solo en", true], ["tutorial", false], ["room", false]];
 row("credit 寫出美術是 AI（Qwen-Image，非商業授權）產生的，而且就在畫面上：首頁、規則、結局頁（中英），單人、教學、房間打開選單之後", () => {
   if (M.err) return `儀器中途停下：${M.err}`;
-  if (!anyQwen()) return "TODO: 沒有一頁提到 Qwen";
+  if (!anyQwen()) return "#103 上線之後是失敗：沒有一頁提到 Qwen";
   if (!M.ended) return "找不到打完的一局（instrument）";
   const bad = [];
   for (const [k, en] of PLACES) { const p = M.places[k]; if (!p) { bad.push(`${k} 沒量到`); continue; } if (M.places[k + ":menu"] === false) bad.push(`${k} 找不到選單按鈕`); if (!disclosed(p.text, en)) bad.push(`${k} 畫面上沒有`); }
@@ -119,26 +119,26 @@ row("credit 寫出美術是 AI（Qwen-Image，非商業授權）產生的，而�
 });
 row("同樣這些地方都有一個看得到的隱私權政策連結（https://csiesheep.com/privacy-policy/）", () => {
   if (M.err) return `儀器中途停下：${M.err}`;
-  if (!anyQwen() && Object.values(M.places).every((p) => !p || !p.links || !p.links.includes(PRIVACY))) return "TODO: 沒有一頁連到隱私權政策";
+  if (!anyQwen() && Object.values(M.places).every((p) => !p || !p.links || !p.links.includes(PRIVACY))) return "#103 上線之後是失敗：沒有一頁連到隱私權政策";
   const miss = PLACES.filter(([k]) => !(M.places[k] && M.places[k].links.includes(PRIVACY))).map(([k]) => k);
   return okm(!miss.length, miss.length ? `沒有連結：${miss.join("、")}` : `${PLACES.length} 處都有`);
 });
 row("舊的說法拿掉了：「自創名稱與美術」、\"its own name and art\" 不在任何一頁", () => {
   if (M.err) return `儀器中途停下：${M.err}`;
   const old = Object.entries(M.places).filter(([, p]) => p && p.all && (p.all.includes("自創名稱與美術") || p.all.includes("its own name and art"))).map(([k]) => k);
-  if (!anyQwen()) return `TODO: 還是舊的說法（${old.join("、")}）`;
+  if (!anyQwen()) return `#103 上線之後是失敗：還是舊的說法（${old.join("、")}）`;
   return okm(!old.length, old.length ? `還在：${old.join("、")}` : "都拿掉了");
 });
 row("規則頁送出來的 HTML（沒跑 script）就有中文的 credit 與揭露", () => {
   if (M.err) return `儀器中途停下：${M.err}`;
   const body = (M.rulesStatic.match(/<body[\s\S]*<\/body>/i) || [""])[0].replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<[^>]+>/g, " ");
-  if (!anyQwen()) return "TODO: 還沒有揭露";
+  if (!anyQwen()) return "#103 上線之後是失敗：還沒有揭露";
   return okm(disclosed(body, false), disclosed(body, false) ? "有" : "rules 的 HTML 裡沒有（要等 script 才出現）");
 });
 row("README：拿掉 \"All art and prose are our own\"，寫出美術是 Qwen-Image、non-commercial", () => {
   if (M.err) return `儀器中途停下：${M.err}`;
   const x = M.readme;
-  if (x.old && !x.qwen) return "TODO: README 還是 \"All art and prose are our own\"";
+  if (x.old && !x.qwen) return "#103 上線之後是失敗：README 還是 \"All art and prose are our own\"";
   const bad = [x.old && "還在說 All art and prose are our own", !x.qwen && "沒有 Qwen", !x.nc && "沒有 non-commercial"].filter(Boolean);
   return okm(!bad.length, bad.join("；") || "改好了");
 });
