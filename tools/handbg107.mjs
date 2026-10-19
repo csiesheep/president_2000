@@ -11,7 +11,7 @@
 // background image and no line along its top; the cards still show (at least three card tops on screen on a phone, four
 // on a desktop) and the two buttons above them (the hand count and 「規則」) keep their own dark pill so they stay
 // readable over the map.
-// Reports 尚未實作 while every phone and tablet width still has the band (as on main after #106).
+// #107 landed (d925457): the band at every phone and tablet width is a failure now (it reported 尚未實作 before).
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import * as S from "../public/solo.js";
@@ -87,7 +87,7 @@ row("手機與平板（360×740、390×844、768×1024）：手牌那一條沒�
   if (M.err) return `儀器中途停下：${M.err}`;
   const d = sizes(SMALL); if (d.some(([, x]) => !x)) return `有一種寬度沒有牌桌的手牌（${d.filter(([, x]) => !x).map(([k]) => k).join("、")}）（instrument）`;
   // as on main after #106: the band's colour is still there at every small width (a band gone but its line kept fails)
-  if (d.every(([, x]) => x.bg > 0)) return `TODO: 三種寬度都還有黑色底（${d[0][1].bgColor}${d[0][1].line ? "，上緣 " + d[0][1].line : ""}）`;
+  if (d.every(([, x]) => x.bg > 0)) return `#107 上線之後是失敗：三種寬度都還有黑色底（${d[0][1].bgColor}${d[0][1].line ? "，上緣 " + d[0][1].line : ""}）`;
   const bad = d.filter(([, x]) => banded(x)).map(([k, x]) => what(k, x));
   return okm(!bad.length, bad.join("；") || "三種寬度都沒有");
 });
