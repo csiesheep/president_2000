@@ -5,6 +5,7 @@
 //
 // sessionStorage keys (all JSON):
 //   p2000.room.<CODE>   { token, name }   what a reload needs to sit down again in the same seat
+// localStorage key (#99): p2000.room.<CODE> = { token, name, at }, the same seat kept for 24 hours for a tab with no sessionStorage.
 //   p2000.room.name     the last name typed, to prefill the forms
 //   p2000.room.level    the bot level the host last picked
 //   p2000.advisor       whether the advisor switch is on (shared with the solo page)
@@ -16,6 +17,13 @@ import { esc, turnSeat } from "./table.js";
 import { drawInto, deskNow, narrowNow, watchNarrow, bindCounty, bindSeat, bindMenu } from "./drawing.js";
 
 const ADV_KEY = "p2000.advisor", NAME_KEY = "p2000.room.name", LEVEL_KEY = "p2000.room.level", roomKey = (code) => "p2000.room." + code;
+const SEAT_TTL = 24 * 3600 * 1000;
+// localStorage can be missing or throw (private windows, blocked site data): every use is wrapped and the page plays without it.
+const keep = {
+  get(code) { try { const r = JSON.parse(localStorage.getItem(roomKey(code)) || "null"); return r && typeof r.token === "string" && r.token && Number.isFinite(r.at) && Date.now() - r.at < SEAT_TTL && r.at <= Date.now() + 60000 ? r : null; } catch { return null; } },
+  set(code, token, name) { try { localStorage.setItem(roomKey(code), JSON.stringify({ token, name, at: Date.now() })); } catch { /* no storage */ } },
+  del(code) { try { localStorage.removeItem(roomKey(code)); } catch { /* no storage */ } },
+};
 const BACKOFF_MAX = 30; // seconds: 1, 2, 4, 8, 16, 30, 30, …
 
 export function mount({ T, lang, qs, store, $ }) {
@@ -69,10 +77,19 @@ export function mount({ T, lang, qs, store, $ }) {
   });
 
   // ---- the room
-  let roomCode = null, name = "", client = RC.setAdvisor(RC.newClient(), store.get(ADV_KEY) === true), sock = null, attempts = 0, retry = null, tick = null, terminal = false, gone = false;
+  let roomCode = null, name = "", client = RC.setAdvisor(RC.newClient(), store.get(ADV_KEY) === true), sock = null, attempts = 0, retry = null, tick = null, terminal = false, gone = false, elsewhere = false, kept = null;
   let ui = { feed: deskNow(), raise: false, county: null, seat: null, narrow: narrowNow(), sel: null, picks: [], help: null, moves: false, confirm: null, draft: "", level: [0, 1, 2, 3].includes(store.get(LEVEL_KEY)) ? store.get(LEVEL_KEY) : 0 };
 
   const say = (text) => { banner.textContent = text || ""; banner.hidden = !text; };
+  // #99: the server closed this socket with 4000 "replaced": the seat was opened in another tab. Nothing reconnects by itself
+  // (not the backoff, not waking, not going online); the player taps the button to take the seat back here.
+  const sayElsewhere = () => {
+    banner.textContent = "";
+    const t = document.createElement("span"); t.setAttribute("data-room-elsewhere", ""); t.textContent = C.elsewhere + " ";
+    const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.setAttribute("data-room-takeover", ""); b.textContent = C.takeover;
+    b.addEventListener("click", () => { if (!elsewhere) return; elsewhere = false; attempts = 0; say(C.retrying); connect(); });
+    banner.append(t, b); banner.hidden = false;
+  };
   // The turn card (#44): every player's own screen opens each turn with it, once (the turn it was shown for is kept in this
   // tab, per room). It only covers the table: the move clock keeps running underneath.
   const CARD_HOLD = 1500, CARD_FADE = 260, cardKey = () => "p2000.room.card." + roomCode;
@@ -212,7 +229,7 @@ export function mount({ T, lang, qs, store, $ }) {
     s.onmessage = (ev) => {
       if (s !== sock) return;
       let msg; try { msg = JSON.parse(ev.data); } catch { return; }
-      if (msg.t === "hello") { attempts = 0; say(""); }
+      if (msg.t === "hello") { attempts = 0; elsewhere = false; say(""); }
       const pv = client.state && client.state.view, pl = client.snap ? client.snap.logLen : null;
       client = RC.receive(client, msg);
       if (msg.t === "state" && msg.view && Array.isArray(msg.view.log)) {
@@ -227,12 +244,17 @@ export function mount({ T, lang, qs, store, $ }) {
         $("#rlang").href = "?" + (en ? "room=" + roomCode : "room=" + roomCode + "&lang=en");
         leave.hidden = false;
       }
-      if (roomCode && client.token) store.set(roomKey(roomCode), { token: client.token, name });
-      if (msg.t === "error" && msg.code === "no_room") { terminal = gone = true; store.del(roomKey(roomCode)); s.close(); }
+      if (roomCode && client.token) {
+        store.set(roomKey(roomCode), { token: client.token, name });
+        const sig = client.token + "|" + name;
+        if (kept !== sig || msg.t === "hello") { kept = sig; keep.set(roomCode, client.token, name); }
+      }
+      if (msg.t === "error" && msg.code === "no_room") { terminal = gone = true; store.del(roomKey(roomCode)); keep.del(roomCode); s.close(); }
       draw();
     };
-    s.onclose = () => {
+    s.onclose = (ev) => {
       if (s !== sock || terminal) return;
+      if (ev && ev.code === 4000) { elsewhere = true; clearTimeout(retry); clearInterval(tick); sayElsewhere(); return; }
       const wait = Math.min(BACKOFF_MAX, 2 ** attempts);
       attempts++;
       let left = wait;
@@ -253,7 +275,7 @@ export function mount({ T, lang, qs, store, $ }) {
     title(U.lobby.kicker);
     if (!create) {
       roomCode = code;
-      const rec = store.get(roomKey(code));
+      const rec = store.get(roomKey(code)) || keep.get(code);
       if (rec && rec.token) client = { ...client, token: rec.token };
       leave.hidden = false;
     }
@@ -261,7 +283,7 @@ export function mount({ T, lang, qs, store, $ }) {
     connect();
   }
   // Come back at once when the tab wakes or the network returns, instead of waiting out the backoff.
-  const wake = () => { if (!terminal && sock && sock.readyState > 1) { attempts = 0; clearTimeout(retry); clearInterval(tick); say(C.retrying); connect(); } };
+  const wake = () => { if (!terminal && !elsewhere && sock && sock.readyState > 1) { attempts = 0; clearTimeout(retry); clearInterval(tick); say(C.retrying); connect(); } };
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") wake(); });
   addEventListener("online", wake);
 
@@ -269,7 +291,7 @@ export function mount({ T, lang, qs, store, $ }) {
     if (client.room && client.room.started && !confirm(C.leaveConfirm)) return;
     terminal = true;
     if (sock) sock.close();
-    if (roomCode) store.del(roomKey(roomCode));
+    if (roomCode) { store.del(roomKey(roomCode)); keep.del(roomCode); }
     location.href = "./" + (en ? "?lang=en" : "");
   });
 
@@ -321,7 +343,7 @@ export function mount({ T, lang, qs, store, $ }) {
   else {
     const code = (qs.get("room") || "").toUpperCase();
     if (!/^[A-Z0-9]{4}$/.test(code)) { form("join"); return; }
-    const rec = store.get(roomKey(code));
+    const rec = store.get(roomKey(code)) || keep.get(code);
     const n = (rec && rec.name) || store.get(NAME_KEY);
     if (n || (rec && rec.token)) run({ code, name: n || "" });
     else form("join", code);
