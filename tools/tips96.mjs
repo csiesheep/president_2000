@@ -119,7 +119,7 @@ try {
 } finally { br.close(); }
 
 const ready = Object.values(M.views).some((v) => v.id);
-const R0 = (name, fn) => row(name, () => (!ready ? "TODO: 頁面上還沒有 [data-tip]" : fn()));
+const R0 = (name, fn) => row(name, () => (!ready ? "頁面上沒有 [data-tip]：#96 已上線（4160c94），這是退步，不是尚未實作" : fn()));
 R0("框在畫面上，「知道了」與「不再提示」都按得到（手機中英、360 寬、桌機）", () => {
   const bad = [];
   for (const [name, v] of Object.entries(M.views)) {

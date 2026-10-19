@@ -72,6 +72,7 @@
 
 - `git fetch origin && git rebase origin/main` **緊貼著 push 做**,然後 `git push origin HEAD:<分支>`。**不 push main。**
 - 這五行留在 issue 上(`gh issue comment <n> --body-file …`)。「我沒驗到」那一欄最值錢——它決定 orchestrator 親手驗什麼。
+- commit 標題寫 `#NN: …`，**不要寫 `Fix #NN` / `Closes #NN`**：推上 main 時 GitHub 會自動關掉 issue，比 orchestrator 寫完驗收紀錄還早。issue 由 orchestrator 驗收、land、部署之後關。（2026-10-18，#94–#96 都被這樣提早關掉。）
 - 你證偽自己的探針時發現 harness 有同樣的洞 → **回報,不要改 tests/**。
 - **看畫面用自己起的 headless Chrome**(CDP,`tools/` 裡的寫法或自己的探針)。**不要用 owner 的 Chrome**(claude-in-chrome 擴充、owner 開著的瀏覽器):那裡有 owner 登入的帳號,不是工具。(2026-10-15,#48 的 FE 用了。)
 - 截圖與暫存檔放在自己的 worktree(未追蹤)或系統暫存資料夾,**不要放到 repo 外的 `C:/Users/sheep/code/` 底下**。(#41 的 FE 放過。)

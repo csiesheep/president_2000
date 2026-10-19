@@ -91,7 +91,7 @@ function games() {
   }
   return G;
 }
-const READY = () => (games().first.some((f) => tips(f.none).length) ? null : "TODO: 還沒有任何畫面有 [data-tip]");
+const READY = () => (games().first.some((f) => tips(f.none).length) ? null : "沒有任何畫面有 [data-tip]：#96 已上線（4160c94），這是退步，不是尚未實作");
 const c96 = (name, fn) => check(name, () => READY() || fn());
 
 section("96 第一局就是教學");
