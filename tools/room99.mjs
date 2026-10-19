@@ -14,8 +14,8 @@
 //     not on waking or going online — and the page shows [data-room-elsewhere] with a [data-room-takeover] button;
 //     tapping it takes the seat back here (the other tab then shows [data-room-elsewhere] in turn) and nothing loops.
 // The seat a tab holds is read off the server's hello messages (CDP); new sockets are counted per tab.
-// Reports 尚未實作 until it is there: the two tab rows until a page shows [data-room-elsewhere], the two storage rows
-// until localStorage holds p2000.room.<CODE>.
+// #99 landed (31e1397): a page that never shows [data-room-elsewhere], or no p2000.room.<CODE> in localStorage, is a
+// failure now (it reported 尚未實作 before the work was done).
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 
@@ -124,11 +124,11 @@ const row = (name, fn) => { try { const r = fn(); rows.push(r === true ? { name,
 const okm = (c, msg) => (c ? { pass: true, msg } : msg);
 const pre = M.err ? `儀器中途停下：${M.err}` : !M.aTable || !M.aTable.ok ? `房主的頁面沒有進到牌桌（${JSON.stringify(M.aTable && M.aTable.s)}）（instrument）` : M.aSeat == null ? "沒有讀到房主的座位（hello）（instrument）" : null;
 const ready = M.aElse && M.aElse.ok || M.bElse && M.bElse.ok;
-const R0 = (name, fn) => row(name, () => pre || (!ready ? "TODO: 被另一個分頁接手的頁面還沒有 [data-room-elsewhere]" : fn()));
+const R0 = (name, fn) => row(name, () => pre || (!ready ? "被另一個分頁接手的頁面沒有 [data-room-elsewhere]（#99 上線之後是失敗）" : fn()));
 row("token 也存在 localStorage：p2000.room.<代碼> = { token, name, at }", () => {
   if (pre) return pre;
   const s = M.stored;
-  if (!s) return "TODO: localStorage 裡還沒有 p2000.room.<代碼>";
+  if (!s) return "localStorage 裡沒有 p2000.room.<代碼>（#99 上線之後是失敗）";
   return okm(typeof s.token === "string" && s.token && typeof s.name === "string" && Number.isFinite(s.at) && Math.abs(Date.now() - s.at) < 3600 * 1000, `存的是 ${JSON.stringify({ ...s, token: s.token ? "…" : s.token })}`);
 });
 R0("第二個分頁打開同一房：直接坐回同一席；第一個分頁顯示「在另一個分頁」，20 秒內不重連、喚醒也不重連", () => {
@@ -154,7 +154,7 @@ R0("按「在這裡繼續」：拿回座位，另一個分頁換成「在另一�
 });
 row("localStorage 的 token 超過 24 小時就不用（加入表單）；24 小時內換一個沒有 sessionStorage 的分頁也坐得回去；離開房間就刪掉", () => {
   if (pre) return pre;
-  if (!M.stored) return "TODO: localStorage 裡還沒有 p2000.room.<代碼>";
+  if (!M.stored) return "localStorage 裡沒有 p2000.room.<代碼>（#99 上線之後是失敗）";
   const bad = [];
   if (!M.cOld.ok || !M.cOld.s.form || M.cOld.s.table) bad.push(`25 小時前的 token：${JSON.stringify(M.cOld.s)}（應是加入表單）`);
   if (!M.cNew.ok) bad.push(`剛存的 token：沒有回到牌桌（${JSON.stringify(M.cNew.s)}）`);
