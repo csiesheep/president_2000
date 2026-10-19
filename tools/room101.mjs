@@ -85,9 +85,11 @@ try {
   step(`flood ${JSON.stringify(M.flood)}`);
   // 4b. IPv6 per /64: 20 misses from one host of a /64, then a join without a token from another host of the same /64, and
   // one from a host of another /64. The two hosts of the same /64 are spelled differently (BE on #101): the first with
-  // `::` inside the first four groups, the second written out in capitals with leading zeros; a key that takes the
-  // first four groups of the text as it is would not see them as one.
-  const host1 = `2001:db8::${run}:0:0:0:1`, host2 = `2001:0DB8:0000:${run.toUpperCase().padStart(4, "0")}:0000:0000:0000:0002`;
+  // `::` standing for two groups inside the first four (an empty group read as 0 would still be one short), the second
+  // written out in capitals with leading zeros; both are in 2001:db8:0:0::/64. A key that takes the first four groups of
+  // the text as it is would not see them as one. (That /64 is the same in every run: a run soon after another finds it
+  // still blocked, which this row reads the same way.)
+  const host1 = `2001:db8::${run}:0:0:1`, host2 = `2001:0DB8:0000:0000:${run.toUpperCase().padStart(4, "0")}:0000:0000:0002`;
   const taken2 = new Set([M.code]);
   for (let i = 0; i < 20; i++) { const c = freeCode(taken2); taken2.add(c); await connect(`room=${c}&name=x`, host1, { until: firstAnswer, ms: 3000 }); }
   const same = await connect(`room=${M.code}&name=x`, host2, { until: firstAnswer });
