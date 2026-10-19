@@ -9,6 +9,7 @@
 // PREFIX alone to move the site to a different path.
 export { Room } from "./room.js";
 export { Limits } from "./address.js";
+import { addressKey } from "./limits.js";
 
 const PREFIX = "/president_2000";
 const CANONICAL = "https://games.csiesheep.com" + PREFIX + "/";
@@ -45,12 +46,13 @@ async function askLimits(limits, path) {
 // /president_2000/ws?room=ABCD&name=Bob&token=…     joins (or reconnects to) a room
 // Per client address (#101; src/limits.js LIMITS, counted by the Limits object of that address): opening rooms, and joins
 // without a valid token once the address has guessed too many codes that are not there. The address is CF-Connecting-IP
-// only (Cloudflare sets it; X-Forwarded-For and the like are the client's to write).
+// only (Cloudflare sets it; X-Forwarded-For and the like are the client's to write); an IPv6 address counts as its /64
+// (addressKey, orchestrator's ruling in #101).
 async function connectRoom(request, env, url) {
   if (request.headers.get("Upgrade") !== "websocket") {
     return new Response("Expected a WebSocket", { status: 426 });
   }
-  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+  const ip = addressKey(request.headers.get("CF-Connecting-IP") || "unknown"); // IPv6 by its /64 (#101)
   const limits = env.LIMITS.get(env.LIMITS.idFromName(ip));
   let code = (url.searchParams.get("room") || "").toUpperCase();
   if (url.searchParams.get("create") === "1") {
