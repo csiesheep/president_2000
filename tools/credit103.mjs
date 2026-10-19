@@ -1,14 +1,14 @@
-// tools/credit104.mjs — the credit, with the AI art disclosed, and the privacy link, on every page (#104). Orchestrator's
+// tools/credit103.mjs — the credit, with the AI art disclosed, and the privacy link, on every page (#103). Orchestrator's
 // instrument: a peer may run it, does not edit it. Needs Chrome and `wrangler dev` of this tree (it opens a room), about
 // a minute.
 //
-//   node tools/credit104.mjs http://127.0.0.1:8787/president_2000/
+//   node tools/credit103.mjs http://127.0.0.1:8787/president_2000/
 //
 // The audit (商業盤點 E, items 1, 6 and 8): the art was generated with Qwen-Image (Qwen Research License: non-commercial
 // use only) while the credit says 「自創名稱與美術」 / "its own name and art" and the README "All art and prose are our
 // own"; the solo table, the tutorial, the room and the end page carry no credit; the rules page's credit appears only
 // once its script has run; no page links the privacy policy (https://csiesheep.com/privacy-policy/).
-// Contract (orchestrator, #104):
+// Contract (orchestrator, #103):
 //   - the credit says the art was generated with AI and names Qwen-Image and its non-commercial license: in Chinese
 //     with 「AI」, 「Qwen」 and 「非商業」, in English with "AI", "Qwen" and "non-commercial"; 「自創名稱與美術」 and "its own
 //     name and art" are gone;
@@ -25,15 +25,15 @@ import * as S from "../public/solo.js";
 import * as D from "../tests/driver.js";
 
 const base = (process.argv[2] || "").replace(/\/?$/, "/");
-if (!process.argv[2]) { console.log("usage: node tools/credit104.mjs <base url ending in /president_2000/>"); process.exit(2); }
+if (!process.argv[2]) { console.log("usage: node tools/credit103.mjs <base url ending in /president_2000/>"); process.exit(2); }
 const CHROME = process.env.CHROME || "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const PRIVACY = "https://csiesheep.com/privacy-policy/";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const step = (k) => { if (process.env.CREDIT104_DEBUG) console.log(`  · ${k}`); };
+const step = (k) => { if (process.env.CREDIT103_DEBUG) console.log(`  · ${k}`); };
 
 async function launch() {
-  const root = process.env.TEMP || "/tmp", dir = `${root}/credit104_${process.pid}_${Date.now()}`;
-  for (const old of readdirSync(root).filter((d) => d.startsWith("credit104_"))) { try { if (Date.now() - statSync(`${root}/${old}`).mtimeMs > 600000) rmSync(`${root}/${old}`, { recursive: true, force: true }); } catch { /* in use */ } }
+  const root = process.env.TEMP || "/tmp", dir = `${root}/credit103_${process.pid}_${Date.now()}`;
+  for (const old of readdirSync(root).filter((d) => d.startsWith("credit103_"))) { try { if (Date.now() - statSync(`${root}/${old}`).mtimeMs > 600000) rmSync(`${root}/${old}`, { recursive: true, force: true }); } catch { /* in use */ } }
   mkdirSync(dir, { recursive: true });
   const proc = spawn(CHROME, ["--headless=new", "--disable-gpu", "--hide-scrollbars", "--disable-background-timer-throttling", "--disable-renderer-backgrounding", "--remote-debugging-port=0", `--user-data-dir=${dir}`, "about:blank"], { stdio: "ignore" });
   let port = 0;

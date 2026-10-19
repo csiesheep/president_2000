@@ -8,7 +8,7 @@
 // a path that does not exist answers a blank page.
 // Contract (orchestrator, #102), as served:
 //   - art/share-zh.png and art/share-en.png: PNG, 1200×630, at most 400 KB each (the cards chat apps and search engines
-//     show for the Chinese and the English pages; #103's og:image points at them);
+//     show for the Chinese and the English pages; #104's og:image points at them);
 //   - favicon.ico (an ICO holding 16×16 and 32×32 at least), apple-touch-icon.png 180×180, icon-192.png 192×192,
 //     icon-512.png 512×512, all PNG inside; the home page and the rules page (as served, both languages) link
 //     favicon.ico (rel=icon) and apple-touch-icon.png (rel=apple-touch-icon), and keep favicon.svg;
