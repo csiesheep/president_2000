@@ -204,7 +204,7 @@ c94("同票規則照規則頁（#98）：v0.8 三條、第三條是催票順序�
       else if (old) { const m = rows.find((e) => e.attrs["data-tie-rule"] === "momentum"), mt = m ? text(m.html) : ""; if (!(lang === "en" ? /momentum/i.test(mt) : mt.includes("動能"))) bad.push(`${name}：動能那一條「${mt.slice(0, 30)}」沒有寫動能`); }
     }
   }
-  if (pending && !bad.length) return `TODO: ${pending}（#98）`;
+  if (pending) bad.unshift(`${pending}：#98 已上線（beacb2c），這是退步，不是尚未實作`);
   return ok(!bad.length, bad.slice(0, 4).join("；") || seen.join("；"));
 });
 c94("票數走勢：三家各一條，九個點就是 recap 的 trend（每回合結束時、最後是開票）", () => {

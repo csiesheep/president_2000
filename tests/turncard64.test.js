@@ -189,7 +189,7 @@ check("特別回合：第 1 回合寫選戰開跑、第 6 回合寫政見發表�
     if (!(t in seen)) continue;
     const c = card(p, lang), all = squash(text(c)), en = lang === "en";
     const want = t === 1 ? [en ? T1_EN : T1_ZH] : t === 6 ? [en ? T6_EN : T6_ZH] : en ? T9_EN : T9_ZH;
-    if (en && t === 9 && all.includes(squash(T9_LEGACY))) return "TODO: 第 9 回合的英文還寫 Tactical voting（#98：統一成規則頁的 Strategic voting）";
+    if (en && t === 9 && all.includes(squash(T9_LEGACY))) return "第 9 回合的英文寫回 Tactical voting：#98 已上線（beacb2c），規則頁是 Strategic voting，這是退步";
     for (const w of want) if (!all.includes(squash(w))) return `${p.where}（${name}）：卡上沒有「${w}」`;
     if (t === 6) for (const k of ISSUES) if (!c.includes(`art/issues/${k}.webp`)) return `${p.where}（${name}）：第 6 回合沒有議題「${k}」的圖`;
     if (t === 9 && !/\sclass="[^"]*\bdark\b/.test(c.match(/^<[^>]*>/)[0])) return `${p.where}（${name}）：第 9 回合不是深色版`;
