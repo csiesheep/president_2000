@@ -192,7 +192,7 @@ export function createGame(seed, opts = {}) {
     for (let k = 0; k < N; k++) blocks.push({ t: "N", o: -1 });
     for (let p = 0; p < 3; p++) {
       let n = init[p];
-      for (const b of blocks) { if (!n) break; if (b.o < 0 && b.t === CAMP[p]) { b.o = p; n--; } }
+      for (const b of blocks) { if (!n) break; if (b.o < 0 && b.t === CAMP[p]) { b.o = p; b.s = "start"; n--; } } // #90
     }
     return { name, region, blocks };
   });
@@ -367,13 +367,17 @@ function supportCheck(st, seat, vs = -1) {
 // #55: the luck seat's check uses now. Election day (the canvassing is its only check): luck + LUCK_PER_MOM × the
 // momentum before the conversion, at most LUCK_ELECTION_MAX. A turn of 省府舊部: 連 checks with LUCK_PROVINCIAL.
 function luckOf(st, seat) {
-  if (st.phase === "election" && st.election) {
-    const base = Math.min(LUCK_ELECTION_MAX, st.luck[seat] + LUCK_PER_MOM * st.election.mom[seat]);
-    // #58 丙: the issues led at the conversion, outside the 80, at most 95.
-    return st.election.leads ? Math.min(LUCK_LEAD_MAX, base + LUCK_PER_LEAD * st.election.leads[seat]) : base;
-  }
+  if (st.phase === "election" && st.election) return canvassLuck(st, seat);
   if (seat === LIEN && activeHas(st, "provincial_staff")) return LUCK_PROVINCIAL;
   return st.luck[seat];
+}
+// The canvassing luck: election day's checks use it (luckOf), and #90's recap reads it after the end. null outside a
+// v0.7 game (no luck) or before election day (no st.election).
+export function canvassLuck(st, seat) {
+  if (!st.luck || !st.election) return null;
+  const base = Math.min(LUCK_ELECTION_MAX, st.luck[seat] + LUCK_PER_MOM * st.election.mom[seat]);
+  // #58 丙: the issues led at the conversion, outside the 80, at most 95.
+  return st.election.leads ? Math.min(LUCK_LEAD_MAX, base + LUCK_PER_LEAD * st.election.leads[seat]) : base;
 }
 // #55 (orchestrator's reading of the owner's 「特定對手」): a placement in county k is checked against an opponent's
 // candidate standing there, the one with the higher luck when both do (a tie: the first seat); none there, -1.
@@ -676,6 +680,37 @@ for (const [id, list] of Object.entries(MORALE_FULL)) {
   }
 }
 
+// #90: the 士氣 card id's event moves when it happens in a game of moraleCards "full" (the only game where every card's
+// 士氣 is on the card), [[who, points], …] in the order of the card text, one entry per who (a card that gives the same
+// seat twice, like 張俊雄邱義仁's 「袋中」 +10 and MORALE_FULL's +5, is one entry of +15, as its text says). who: a seat,
+// "all", "leader" or "lowest", as in MORALE_FULL. [] for a card that moves none: a MORALE_FULL entry of 0 and 省府舊部
+// (「本回合連的士氣當作 50%」 is the luck 連's checks use this turn, luckOf, not a change of st.luck) included.
+// It reads the engine's own steps, not a copy: a choice-free card (EFFECTS) is run on a scratch state and its st.luck
+// change measured (the 「袋中」 of addBag), then MORALE_FULL as resolveEffect adds it; a card with a program is read off
+// programOf's queue (bag → the seat +LUCK_CARD, morale, a "lowest" tvbs step). What leader or lowest turns out to be
+// depends on the board when it happens, so those stay symbolic.
+let MORALE_PROBE = null;
+export function moraleOf(id) {
+  if (!CARD[id] || CARD[id].owner === "local") return [];
+  if (!MORALE_PROBE) MORALE_PROBE = createGame(1, { rules: "v0.7", momentum: "none", moraleCards: "full", luck: [50, 50, 50] });
+  const out = [];
+  const add = (who, n) => { const e = out.find((x) => x[0] === who); if (e) e[1] += n; else out.push([who, n]); };
+  if (EFFECTS[id] && !PROGRAMS_V05[id]) {
+    const st = clone(MORALE_PROBE);
+    EFFECTS[id](st);
+    for (let p = 0; p < 3; p++) if (st.luck[p] !== MORALE_PROBE.luck[p]) add(p, st.luck[p] - MORALE_PROBE.luck[p]);
+    for (const [who, n] of MORALE_FULL[id] || []) add(who, n);
+  } else {
+    const prog = programOf(MORALE_PROBE, id);
+    for (const s of prog ? prog(SEATS.indexOf(CARD[id].owner), clone(MORALE_PROBE)) : []) {
+      if (s.op === "bag") add(s.p, LUCK_CARD);
+      else if (s.op === "morale") add(s.who, s.n);
+      else if (s.op === "tvbs" && s.n != null) add("lowest", s.n);
+    }
+  }
+  return out.filter((x) => x[1] !== 0);
+}
+
 // 棄連保扁、棄連保宋、黨內整合: in one county, the target −1 (checked, Q5
 // default) and then the player +1 (§8.1). With no target cube anywhere the
 // −1 does nothing and the +1 goes to any county.
@@ -758,11 +793,11 @@ function applyEffect(st, seat, m) {
     let ok = true;
     if (s.check) ok = m.type === "cross" ? crossCheck(st, seat, key) : fillCheck(st, seat, key);
     if (s.fromBag) st.bag[seat]--;
-    if (ok) putCube(st,seat, key, m.type === "fill" ? CAMP[seat] : otherCamp(seat));
+    if (ok) putCube(st, seat, key, m.type === "fill" ? CAMP[seat] : otherCamp(seat), "event");
   } else if (s.op === "remove") {
     key = m.county;
     if (!s.check || supportCheck(st, seat, m.target)) {
-      st.counties[key].blocks.find((b) => b.o === m.target && b.t === m.t).o = -1;
+      unown(st.counties[key].blocks.find((b) => b.o === m.target && b.t === m.t));
       if (s.toBag) st.bag[m.target]++;
       if (s.tally) st.flags[s.tally]++;
     }
@@ -1077,14 +1112,21 @@ function applyPlay(st, seat, m) {
 function applyLocal(st, seat, m) {
   const k = m.county;
   const ok = m.type === "cross" ? crossCheck(st, seat, k) : fillCheck(st, seat, k);
-  if (ok) putCube(st,seat, k, m.type === "fill" ? CAMP[seat] : otherCamp(seat));
+  if (ok) putCube(st, seat, k, m.type === "fill" ? CAMP[seat] : otherCamp(seat), "act"); // #90: a local card is an action
   finishPlay(st);
 }
 
-function putCube(st,seat, k, t) {
+// #90 (orchestrator 裁決 #90): every block with an owner carries s, where it came from (SOURCES); a block without one
+// carries none. putCube's callers say which: "act" an action (a campaign from any card's CP or the candidate card, and a
+// local card played as an event), "event" an event card's program (played, triggered, 必觸發, 外力), "debate" a policy
+// forum's award, "canvass" election day. createGame gives "start", strategicVote "strategic", the endorsements
+// "endorse". A block taken off the board (unown) loses its s. Nothing reads s while the game runs.
+export const SOURCES = ["start", "act", "event", "debate", "canvass", "strategic", "endorse"];
+function putCube(st, seat, k, t, src) {
   const b = st.counties[k].blocks.find((x) => x.o < 0 && x.t === t);
-  b.o = seat;
+  b.o = seat; b.s = src;
 }
+const unown = (b) => { b.o = -1; delete b.s; };
 
 function spend(st, pd, n) {
   pd.cp -= n;
@@ -1102,13 +1144,13 @@ function applyCampaign(st, seat, pd, m) {
   pd.ops++;
   st.pos[seat] = k; // the piece stops at the county of the last operation
   if (m.type === "fill") {
-    if (fillCheck(st, seat, k)) putCube(st,seat, k, CAMP[seat]);
+    if (fillCheck(st, seat, k)) putCube(st, seat, k, CAMP[seat], "act");
   } else if (m.type === "cross") {
-    if (crossCheck(st, seat, k)) putCube(st,seat, k, otherCamp(seat));
+    if (crossCheck(st, seat, k)) putCube(st, seat, k, otherCamp(seat), "act");
   } else if (m.type === "steal") {
     if (supportCheck(st, seat, m.target)) {
       // 裁決 8 / §4: the block returns to its printed colour
-      st.counties[k].blocks.find((b) => b.o === m.target && b.t === m.t).o = -1;
+      unown(st.counties[k].blocks.find((b) => b.o === m.target && b.t === m.t));
     }
   }
   spend(st, pd, 1);
@@ -1376,7 +1418,7 @@ function awardMoves(st, seat) {
 function applyDebate(st, seat, m) {
   const d = st.debate;
   if (d.award) {
-    putCube(st, seat, m.county, m.type === "fill" ? CAMP[seat] : otherCamp(seat));
+    putCube(st, seat, m.county, m.type === "fill" ? CAMP[seat] : otherCamp(seat), "debate");
     st.log.push({ t: "debate", step: "place", seat, move: m });
     d.award.left--;
     if (d.award.left <= 0 || !awardMoves(st, seat).length) d.award = null;
@@ -1467,7 +1509,7 @@ function strategicVote(st, half) {
     const flow = (t, to) => {
       const free = blocks.filter((b) => b.o < 0 && b.t === t);
       const n = half ? Math.floor(free.length / 2) : free.length;
-      for (const b of free.slice(0, n)) b.o = to;
+      for (const b of free.slice(0, n)) { b.o = to; b.s = "strategic"; } // #90
       if (n) moved.push({ county: k, seat: to, n });
     };
     if (Math.abs(s - l) >= 2) flow("B", s > l ? SOONG : LIEN);
@@ -1576,10 +1618,10 @@ function applyElection(st, seat, m) {
     return runCanvass(st);
   }
   const k = m.county;
-  if (m.type === "fill") putCube(st, seat, k, CAMP[seat]);
-  else if (m.type === "cross") putCube(st, seat, k, otherCamp(seat));
-  else if (m.type === "grey") putCube(st, seat, k, "N");
-  else if (m.type === "remove") st.counties[k].blocks.find((b) => b.o === m.target && b.t === m.t).o = -1;
+  if (m.type === "fill") putCube(st, seat, k, CAMP[seat], "canvass");
+  else if (m.type === "cross") putCube(st, seat, k, otherCamp(seat), "canvass");
+  else if (m.type === "grey") putCube(st, seat, k, "N", "canvass");
+  else if (m.type === "remove") unown(st.counties[k].blocks.find((b) => b.o === m.target && b.t === m.t));
   st.log.push({ t: "canvass", step: "place", seat, move: m });
   e.choose = false;
   runCanvass(st);
@@ -1622,7 +1664,7 @@ function finishElection(st) {
       if (regionOf(k) !== r) continue;
       const free = st.counties[k].blocks.filter((b) => b.o < 0 && b.t === "N");
       const n = Math.floor(free.length / 2);
-      for (const b of free.slice(0, n)) b.o = h;
+      for (const b of free.slice(0, n)) { b.o = h; b.s = "endorse"; } // #90
       if (n) given.push({ county: k, seat: h, n });
     }
   }
@@ -1639,6 +1681,32 @@ function finishElection(st) {
   st.election.stage = "end";
   st.phase = "end";
   st.log.push({ t: "result", ...st.result });
+  // #90: added after the log entry, so the result entry keeps the shape it had before.
+  st.result.decidedBy = decidedBy(votes, leads, momentum);
+  st.result.sources = sourcesOf(st);
+}
+
+// #90: the first rule of the count (裁決 6, 7) that puts one seat alone ahead: "votes", "leads", "momentum", or
+// "order" (the election-day order breaks a tie on all three).
+function decidedBy(votes, leads, momentum) {
+  let pool = [0, 1, 2];
+  for (const [name, arr] of [["votes", votes], ["leads", leads], ["momentum", momentum]]) {
+    const m = Math.max(...pool.map((p) => arr[p]));
+    pool = pool.filter((p) => arr[p] === m);
+    if (pool.length === 1) return name;
+  }
+  return "order";
+}
+// #90: each seat's blocks on the board by s, { start, act, event, debate, canvass, strategic, endorse }; null when an
+// owned block has no s (a game saved before #90 and finished after it).
+function sourcesOf(st) {
+  const out = [0, 1, 2].map(() => Object.fromEntries(SOURCES.map((k) => [k, 0])));
+  for (const c of st.counties) for (const b of c.blocks) {
+    if (b.o < 0) continue;
+    if (!SOURCES.includes(b.s)) return null;
+    out[b.o][b.s]++;
+  }
+  return out;
 }
 
 // ------------------------------------------------------------------ view
