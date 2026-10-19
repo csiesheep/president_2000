@@ -170,6 +170,9 @@ export default {
         play: "Card {n} of 4: pick a card from your hand, or use your candidate card.",
         pickCard: "Tap a card below to see it and how to play it.", pickCardDebate: "Tap a card below to choose which one to turn over.", pickCardElection: "Tap a card below to choose which one to canvass first.",
         trigger: "{card} is your card, and an opponent played it for CP. Spend 1 momentum to trigger its event?",
+        triggerNote: "{who} played your {card} for CP, so its event happens for you, and the choice is yours.",
+        giftTitle: "This is {who}'s card", giftLead: "You can use its {cp} CP, but the event happens for {who}.", giftGets: "{who} gets: {text}",
+        giftMorale: "Morale (now → after): {list}", giftRate: "Taking {who}'s blocks, your chance drops from {a}% to {b}%.", giftNoMove: "Morale is already at its limit, so nothing changes.",
         kind: "What will you do with {cp} CP?", campaign: "Campaign: move, fill, take. {cp} CP left.", ads: "Advertising: one support check per CP. {cp} CP left.",
         media: "The ad worked: place 1 of your media cubes, or remove 1 of an opponent's.", issue: "Issue: {cp} CP left.",
         local: "Place 1 cube in {county}.",
@@ -207,7 +210,7 @@ export default {
       },
       debate: {
         title: "The Policy Forum", rule: "All three turn over a card together and place it on the issue it shows. When someone has 2 cards on an issue it is settled: the highest CP total wins and places 2 / 3 / 4 cubes with no check.",
-        open: "Not settled", settled: "Settled · {who} wins, {n} {n#cube|cubes}", yours: "you picked", picked: "picked", total: "total {n}", sums: "CP totals: Soong {a} · Lien {b} · Chen {c}",
+        open: "Not settled", settled: "Settled · {who} wins, {n} {n#cube|cubes}", settledNone: "Settled · {who} wins, no block to place", settledOpen: "Settled · {who} wins, placing cubes", yours: "you picked", picked: "picked", total: "total {n}", sums: "CP totals: Soong {a} · Lien {b} · Chen {c}",
       },
       f: {
         turn: "—— Turn {n} · initiative: {who} ——", turnOrder: "—— Turn {n} · fewest votes first: {order} ——", order: "{who} acts in position {n}", orderElection: "{who} picks position {n} to canvass", playEvent: "{who} plays {card} as an event", playCp: "{who} uses {card} for CP", block: ", and blocks it", cand: "{who} uses the candidate card",
@@ -220,7 +223,7 @@ export default {
         issuePlace: "{who} puts 1 cube on {issue}", issueRemove: "{who} removes 1 {target} cube from {issue}",
         swap: "{who} swaps two issues", rewardMom: "{who} takes 1 momentum", rewardEndorse: "{who} draws an endorsement", endorseOne: "{who} takes the endorsement of {region}", pickMom: "{who} gains 1 momentum", pickMorale: "{who} gains 5% morale",
         save: "{who} sets aside {n} {n#card|cards}", pick: "{who} has picked",
-        reveal: "Turned over: {who}, {card} → {issue}", dead: "Turned over: {who}, {card} → {issue} (already settled, no effect)", settle: "{issue} is settled: {who} wins, {n} {n#cube|cubes}",
+        reveal: "Turned over: {who}, {card} → {issue}", dead: "Turned over: {who}, {card} → {issue} (already settled, no effect)", settle: "{issue} is settled: {who} wins, {n} {n#cube|cubes}", settleNone: "{issue} is settled: {who} wins, no block to place", settleOpen: "{issue} is settled: {who} wins, placing cubes",
         canvass: "{who} canvasses {county}", convert: "Election day: issues and momentum become cubes in the bag",
         convertMorale: "Election day: the issues led become canvassing morale: {text}", convertLuck: "Election day: momentum becomes canvassing morale: {text}", convertLuckLead: "Election day: momentum and the issues led become canvassing morale: {text}",
         strategic: "Strategic voting: swing blocks go to {text}", strategicHalf: "First strategic vote (half): {text}", strategicNone: "Strategic voting: no swing blocks move", endorse: "Endorsements: non-voter blocks {text}", result: "The count is done",

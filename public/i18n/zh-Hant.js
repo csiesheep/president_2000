@@ -169,6 +169,9 @@ export default {
         play: "第 {n} / 4 次出牌：選一張手牌，或用候選人牌。",
         pickCard: "點下面的手牌看牌面與打法。", pickCardDebate: "點下面的留牌，選哪一張要翻開。", pickCardElection: "點下面的留牌，選要先催哪一張。",
         trigger: "{card} 是你的牌，對手拿去當 CP 用了。花 1 動能觸發它的事件嗎？",
+        triggerNote: "{who}拿你的「{card}」當 CP，所以這個事件替你發生，輪到你選。",
+        giftTitle: "這是{who}的牌", giftLead: "你可以拿它的 {cp} CP 來用，但事件會替{who}發生。", giftGets: "{who}會得到：{text}",
+        giftMorale: "士氣（現在 → 之後）：{list}", giftRate: "你搶{who}的方塊，成功率從 {a}% 掉到 {b}%。", giftNoMove: "士氣已在上下限，不會變。",
         kind: "{cp} CP 要做什麼？", campaign: "競選：移動、填塊、搶塊。剩 {cp} CP。", ads: "廣告：每 1 CP 抽一次檢定。剩 {cp} CP。",
         media: "廣告成功：放 1 顆自己的媒體，或移除對手的 1 顆。", issue: "議題：剩 {cp} CP。",
         local: "在 {county} 放 1 顆方塊。",
@@ -207,7 +210,7 @@ export default {
       },
       debate: {
         title: "政見發表會", rule: "三人同時翻一張，放到牌上的議題。某議題上有人放到第 2 張就結算：CP 總和最高的人贏，免檢定放 2／3／4 顆。",
-        open: "未結算", settled: "已結算 · {who}贏，放 {n} 顆", yours: "你已選", picked: "已選", total: "合計 {n}", sums: "CP 合計：宋 {a} · 連 {b} · 陳 {c}",
+        open: "未結算", settled: "已結算 · {who}贏，放 {n} 顆", settledNone: "已結算 · {who}贏，沒有方塊可放", settledOpen: "已結算 · {who}贏，放方塊中", yours: "你已選", picked: "已選", total: "合計 {n}", sums: "CP 合計：宋 {a} · 連 {b} · 陳 {c}",
       },
       f: {
         turn: "—— 第 {n} 回合 · 主動權 {who} ——", turnOrder: "—— 第 {n} 回合 · 票少的先：{order} ——", order: "{who}排第 {n} 個行動", orderElection: "{who}選了第 {n} 個催票", playEvent: "{who}把「{card}」當事件打出", playCp: "{who}拿「{card}」做 CP", block: "，並封鎖", cand: "{who}用了候選人牌",
@@ -220,7 +223,7 @@ export default {
         issuePlace: "{who}在「{issue}」放了 1 顆", issueRemove: "{who}移除了{target}在「{issue}」的 1 顆",
         swap: "{who}交換了兩條議題", rewardMom: "{who}領了 1 動能", rewardEndorse: "{who}抽了背書", endorseOne: "{who}拿下{region}的背書", pickMom: "{who}加 1 動能", pickMorale: "{who}士氣 +5%",
         save: "{who}留了 {n} 張牌", pick: "{who}選好了牌",
-        reveal: "翻牌：{who}「{card}」→ {issue}", dead: "翻牌：{who}「{card}」→ {issue}（已結算，沒有效果）", settle: "「{issue}」結算：{who}贏，放 {n} 顆",
+        reveal: "翻牌：{who}「{card}」→ {issue}", dead: "翻牌：{who}「{card}」→ {issue}（已結算，沒有效果）", settle: "「{issue}」結算：{who}贏，放 {n} 顆", settleNone: "「{issue}」結算：{who}贏，沒有方塊可放", settleOpen: "「{issue}」結算：{who}贏，放方塊中",
         canvass: "{who}催票：{county}", convert: "投票日：議題、動能都換成袋中的方塊",
         convertMorale: "投票日：領先的議題換成催票士氣：{text}", convertLuck: "投票日：動能換成催票士氣：{text}", convertLuckLead: "投票日：動能和領先的議題換成催票士氣：{text}",
         strategic: "棄保：游離票流向 {text}", strategicHalf: "第一次棄保（一半）：{text}", strategicNone: "棄保：沒有游離票流動", endorse: "背書：無色塊 {text}", result: "開票完畢",
