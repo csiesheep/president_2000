@@ -26,10 +26,12 @@
 //                                                 the room's last CHAT_KEEP lines (possibly none) as one message
 //          { t: "error", code }                   to the sender only; the room is returned unchanged
 //
-// Chat (#16): the text loses its control characters (and lone surrogates), is
-// trimmed and cut to CHAT_MAX characters; empty → empty_chat, not a string →
-// bad_message. seat is the sender's seat or null; at is `now`. The room keeps
-// the last CHAT_KEEP lines, across rematches.
+// Chat (#16, #101): the text is cleaned as a name is (cleanText: control and
+// format characters and lone surrogates go, white space becomes one space, NFC,
+// trimmed) and cut to CHAT_MAX characters; empty → empty_chat, not a string →
+// bad_message; a player's line beyond CHAT_RATE (5 within 10 s) → rate_limited.
+// seat is the sender's seat or null; at is `now`. The room keeps the last
+// CHAT_KEEP lines, across rematches.
 // Rematch (#16): the host, once st.phase is "end", starts a new game with the
 // same seats and level; game n's engine seed is derived from "engine n" (game 0
 // from "engine"). Not started → not_started; before the end → not_ended;
@@ -49,6 +51,7 @@
 // the engine's seed. The engine and bot seeds are derived the same way.
 import * as E from "../public/shared/engine.js";
 import { chooseMove } from "../public/shared/bots.js";
+import { step } from "./limits.js";
 
 export const TURN_MS = 60_000;
 export const GRACE_MS = 15_000;
@@ -57,6 +60,7 @@ const NAME_MAX = 24;
 const BOT_CAP = 20_000; // bot moves in one handle; a game is a few hundred decisions
 export const CHAT_MAX = 200; // characters (code points) in one line
 export const CHAT_KEEP = 50; // lines the room keeps
+export const CHAT_RATE = { max: 5, per: 10_000 }; // lines one player may send within any 10 s (#101)
 
 // ------------------------------------------------------------------ hashing
 
@@ -200,6 +204,11 @@ export function handle(room0, ev, now) {
       if (typeof d.text !== "string") return err(room0, ev.conn, "bad_message");
       const text = cleanChat(d.text);
       if (!text) return err(room0, ev.conn, "empty_chat");
+      // #101: one player, at most CHAT_RATE.max lines within any CHAT_RATE.per ms. Only lines sent count: a refused one
+      // changes nothing (the room is returned as it was, as for every error).
+      const said = step(p.chatAt, now, CHAT_RATE);
+      if (!said.ok) return err(room0, ev.conn, "rate_limited");
+      p.chatAt = said.times;
       chatLine = { seat: p.seat, name: p.name, text, at: now };
       room.chat = [...room.chat, chatLine].slice(-CHAT_KEEP);
     } else if (d.t === "rematch") {
@@ -249,14 +258,20 @@ export function handle(room0, ev, now) {
 
 // ------------------------------------------------------------------ helpers
 
-// Control characters (Cc) and lone surrogates (Cs: under /u a pair is one code point) go,
-// then the ends are trimmed and the text is cut to CHAT_MAX code points.
-function cleanChat(text) {
-  return Array.from(text.replace(/[\p{Cc}\p{Cs}]/gu, "").trim()).slice(0, CHAT_MAX).join("").trim();
+// A name or a chat line (#101), in this order: every control character (Cc, C0 and C1), format character (Cf: bidi
+// marks, overrides and isolates, zero-width space / joiner / non-joiner, word joiner, BOM, soft hyphen, …) and lone
+// surrogate (Cs: under /u a pair is one code point) that is not white space goes; each run of white space becomes one
+// space; NFC; the ends are trimmed; then at most `max` code points (never half of one), trimmed again in case the cut
+// ends on the space.
+const INVISIBLE = /(?!\p{White_Space})[\p{Cc}\p{Cf}\p{Cs}]/gu;
+const SPACES = /\p{White_Space}+/gu;
+export function cleanText(text, max) {
+  const s = String(text ?? "").replace(INVISIBLE, "").replace(SPACES, " ").normalize("NFC").trim();
+  return Array.from(s).slice(0, max).join("").trim();
 }
+const cleanChat = (text) => cleanText(text, CHAT_MAX);
 function cleanName(name, fallback) {
-  const s = String(name ?? "").replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, NAME_MAX);
-  return s || fallback;
+  return cleanText(name, NAME_MAX) || fallback;
 }
 function connected(room, s) {
   const seat = room.seats[s];
