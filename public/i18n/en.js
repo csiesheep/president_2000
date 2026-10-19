@@ -5,7 +5,8 @@ export default {
   title: "2000: Taiwan Decides",
   tagline: "Nine turns, one ballot. Three candidates, one island, and the vote-split that decides it.",
   building: "Under construction. The engine comes first; the table follows.",
-  credit: "A free fan project, not affiliated with any publisher. The play is inspired by 1960: The Making of the President, designed by Christian Leonhard and Jason Matthews; rules and mechanics are not copyrightable, and this is an independent implementation under its own name and art.",
+  credit: "A free fan project, not affiliated with any publisher. The play is inspired by 1960: The Making of the President, designed by Christian Leonhard and Jason Matthews; rules and mechanics are not copyrightable, and this is an independent implementation under its own name. The card art and illustrations were generated with AI (Qwen-Image, under the Qwen Research License, for non-commercial use only).",
+  privacy: "Privacy policy",
   nav: { rules: "How to play", hub: "csiesheep games", lang: "中文" },
   ui: {
     home: "← Home",

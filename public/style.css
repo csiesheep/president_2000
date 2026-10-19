@@ -37,6 +37,9 @@ body {
 h1 { margin: 0; display: flex; flex-direction: column; line-height: 1; font-family: var(--serif); }
 .credit { margin: 0; font-size: 11px; line-height: 1.5; color: #e4d6b8; opacity: .85; }
 .credit em { font-style: italic; }
+.credit .privacy { white-space: nowrap; text-decoration: underline; }
+.credit.e-credit { margin: 6px 4px 2px; }
+.gmenu .mcredit { width: min(280px, calc(100vw - 40px)); margin: 2px 2px 0; padding-top: 8px; border-top: 1px solid var(--edge2); color: var(--ink); opacity: .8; font-size: 11px; line-height: 1.45; }
 a { color: inherit; }
 
 /* ---------------------------------------------------------------- paper furniture */

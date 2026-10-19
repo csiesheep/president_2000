@@ -1333,7 +1333,8 @@ function endHTML(v, x, o) {
     `<div class="opts">${againBtn}${share}<a class="opt ghost" href="./${q}">${esc(x.tr("end.home"))}</a></div>` +
     `${you}<section class="e-cmp" aria-label="${esc(x.tr("end.cmpTitle"))}"><h3>${esc(x.tr("end.cmpTitle"))}</h3><div class="hgrid">${hist}</div><p>${esc(x.tr("end.turnCmp", { now: pctOf(Math.round((cast / total) * 1000)), then: "82.7%" }))}</p></section>` +
     `<div class="e-dets">${det("day", x.tr("end.dayTitle"), `<ul class="day">${lines.join("")}</ul>`)}${det("lead", x.tr("end.leadTitle"), `<div class="leads">${leadRows}</div>`)}</div>` +
-    `<a class="e-jump" href="#end-board">${esc(x.tr("end.board"))}</a></div>`;
+    `<a class="e-jump" href="#end-board">${esc(x.tr("end.board"))}</a>` +
+    `<p class="credit e-credit">${esc(x.d.credit)} <a class="privacy" href="https://csiesheep.com/privacy-policy/" target="_blank" rel="noopener">${esc(x.d.privacy)}</a></p></div>`;
 }
 
 // ---------------------------------------------------------------- the whole table
