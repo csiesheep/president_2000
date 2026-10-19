@@ -11,7 +11,7 @@
 // least four card tops on screen) and the two buttons above them (the hand count and 「規則」) keep their own dark pill
 // so they stay readable. On a phone (390×844) nothing changes: the tray keeps its dark background (alpha ≥ .6), where it
 // keeps the cards readable over the map.
-// Reports 尚未實作 while every desktop width still has the band (as on main).
+// #106 landed (0c8d153): the band at every desktop width is a failure now (it reported 尚未實作 before).
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import * as S from "../public/solo.js";
@@ -86,7 +86,7 @@ row("桌機（1100×720、1280×800、1440×900）：手牌那一條沒有底色
   if (M.err) return `儀器中途停下：${M.err}`;
   const d = desk(); if (d.some(([, x]) => !x)) return `有一種寬度沒有牌桌的手牌（${d.filter(([, x]) => !x).map(([k]) => k).join("、")}）（instrument）`;
   // as on main: the band's colour is still there at every width (a band gone but its top line kept is a failure)
-  if (d.every(([, x]) => x.bg > 0)) return `TODO: 三種寬度都還有黑色底（${d[0][1].bgColor}${d[0][1].line ? "，上緣 " + d[0][1].line : ""}）`;
+  if (d.every(([, x]) => x.bg > 0)) return `#106 上線之後是失敗：三種寬度都還有黑色底（${d[0][1].bgColor}${d[0][1].line ? "，上緣 " + d[0][1].line : ""}）`;
   const bad = d.filter(([, x]) => banded(x)).map(([k, x]) => `${k}：底色 ${x.bgColor}${x.img !== "none" ? "、底圖 " + x.img.slice(0, 30) : ""}${x.line ? "、上緣 " + x.line : ""}${x.hsBg ? "、牌列底色" : ""}`);
   return okm(!bad.length, bad.join("；") || "三種寬度都沒有");
 });
