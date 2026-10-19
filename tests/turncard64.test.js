@@ -45,7 +45,10 @@ const V08 = (EVENTS.find((e) => e.id === "yang_exposes")?.text || "").includes("
 const T9_ZH = [V08 ? "記下領先的議題，然後議題歸零" : "記下動能與領先的議題，然後歸零", "票數由少到多，少的先催票", "各自翻出留下的 4 張牌催票", "棄保、背書，然後計票"];
 const T1_EN = "Nine turns, about two weeks each.";
 const T6_EN = "No cards are dealt or played this turn.";
-const T9_EN = [V08 ? "Issue leads are recorded" : "Momentum and issue leads are recorded", "Canvassing goes by votes, fewest first", "Each reveals their 4 kept cards", "Tactical voting, endorsements, then the count"];
+// #98 (orchestrator, after #97's wording pass): 棄保 is "Strategic voting" in English, as on the rules page and election
+// night; "Tactical voting" here was the one left.
+const T9_EN = [V08 ? "Issue leads are recorded" : "Momentum and issue leads are recorded", "Canvassing goes by votes, fewest first", "Each reveals their 4 kept cards", "Strategic voting, endorsements, then the count"];
+const T9_LEGACY = "Tactical voting, endorsements, then the count";
 const ISSUES = ["cross", "clean", "econ"];
 
 // Solo games stepped one move at a time; each state right after a turn's log entry is written (as tests/turncard).
@@ -186,6 +189,7 @@ check("特別回合：第 1 回合寫選戰開跑、第 6 回合寫政見發表�
     if (!(t in seen)) continue;
     const c = card(p, lang), all = squash(text(c)), en = lang === "en";
     const want = t === 1 ? [en ? T1_EN : T1_ZH] : t === 6 ? [en ? T6_EN : T6_ZH] : en ? T9_EN : T9_ZH;
+    if (en && t === 9 && all.includes(squash(T9_LEGACY))) return "TODO: 第 9 回合的英文還寫 Tactical voting（#98：統一成規則頁的 Strategic voting）";
     for (const w of want) if (!all.includes(squash(w))) return `${p.where}（${name}）：卡上沒有「${w}」`;
     if (t === 6) for (const k of ISSUES) if (!c.includes(`art/issues/${k}.webp`)) return `${p.where}（${name}）：第 6 回合沒有議題「${k}」的圖`;
     if (t === 9 && !/\sclass="[^"]*\bdark\b/.test(c.match(/^<[^>]*>/)[0])) return `${p.where}（${name}）：第 9 回合不是深色版`;

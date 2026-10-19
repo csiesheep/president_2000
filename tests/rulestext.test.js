@@ -322,6 +322,8 @@ const MOM_ONLY = new Set([
   "ui.solo.f.rewardMom", "ui.solo.f.pickMom", "ui.solo.f.convert", "ui.solo.f.convertLuck", "ui.solo.f.convertLuckLead",
   "ui.solo.hl.reward.1", "ui.solo.hl.reward.3", "terms.momentum", "talk.block_trigger", "talk.trigger_event", "talk.pass_trigger",
   "talk.effect_tvbs", "talk.reward_momentum",
+  // #98: the end page's tie rule for a game saved on v0.7 with momentum (a v0.8 game has three rules, no momentum)
+  "ui.solo.end.tieRule.momentum", "ui.solo.end.tieMom", "ui.solo.end.tieWord.momentum",
 ]);
 const FORBID8 = { zh: /動能/, en: /momentum/i };
 // Since #81 landed (2976d04), a 楊吉雄爆料 without 士氣 is a failure, not 尚未實作.

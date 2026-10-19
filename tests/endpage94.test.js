@@ -18,8 +18,10 @@
 //     largest first (a tie in size: that order), only those that differ; each [data-why="<source>"
 //     data-me="<yours>" data-other="<theirs>"] with both numbers in its text;
 //   - [data-end-tie data-decided="leads|momentum|order"] when the result is "tie": one [data-tie-rule="<rule>"] per rule
-//     up to the one that decided (votes, leads, momentum, order), that one marked data-decided-here; the votes and
-//     leads rows give each tied seat's number; when counties led decided it, the difference is in the text;
+//     up to the one that decided, that one marked data-decided-here; the votes and leads rows give each tied seat's
+//     number; when counties led decided it, the difference is in the text. The rules are the rules page's (#98,
+//     orchestrator, correcting #94's contract): a v0.8 game (no momentum) has three, votes, counties led, the
+//     election-day order (③ 催票順序); a game saved on v0.7 with momentum has four, the third 動能 (en momentum);
 //   - [data-end-trend]: one [data-trend="<seat key>" data-v="v1,…,v9"] per seat, the 9 rows of recap().trend;
 //   - [data-end-src]: one [data-src="<source>" data-n="<n>"] per source you have blocks from (n > 0), n in its text;
 //     the n add up to your votes;
@@ -44,7 +46,8 @@ const LANGS = ["zh-Hant", "en"];
 const X = { "zh-Hant": bind("zh-Hant"), en: bind("en") };
 const KEY = ["chen", "soong", "lien"];
 const SRC = ["start", "act", "event", "debate", "canvass", "strategic", "endorse"];
-const RULES = ["votes", "leads", "momentum", "order"];
+const RULES = ["votes", "leads", "momentum", "order"], RULES8 = ["votes", "leads", "order"];
+const rulesOf = (st) => (st.momentum === "none" ? RULES8 : RULES);
 const CJK = /[㐀-鿿豈-﫿]/;
 const dec = (s) => s.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&#39;/g, "'");
 const text = (html) => dec(html.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
@@ -156,7 +159,7 @@ c94("同票：一條一條寫到分出勝負的那一條（票數、領先縣市
     n++; by[dby] = (by[dby] || 0) + 1;
     if (!box) { bad.push(`種子 ${g.seed} ${lang}：同票，沒有 [data-end-tie]`); continue; }
     if (box.attrs["data-decided"] !== dby) bad.push(`種子 ${g.seed} ${lang}：data-decided=${box.attrs["data-decided"]}，應是 ${dby}`);
-    const rows = elements(box.html, "data-tie-rule"), names = rows.map((e) => e.attrs["data-tie-rule"]), upto = RULES.slice(0, RULES.indexOf(dby) + 1);
+    const RU = rulesOf(g.s.st), rows = elements(box.html, "data-tie-rule"), names = rows.map((e) => e.attrs["data-tie-rule"]), upto = RU.slice(0, RU.indexOf(dby) + 1);
     if (JSON.stringify(names) !== JSON.stringify(upto)) { bad.push(`種子 ${g.seed} ${lang}：規則列 ${names.join(",")}，應是 ${upto.join(",")}`); continue; }
     const here = rows.filter((e) => "data-decided-here" in e.attrs).map((e) => e.attrs["data-tie-rule"]);
     if (JSON.stringify(here) !== JSON.stringify([dby])) bad.push(`種子 ${g.seed} ${lang}：標成決定的是 ${here.join(",") || "沒有"}`);
@@ -167,6 +170,39 @@ c94("同票：一條一條寫到分出勝負的那一條（票數、領先縣市
   }
   const z = nonEmpty(n, "你同票落選的結局頁"); if (z !== true) return z;
   return ok(!bad.length, bad.slice(0, 4).join("；") || `${n} 頁都對（${Object.entries(by).map(([k, v]) => `${k} ${v / 2}`).join("、")} 局）`);
+});
+// The deciding rule past counties led is rare in play (none in the pool), so two games are made from a tied one: counties
+// led tied too, so the election-day order decides (v0.8: three rules); and the same as a game saved on v0.7 with
+// momentum, where momentum decides (four rules, the third 動能). Their rows and words are checked, not their numbers.
+c94("同票規則照規則頁（#98）：v0.8 三條、第三條是催票順序；v0.7 有動能的舊局四條、第三條叫動能", () => {
+  const g = pool().find((x) => x.kind === "tie");
+  if (!g) return "局裡沒有同票落選的（instrument）";
+  const bad = [], seen = [];
+  const make = (old) => {
+    const s = JSON.parse(JSON.stringify(g.s)), r = s.st.result, w = r.winner, me = g.seat;
+    r.leads[me] = r.leads[w];
+    if (old) { delete s.st.momentum; r.momentum = [0, 0, 0]; r.momentum[w] = 2; r.decidedBy = "momentum"; } else { r.momentum = [0, 0, 0]; r.decidedBy = "order"; }
+    return s;
+  };
+  let pending = null;
+  for (const [old, want, word] of [[false, ["votes", "leads", "order"], { "zh-Hant": "催票順序", en: /order/i }], [true, ["votes", "leads", "momentum"], { "zh-Hant": "動能", en: /momentum/i }]]) {
+    for (const lang of LANGS) {
+      const box = one(S.screen(make(old), lang), "data-end-tie"), name = `${old ? "v0.7 舊局" : "v0.8"} ${lang}`;
+      if (!box) { bad.push(`${name}：沒有 [data-end-tie]`); continue; }
+      const rows = elements(box.html, "data-tie-rule"), names = rows.map((e) => e.attrs["data-tie-rule"]), last = rows[rows.length - 1];
+      seen.push(`${name} ${names.join(",")}`);
+      const t = last ? text(last.html) : "", hasWord = typeof word[lang] === "string" ? t.includes(word[lang]) : word[lang].test(t);
+      const noMomRow = /這局沒有這一項|氣勢|tempo|not in this game/i.test(text(box.html));
+      if (!old && (names.includes("momentum") || noMomRow)) { pending = pending || `v0.8 的同票還列出動能那一條（${names.join(",")}）`; continue; }
+      if (old && !hasWord && /氣勢|tempo/i.test(t)) { pending = pending || `舊局的第三條還叫「${t.slice(0, 20)}」`; continue; }
+      if (JSON.stringify(names) !== JSON.stringify(want)) bad.push(`${name}：規則列 ${names.join(",")}，應是 ${want.join(",")}`);
+      else if (!("data-decided-here" in last.attrs)) bad.push(`${name}：最後一條沒有標成決定`);
+      else if (!hasWord) bad.push(`${name}：第三條「${t.slice(0, 30)}」沒有寫${old ? "動能" : "催票順序"}`);
+      else if (lang === "zh-Hant" && !t.includes("③")) bad.push(`${name}：第三條「${t.slice(0, 30)}」不是 ③`);
+    }
+  }
+  if (pending && !bad.length) return `TODO: ${pending}（#98）`;
+  return ok(!bad.length, bad.slice(0, 4).join("；") || seen.join("；"));
 });
 c94("票數走勢：三家各一條，九個點就是 recap 的 trend（每回合結束時、最後是開票）", () => {
   const bad = []; let n = 0;
