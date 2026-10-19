@@ -183,7 +183,7 @@ check("結局頁主視覺：public/art/end/ 有 chen、soong、lien 三張，900
 });
 
 check("開票夜的攝影棚：public/art/news/ 只有 studio（1280×720）與 wall（1280×800）兩張 WebP、各 ≤ 120 KB（#91）", () => {
-  if (!hasNews) return "TODO: public/art/news/ 還沒有（#91）";
+  if (!hasNews) return "public/art/news/ 不見了：#91 已上線（72f9d0e），這是退步，不是尚未實作";
   const dir = new URL("news/", ART), names = readdirSync(dir), want = NEWS.map(([, f]) => f);
   const extra = names.filter((f) => !want.includes(f)), miss = want.filter((f) => !names.includes(f));
   if (miss.length) return `少了 ${miss.map((f) => "news/" + f).join("、")}`;

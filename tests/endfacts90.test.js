@@ -130,10 +130,12 @@ function play(seed, every) {
 }
 let GAMES = null;
 const games = () => GAMES || (GAMES = SEEDS.map((seed) => play(seed, seed <= 5 ? 1 : 10)));
-const cT = (name, fn) => check(name, () => (TAGGED ? fn() : "TODO: 方塊還沒有來源（下了 300 步，盤上沒有一塊方塊有 s）"));
-const cD = (name, fn) => check(name, () => (games().some((g) => g.st.result.decidedBy !== undefined) ? fn() : "TODO: st.result 還沒有 decidedBy"));
-const cR = (name, fn) => check(name, () => (RC_ERR ? RC_ERR : !RC ? "TODO: public/shared/recap.js 還不存在" : typeof RC.recap !== "function" ? "TODO: recap.js 還沒有匯出 recap" : fn()));
-const cM = (name, fn) => check(name, () => (RC_ERR ? RC_ERR : !RC ? "TODO: public/shared/recap.js 還不存在" : typeof RC.moraleOf !== "function" ? "TODO: recap.js 還沒有匯出 moraleOf" : fn()));
+// Since #90 landed (2521f07), a missing part is a failure, not 尚未實作.
+const GONE = "：#90 已上線（2521f07），這是退步，不是尚未實作";
+const cT = (name, fn) => check(name, () => (TAGGED ? fn() : "方塊沒有來源（下了 300 步，盤上沒有一塊方塊有 s）" + GONE));
+const cD = (name, fn) => check(name, () => (games().some((g) => g.st.result.decidedBy !== undefined) ? fn() : "st.result 沒有 decidedBy" + GONE));
+const cR = (name, fn) => check(name, () => (RC_ERR ? RC_ERR : !RC ? "public/shared/recap.js 不見了" + GONE : typeof RC.recap !== "function" ? "recap.js 沒有匯出 recap" + GONE : fn()));
+const cM = (name, fn) => check(name, () => (RC_ERR ? RC_ERR : !RC ? "public/shared/recap.js 不見了" + GONE : typeof RC.moraleOf !== "function" ? "recap.js 沒有匯出 moraleOf" + GONE : fn()));
 
 // ------------------------------------------------------------------------------------------------ 1
 section("1 沒有改變遊戲");
