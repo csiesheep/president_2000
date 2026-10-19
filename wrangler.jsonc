@@ -19,7 +19,8 @@
   "assets": {
     "directory": "public",
     "binding": "ASSETS",
-    "run_worker_first": true
+    "run_worker_first": true,
+    "not_found_handling": "404-page"
   },
   // One Durable Object per multiplayer room, named by its four-letter code.
   "durable_objects": {
