@@ -7,6 +7,17 @@ export default {
   building: "Under construction. The engine comes first; the table follows.",
   credit: "A free fan project, not affiliated with any publisher. The play is inspired by 1960: The Making of the President, designed by Christian Leonhard and Jason Matthews; rules and mechanics are not copyrightable, and this is an independent implementation under its own name. The card art and illustrations were generated with AI (Qwen-Image, under the Qwen Research License, for non-commercial use only).",
   privacy: "Privacy policy",
+  // What search engines and chat-app previews read: the Worker writes these into the page head (#104).
+  meta: {
+    home: {
+      title: "2000: Taiwan Decides · a three-way election card game",
+      description: "A three-player card-driven election game based on Taiwan's 2000 presidential race. Play the computer, or open a room with friends.",
+    },
+    rules: {
+      title: "Rules · 2000: Taiwan Decides",
+      description: "The full rules of 2000: Taiwan Decides, a three-player election card game: nine turns, the cards and campaign actions, checks, and how election day is counted.",
+    },
+  },
   nav: { rules: "How to play", hub: "csiesheep games", lang: "中文" },
   ui: {
     home: "← Home",

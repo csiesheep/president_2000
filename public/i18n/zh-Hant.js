@@ -6,6 +6,17 @@ export default {
   building: "建設中。先做引擎，再做牌桌。",
   credit: "同人作品，非官方。靈感來自 Christian Leonhard 與 Jason Matthews 設計的 1960: The Making of the President；規則與機制不受著作權保護，本作為獨立實作、自創名稱。牌圖與插圖由 AI 生成（Qwen-Image，依 Qwen Research License 僅限非商業使用）。",
   privacy: "隱私權政策",
+  // 搜尋引擎與聊天 app 預覽讀的字：Worker 把這些寫進頁面的 head（#104）。
+  meta: {
+    home: {
+      title: "2000：總統的誕生 · 三人卡牌選戰",
+      description: "三人卡牌選戰，改編自 2000 年台灣總統大選。可以單人對戰電腦，也能開房間和朋友一起玩。",
+    },
+    rules: {
+      title: "規則 · 2000：總統的誕生",
+      description: "《2000：總統的誕生》的完整規則：九個回合、出牌與選戰行動、檢定，以及投票日怎麼計票。",
+    },
+  },
   nav: { rules: "規則", hub: "csiesheep games", lang: "EN" },
   ui: {
     home: "← 首頁",
