@@ -169,12 +169,17 @@ async function tapCard(t, twice) {
     gap = Math.round((await read(t)).now - t0); await t.tapAt(o.x, o.y);
   }
   await sleep(900);
+  // A move the taps make goes out from the table's own click handler, so its click reaches the table (it is in __clicks
+  // with act). A move sent while no click reached the table is the page's own: once the replay has gone, a decision with
+  // only one option is done by itself (#70; 700 ms later in a room). It is printed, not counted (2026-10-19: one such
+  // move, 0 clicks on the table, read red once in the room while two other tools ran against the same server).
   const k = JSON.parse(await t.ev(`JSON.stringify({ clicks: (window.__clicks || []).filter((c) => c.t >= ${t0} && c.act), sent: (window.__sent || []).filter((s) => s.t >= ${t0}) })`));
+  k.own = k.clicks.length ? 0 : k.sent.length; if (!k.clicks.length) k.sent = [];
   const m = await read(t), first = m.rep.find((r) => r.on <= t0 && (r.off == null || r.off >= t0));
   return { o, gap, k, gone: first && first.off != null ? Math.round(first.off - t0) : null };
 }
 const tapText = (x) => x.o.under == null ? `${x.o.card ? "a card was shown, but no button, link or county of the table was under it (even scrolled)" : "no card was shown"} — nothing to test (instrument)`
-  : `tapped the card over 「${x.o.under}」${x.gap != null ? `, again ${x.gap} ms later` : ""}: ${x.k.clicks.length} clicks reached the table${x.k.clicks.length ? ` (${x.k.clicks.map((c) => "「" + c.what + "」").join(", ")})` : ""}, ${x.k.sent.length} moves sent (0 / 0)`;
+  : `tapped the card over 「${x.o.under}」${x.gap != null ? `, again ${x.gap} ms later` : ""}: ${x.k.clicks.length} clicks reached the table${x.k.clicks.length ? ` (${x.k.clicks.map((c) => "「" + c.what + "」").join(", ")})` : ""}, ${x.k.sent.length} moves sent by them (0 / 0)${x.k.own ? `; ${x.k.own} sent by the page itself (no click reached the table: the only option, done by itself)` : ""}`;
 
 const br = await launch();
 try {
