@@ -122,7 +122,8 @@ async function tab(br, dev) {
     if (r.exceptionDetails) throw new Error("in the page: " + ((r.exceptionDetails.exception && r.exceptionDetails.exception.description) || r.exceptionDetails.text));
     return r.result ? r.result.value : undefined;
   };
-  await send("Page.enable"); await send("Network.enable");
+  await send("Page.enable"); await send("Network.enable"); // #96: the first-time boxes are a modal of the first game, measured by tools/tips96.mjs; off here unless set
+  await send("Page.addScriptToEvaluateOnNewDocument", { source: 'try { if (!localStorage.getItem("p2000.tips")) localStorage.setItem("p2000.tips", JSON.stringify({ seen: [], off: true })); } catch (e) { /* no storage */ }' });
   await send("Emulation.setDeviceMetricsOverride", { width: dev.w, height: dev.h, deviceScaleFactor: dev.dpr, mobile: dev.mobile });
   if (dev.mobile) await send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
   await send("Emulation.setUserAgentOverride", { userAgent: dev.mobile ? br.phoneUa : br.ua });
