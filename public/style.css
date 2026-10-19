@@ -721,14 +721,51 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
 .endp { order: 2; display: flex; flex-direction: column; gap: 10px; color: var(--ink); }
 .e-mark { display: block; height: 0; scroll-margin-top: 8px; }
 @media (max-width: 1099px) { .tbl.end .t-players { order: 7; } .tbl.end .t-now { order: 5; } .e-mark { order: 6; } }
-.e-hero { position: relative; height: 300px; border-radius: 6px; overflow: hidden; box-shadow: 0 8px 20px rgba(0, 0, 0, .45); background: #2b2118; }
-.e-hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; display: block; }
-.e-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20, 12, 6, 0) 35%, rgba(20, 12, 6, .88) 100%); }
-.e-ht { position: absolute; left: 16px; right: 16px; bottom: 14px; display: flex; flex-direction: column; gap: 2px; color: #fbf6e9; }
-.e-k { font-size: 12px; font-weight: 700; letter-spacing: .08em; color: #f0d9a8; }
-.e-w { margin: 0; font: 900 44px/1.05 var(--serif); overflow-wrap: anywhere; }
-.e-l { font-size: 14px; font-weight: 700; }
-.e-stamp { position: absolute; right: 14px; top: 14px; width: 74px; height: 74px; border: 4px solid #c23a2e; border-radius: 50%; color: #c23a2e; background: rgba(251, 246, 233, .82); transform: rotate(-14deg); display: flex; align-items: center; justify-content: center; text-align: center; font: 900 24px/1.1 var(--serif); }
+/* The extra (#94): the front page of 「選戰日報」 as a square sheet (same paper as the turn card, #64): the name between double rules, the
+   winner's picture, then the headline with the stamp. Under it the votes, the tie-break, why, the count by turn, and the record. */
+.e-paper { --pi: #1f1a14; --pm: #5a4a3a; background: #f4ecd8; color: var(--pi); border-radius: 0; box-shadow: 0 8px 20px rgba(0, 0, 0, .45); padding: 10px 14px 12px; display: flex; flex-direction: column; gap: 8px; }
+.e-mast { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "n n" "x d"; align-items: baseline; gap: 2px 8px; }
+.e-name { grid-area: n; text-align: center; font: 900 34px/1.1 var(--mast); letter-spacing: 8px; padding-left: 8px; white-space: nowrap; }
+.e-extra { grid-area: x; font: 900 14px var(--serif); letter-spacing: 3px; color: #a8322a; border: 1.5px solid #a8322a; padding: 0 6px; justify-self: start; }
+.e-date { grid-area: d; font: 700 12px var(--serif); color: var(--pm); }
+.e-mast::after { content: ""; grid-column: 1 / -1; height: 5px; border-top: 3px double var(--pi); border-bottom: 1px solid var(--pi); }
+.e-pic { position: relative; margin: 0; height: 108px; overflow: hidden; background: #2b2118; }
+.e-pic img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; display: block; }
+.e-head { display: flex; align-items: center; gap: 12px; }
+.e-stamp { flex: none; width: 66px; height: 66px; border: 4px solid #b3261e; border-radius: 50%; color: #b3261e; transform: rotate(-12deg); display: flex; align-items: center; justify-content: center; text-align: center; font: 900 22px/1.1 var(--serif); }
+.e-ht { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.e-k { font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--pm); }
+.e-w { margin: 0; font: 900 24px/1.2 var(--serif); overflow-wrap: anywhere; }
+.e-sub { margin: 0; font-size: 14px; font-weight: 700; line-height: 1.4; }
+:lang(en) .e-name { font-size: 28px; letter-spacing: 0; padding-left: 0; }
+:lang(en) .e-w { font-size: 22px; }
+.e-card { background: #f4ecd8; color: #1f1a14; border-radius: 0; box-shadow: 0 4px 0 var(--edge2); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.e-card h3 { margin: 0; font: 900 16px var(--serif); }
+.e-hint { margin: 0; font-size: 12px; color: #5a4a3a; }
+.e-card ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 13px; line-height: 1.5; }
+.e-why li { display: flex; gap: 8px; align-items: baseline; }
+.e-why .dd { flex: none; min-width: 30px; font: 900 15px var(--serif); } .e-why .dd.up { color: #2f7d46; } .e-why .dd.dn { color: #b3261e; }
+.e-gift { margin: 0; font-size: 13px; line-height: 1.5; border-top: 1px dashed var(--edge); padding-top: 8px; }
+.e-tie { background: #f4ecd8; border: 2px solid #2a1d12; box-shadow: none; }
+.e-tie .trow { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; font-size: 13px; padding: 3px 0; }
+.e-tie .tl { flex: 1 1 130px; } .e-tie .tcs { display: flex; gap: 12px; flex-wrap: wrap; }
+.e-tie .tcell { color: var(--c); font-weight: 700; } .e-tie .tcell.win { font-weight: 900; text-decoration: underline; }
+.e-tie .trow.here { font-weight: 900; } .e-tie .td { flex-basis: 100%; font-style: normal; font-size: 12px; font-weight: 700; color: #a8322a; }
+.e-flow { gap: 12px; }
+.e-trend svg { width: 100%; height: auto; display: block; }
+.e-trend polyline { stroke: var(--c); } .e-trend .ax { stroke: #bfae8f; stroke-width: 1; } .e-trend .ax.dash { stroke-dasharray: 3 3; } .e-trend text { font-size: 10px; fill: #1f1a14; }
+.e-key { display: flex; gap: 12px; font-size: 12px; font-weight: 700; } .e-key span { display: flex; align-items: center; gap: 4px; } .e-key i { width: 14px; height: 4px; background: var(--c); border-radius: 2px; }
+.e-from { display: flex; flex-direction: column; gap: 6px; }
+.e-bar { display: flex; height: 18px; border-radius: 2px; overflow: hidden; gap: 1px; } .e-bar i { background: var(--c); }
+.e-from ul { flex-direction: row; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; } .e-from li { display: flex; align-items: center; gap: 4px; } .e-from li i { width: 10px; height: 10px; background: var(--c); border-radius: 2px; }
+.e-rec { flex-direction: row; justify-content: space-between; align-items: center; gap: 12px; font-size: 13px; line-height: 1.4; }
+.e-rec .rby { display: block; margin-top: 2px; font-size: 12px; color: #5a4a3a; } .e-rec .rsub { flex: none; font-size: 12px; color: #5a4a3a; text-align: right; } .e-rec .rsub b { color: #b3261e; }
+.e-next { display: flex; flex-direction: column; gap: 8px; }
+.e-nl { margin: 0; color: var(--paper); font-size: 13px; }
+.nbs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.nb { min-height: 48px; border: 0; border-radius: 4px; background: #f4ecd8; color: #2a1d12; font: 900 15px var(--sans); padding: 6px 8px; cursor: pointer; box-shadow: 0 3px 0 var(--edge2); }
+.nb.pri { background: var(--c, #c25a12); color: #fff; box-shadow: 0 3px 0 rgba(0, 0, 0, .35); }
+.nb:focus-visible, .e-paper a:focus-visible { outline: 3px solid #ffd34d; outline-offset: 2px; }
 .e-res, .e-cmp { background: var(--paper2); border-radius: 6px; box-shadow: 0 4px 0 var(--edge2); padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 12px; }
 .e-rh { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .e-rh h3, .e-cmp h3 { margin: 0; font: 900 18px var(--serif); }
@@ -757,6 +794,7 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
 .hcell .hn { font-size: 12px; font-weight: 900; color: var(--c); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hcell span { font-size: 11px; color: #6a5a48; } .hcell span b { font-size: 13px; color: var(--ink); } .hcell span:nth-of-type(1) b { font-size: 15px; }
 .endp .opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.endp .opts > :last-child:nth-child(odd) { grid-column: 1 / -1; }
 .endp .opts .opt { min-height: 48px; justify-content: center; text-align: center; font: 900 16px var(--serif); }
 .endp .opts .opt.ghost { font: 700 15px var(--sans); background: var(--paper2); border-color: var(--edge2); color: var(--ink); }
 .endp .opts .wait { grid-column: 1 / -1; margin: 0; font-weight: 700; }
@@ -770,7 +808,7 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
 .e-jump { align-self: center; color: var(--paper); font-size: 13px; font-weight: 700; padding: 10px; text-decoration: none; }
 @media (min-width: 1100px) {
   .endp { order: 0; }
-  .e-hero { height: 340px; } .e-ht { left: 28px; bottom: 20px; } .e-w { font-size: 56px; }
+  .e-pic { height: 170px; } .e-w { font-size: 34px; } :lang(en) .e-w { font-size: 30px; } .e-name { font-size: 44px; } .e-stamp { width: 84px; height: 84px; font-size: 28px; } .e-sub { font-size: 16px; }
   .tbl.end .e-mark { display: none; } .e-jump { display: none; }
   .endp .opts { max-width: 420px; }
 }

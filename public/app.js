@@ -166,12 +166,29 @@ if (typeof document !== "undefined") {
     const tipsSeen = () => (tips.off ? ["off"] : tips.seen);
     const tipsNow = () => (card || hoff || count || pendingCount || rep.active() || !session || !session.st || session.tut ? ["off"] : tipsSeen());
     const tipShown = () => !!(session && session.st && !session.tut && Solo.tipFor(session, Solo.choices(session, code), code, tipsNow()));
+    // The end page (#94): this device's record, counted once for each game the first time its end page shows (the saved ids keep a
+    // reload, or opening the same game again, from counting it twice), and the address a share points at.
+    const REC = "p2000.record";
+    let memRec = null; // (kept in the page too: with no storage a redraw must not count the game again)
+    const readRec = () => { if (memRec) return memRec; try { const r = JSON.parse(localStorage.getItem(REC)); if (r && Array.isArray(r.seats) && Array.isArray(r.seen)) return r; } catch { /* none */ } return { games: 0, wins: 0, streak: 0, seats: [0, 0, 0], seen: [] }; };
+    const endOpts = () => {
+      if (!session || !session.st || session.tut || session.st.phase !== "end") return {};
+      const id = session.seed + ":" + session.seat + ":" + session.level, r = readRec();
+      if (!r.seen.includes(id)) {
+        const won = session.st.result.winner === session.seat;
+        r.games++; if (won) { r.wins++; r.seats[session.seat]++; r.streak = 0; } else r.streak++;
+        r.seen = [...r.seen, id].slice(-300);
+        try { localStorage.setItem(REC, JSON.stringify(r)); } catch { /* private mode: counted for this page only */ }
+        memRec = r;
+      }
+      return { record: { games: r.games, wins: r.wins, streak: r.streak, seats: r.seats }, shareUrl: location.origin + location.pathname };
+    };
     const draw = () => {
       syncUrl();
       hear();
       // The tutorial's "player board" step is about the hand and the bag: on a phone that board shows them while it is on.
       const boardStep = !!(session.tut && Tut.step(session, code).id === "board");
-      drawInto(stage, Solo.screen(session, code, { feedOpen: ui.feed, raise: ui.raise, sel: ui.sel, picks: ui.picks, help: ui.help, moves: ui.moves, confirm: ui.confirm, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow, turnCard: !!card && !card.out, cardAge: card ? performance.now() - card.t0 : 0, handoff: hoff && !hoff.out ? hoff.seat : undefined, handoffAge: hoff ? performance.now() - hoff.t0 : 0, tipsSeen: tipsNow(), ...stepOpt() }), { seat: boardStep ? session.seat : ui.seat, menu: menu.isOpen() });
+      drawInto(stage, Solo.screen(session, code, { feedOpen: ui.feed, raise: ui.raise, sel: ui.sel, picks: ui.picks, help: ui.help, moves: ui.moves, confirm: ui.confirm, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow, turnCard: !!card && !card.out, cardAge: card ? performance.now() - card.t0 : 0, handoff: hoff && !hoff.out ? hoff.seat : undefined, handoffAge: hoff ? performance.now() - hoff.t0 : 0, tipsSeen: tipsNow(), ...stepOpt(), ...endOpts() }), { seat: boardStep ? session.seat : ui.seat, menu: menu.isOpen() });
       if (finished()) Count.addReplay(stage, T, startCount);
       $("#solo").classList.add("intable");
       $("#quit").hidden = false;
@@ -313,6 +330,24 @@ if (typeof document !== "undefined") {
         if (d.tipOff != null) tips = { ...tips, off: true };
         else if (id && !tips.seen.includes(id)) tips = { ...tips, seen: [...tips.seen, id] };
         tipsSave(); Sound.play("tap"); pump();
+      } else if (d.next) {
+        // The next challenge (#94): a new game at once, the seat, the level and the advisor as the button says.
+        const n = { seat: session.seat, level: session.level, advisor: !!session.advisor }, [kind, val] = d.next.split(":");
+        if (kind === "seat") n.seat = +val; else if (kind === "level") n.level = +val; else if (kind === "advisor") n.advisor = true;
+        const seed = crypto.getRandomValues(new Uint32Array(1))[0];
+        store.set(SETUP, { seat: n.seat, level: n.level }); if (n.advisor) store.set(ADV, true);
+        session = Solo.setAdvisor(Solo.advance(Solo.newSolo({ seat: n.seat, level: n.level, seed })), n.advisor);
+        ui = { feed: deskNow(), raise: false, sel: null, picks: [], help: null, moves: false, confirm: null, county: null, seat: null, narrow: narrowNow() };
+        dropHand(); handSeen = null;
+        save(); pump(); window.scrollTo(0, 0);
+      } else if (d.shareText != null) {
+        const data = { text: d.shareText, url: d.shareUrl }, copied = d.copied;
+        if (navigator.share) { Promise.resolve().then(() => navigator.share(data)).catch(() => { /* closed without sharing */ }); }
+        else {
+          const done = () => notice(copied), line = data.text + " " + data.url;
+          const old = () => { const a = document.createElement("textarea"); a.value = line; a.setAttribute("readonly", ""); a.style.cssText = "position:fixed;top:0;opacity:0"; document.body.appendChild(a); a.select(); let ok = false; try { ok = document.execCommand("copy"); } catch { /* none */ } a.remove(); if (ok) done(); };
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(line).then(done, old); else old();
+        }
       } else if (d.tut) {
         // The tutorial's bubble: next, or out of the tutorial (what is left is a normal game).
         session = d.tut === "skip" ? Tut.skip(session) : Tut.next(session);

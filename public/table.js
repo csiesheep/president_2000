@@ -10,7 +10,7 @@ import { EVENTS, localCards, CANDIDATE_CARDS } from "./shared/cards.js";
 import { taiwanMap, popPlace, artSet } from "./map.js";
 import { stubHTML } from "./stub.js";
 import { mustAct } from "./shared/engine.js";
-import { moraleOf } from "./shared/recap.js";
+import { moraleOf, recap } from "./shared/recap.js";
 
 const CARD = Object.fromEntries(EVENTS.concat(localCards()).map((c) => [c.id, c]));
 const NO = [5, 1, 2]; // the ballot numbers on the 1999 flags: 陳 5, 宋 1, 連 2
@@ -1194,7 +1194,7 @@ function endHTML(v, x, o) {
   const me = Number.isInteger(v.seat) && v.seat >= 0 && v.seat <= 2 ? v.seat : -1;
   const rows = order.map((p) => `<div class="rrow s${p}" data-result="${SEATS[p]}"><div class="rr1"><b class="no">${NO[p]}</b><span class="rn">${esc(x.full(p))}</span>${p === me ? `<em class="me">${esc(x.tr("map.you"))}</em>` : ""}<span class="rv"><b>${numOf(r.votes[p])}</b><small>${esc(x.tr(r.votes[p] ? "end.vu" : "end.vu0"))}</small></span></div>` +
     `<div class="rr2"><span class="blk">${esc(x.tr("end.blk", { n: r.votes[p] }))}</span><span class="bt"><i style="width:${Math.round((r.votes[p] / top) * 100)}%"></i></span><b class="pc">${pctOf(tenths(p))}</b></div></div>`).join("");
-  const lead = diff > 0 ? x.tr("end.lead", { who: x.full(w), other: x.full(second), n: diff, wan: diff * 10, votes: fullVotes(diff) }) : x.tr("end.marginTie", { who: x.full(w), other: x.full(second) });
+  const lead = diff > 0 ? x.tr("end.lead", { who: x.full(w), other: x.full(second), n: diff, wan: diff * 10, votes: fullVotes(diff) }) : x.tr("end.marginTie", { who: x.full(w), other: x.full(second), rule: x.tr("end.tieWord." + recap(v).decidedBy) });
   const nonvote = x.tr("end.nonvote", { n: away, wan: away * 10, votes: fullVotes(away) });
   const HIST = [393, 368, 231]; // 2000's real shares (陳, 宋, 連), in tenths of a percent
   const hist = SHOW_ORDER.map((p) => `<div class="hcell s${p}"><b class="hn">${esc(x.full(p))}</b><span>${esc(x.tr("end.nowL"))} <b>${pctOf(tenths(p))}</b></span><span>${esc(x.tr("end.thenL"))} <b>${pctOf(HIST[p])}</b></span></div>`).join("");
@@ -1231,14 +1231,108 @@ function endHTML(v, x, o) {
   void S;
   const det = (id, title, body) => `<details class="e-det" data-keep="${id}"><summary>${esc(title)}</summary>${body}</details>`;
   const wname = esc(x.full(w));
-  return `<div class="endp s${w}">` +
-    `<section class="e-hero"><img data-end-hero src="art/end/${SEATS[w]}.webp" alt="${esc(x.tr("end.heroAlt", { who: x.full(w) }))}" decoding="async"><i class="e-shade" aria-hidden="true"></i>` +
-    `<div class="e-ht"><span class="e-k">${esc(x.tr("end.heroKicker"))}</span><h2 class="e-w" data-winner="${SEATS[w]}">${wname}</h2><span class="e-l">${esc(x.tr("end.heroLine", { votes: votesOf(r.votes[w]), share: pctOf(tenths(w)) }))}</span></div>` +
-    `<span class="e-stamp" aria-hidden="true"${x.tr("end.stamp").length > 2 ? ' style="font-size:17px"' : ""}>${esc(x.tr("end.stamp"))}</span></section>` +
+  // The extra (#94): who won and by how much, why, the count's tie-break, the votes turn by turn, where the blocks came from.
+  const rc = recap(v);
+  const kind = me === w ? "won" : me >= 0 && r.votes[me] === r.votes[w] ? "tie" : "lost";
+  const tied = [0, 1, 2].filter((p) => r.votes[p] === r.votes[w]);
+  const ruleWord = x.tr("end.tieWord." + rc.decidedBy);
+  let sub, title = x.tr("end.elected", { who: x.full(w) });
+  if (me < 0) sub = lead;
+  else if (kind === "won") sub = diff > 0 ? x.tr("end.marginWon", { other: x.full(second), n: diff, wan: diff * 10, votes: fullVotes(diff) }) : x.tr("end.marginWonTie", { other: x.full(second), rule: ruleWord });
+  else if (kind === "tie") { sub = x.tr("end.marginTied", { who: x.short(w), n: r.votes[w], wan: r.votes[w] * 10, votes: fullVotes(r.votes[w]) }); title += (x.lang === "en" ? ". " : "，") + x.tr("end.closeOne"); }
+  else { const d = r.votes[w] - r.votes[me]; sub = x.tr("end.marginLost", { who: x.full(w), n: d, wan: d * 10, votes: fullVotes(d) }); }
+  const paper = `<section class="e-paper" data-end-paper><div class="e-mast"><b class="e-name">${esc(x.S.tc.paper)}</b><span class="e-extra">${esc(x.tr("end.extra"))}</span><span class="e-date">${esc(x.tr("end.paperDate"))}</span></div>` +
+    `<figure class="e-pic e-hero"><img data-end-hero src="art/end/${SEATS[w]}.webp" alt="${esc(x.tr("end.heroAlt", { who: x.full(w) }))}" decoding="async"></figure>` +
+    `<div class="e-head" data-end-head data-end-winner="${SEATS[w]}" data-end-me="${me >= 0 ? SEATS[me] : ""}" data-end-result="${me >= 0 ? kind : "lost"}">` +
+    `${me < 0 || kind === "won" ? `<span class="e-stamp" aria-hidden="true"${x.tr("end.stamp").length > 2 ? ' style="font-size:15px"' : ""}>${esc(x.tr("end.stamp"))}</span>` : ""}` +
+    `<div class="e-ht"><span class="e-k">${esc(x.tr("end.heroKicker"))}</span><h2 class="e-w" data-winner="${SEATS[w]}">${esc(title)}</h2><p class="e-sub">${esc(sub)}</p></div></div></section>`;
+  // The tie-break: every rule up to the one that decided it, with each tied seat's number.
+  let tieBox = "";
+  if (kind === "tie") {
+    const RULES = ["votes", "leads", "momentum", "order"], upto = RULES.slice(0, RULES.indexOf(rc.decidedBy) + 1);
+    const prio = isV06(v) && Array.isArray(v.order) && v.order.length === 3 ? v.order : [0, 1, 2].map((i) => ((v.initiative >= 0 ? v.initiative : 0) + i) % 3);
+    let pool = tied;
+    const rowsT = upto.map((rule) => {
+      const here = rule === rc.decidedBy, mine = pool;
+      let cells, extra = "";
+      if (rule === "order") cells = prio.filter((p) => mine.includes(p)).map((p) => `<span class="tcell s${p}${p === w ? " win" : ""}">${esc(x.short(p))}${p === w ? " ✓" : ""}</span>`).join("");
+      else {
+        const arr = r[rule === "votes" ? "votes" : rule === "leads" ? "leads" : "momentum"];
+        const val = (p) => (rule === "momentum" && noMom(v) ? "—" : arr[p]);
+        cells = rule === "momentum" && noMom(v) ? `<span class="tcell">—</span>` : mine.map((p) => `<span class="tcell s${p}${here && p === w ? " win" : ""}">${esc(x.tr("end.tieCell", { who: x.short(p), n: val(p) }))}${here && p === w ? " ✓" : ""}</span>`).join("");
+        const m = Math.max(...mine.map((p) => arr[p]));
+        pool = mine.filter((p) => arr[p] === m);
+      }
+      if (here) {
+        if (rule === "leads") extra = x.tr("end.tieLeads", { who: x.short(w), d: r.leads[w] - r.leads[me] });
+        else if (rule === "momentum" && !noMom(v)) extra = x.tr("end.tieMom", { who: x.short(w), d: r.momentum[w] - r.momentum[me] });
+        else if (rule === "order") extra = x.tr("end.tieOrder", { who: x.short(w) });
+      }
+      return `<div class="trow${here ? " here" : ""}" data-tie-rule="${rule}"${here ? " data-decided-here" : ""}><span class="tl">${esc(x.tr("end.tieRule." + (rule === "momentum" && noMom(v) ? "noMom" : rule)))}</span><span class="tcs">${cells}</span>${here ? `<em class="td">${esc(x.tr("end.tieDecided"))}${extra ? ` · ${esc(extra)}` : ""}</em>` : ""}</div>`;
+    }).join("");
+    tieBox = `<section class="e-card e-tie" data-end-tie data-decided="${rc.decidedBy}"><h3>${esc(x.tr("end.tieTitle"))}</h3>${rowsT}</section>`;
+  }
+  // Why: the three sources where your blocks and the other's differ most (the runner-up when you won, else the winner).
+  const SRC = ["start", "act", "event", "debate", "canvass", "strategic", "endorse"];
+  const other = kind === "won" ? second : w;
+  let why = "";
+  if (me >= 0 && rc.sources) {
+    const items = SRC.map((k, i) => ({ k, i, a: rc.sources[me][k], b: rc.sources[other][k] })).filter((e) => e.a !== e.b)
+      .sort((p, o2) => Math.abs(o2.a - o2.b) - Math.abs(p.a - p.b) || p.i - o2.i).slice(0, 3);
+    const gifts = rc.gifts[me];
+    const giftLine = gifts.length ? `<p class="e-gift" data-end-gifts data-n="${gifts.length}">${esc(x.tr("end.gifts", { k: gifts.length, card: x.card(gifts[0].card), to: x.short(gifts[0].to) }))}</p>` : "";
+    if (items.length) {
+      why = `<section class="e-card e-why" data-end-why><h3>${esc(x.tr(kind === "won" ? "end.whyWon" : "end.whyLost"))}</h3><p class="e-hint">${esc(x.tr("end.whySub", { other: x.short(other) }))}</p><ul>` +
+        items.map((e) => `<li data-why="${e.k}" data-me="${e.a}" data-other="${e.b}"><b class="dd ${e.a > e.b ? "up" : "dn"}">${e.a > e.b ? "+" : "−"}${Math.abs(e.a - e.b)}</b><span>${esc(x.tr("end.whyLine", { label: x.tr("end.src." + e.k), me: e.a, other: x.short(other), them: e.b }))}</span></li>`).join("") + `</ul>${giftLine}</section>`;
+    } else why = giftLine ? `<section class="e-card e-why">${giftLine}</section>` : "";
+  } else if (me >= 0 && rc.gifts[me].length) {
+    const gifts = rc.gifts[me];
+    why = `<section class="e-card e-why"><p class="e-gift" data-end-gifts data-n="${gifts.length}">${esc(x.tr("end.gifts", { k: gifts.length, card: x.card(gifts[0].card), to: x.short(gifts[0].to) }))}</p></section>`;
+  }
+  // The votes turn by turn (the nine rows of recap().trend; none when an old save has no row), and where your blocks came from.
+  let flow = "";
+  const tr9 = rc.trend;
+  if (tr9.every((t) => t.votes)) {
+    const all = tr9.flatMap((t) => t.votes), lo = Math.min(...all), hi = Math.max(...all), span = Math.max(hi - lo, 1);
+    const X0 = 14, X1 = 336, Y0 = 10, Y1 = 78, px = (i) => (X0 + ((X1 - X0) * i) / 8).toFixed(1), py = (val) => (Y1 - ((val - lo) / span) * (Y1 - Y0)).toFixed(1);
+    const lines = SHOW_ORDER.concat([]).map((p) => `<polyline class="s${p}" data-trend="${SEATS[p]}" data-v="${tr9.map((t) => t.votes[p]).join(",")}" points="${tr9.map((t, i) => `${px(i)},${py(t.votes[p])}`).join(" ")}" fill="none" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`).join("");
+    const key = SHOW_ORDER.map((p) => `<span class="s${p}"><i></i>${esc(x.short(p))}</span>`).join("");
+    flow += `<div class="e-trend" data-end-trend><p class="e-hint">${esc(x.tr("end.trendTitle"))}</p><svg viewBox="0 0 350 100" role="img" aria-label="${esc(x.tr("end.trendAria"))}"><line x1="${X0}" y1="84" x2="${X1}" y2="84" class="ax"/><line x1="${px(8)}" y1="4" x2="${px(8)}" y2="84" class="ax dash"/>${lines}<text x="${px(8)}" y="96" text-anchor="end">${esc(x.tr("end.trendLast"))}</text></svg><div class="e-key">${key}</div></div>`;
+  }
+  if (me >= 0 && rc.sources) {
+    const mine = rc.sources[me], list = SRC.filter((k) => mine[k] > 0), tot = list.reduce((s, k) => s + mine[k], 0) || 1;
+    if (list.length) {
+      flow += `<div class="e-from s${me}" data-end-src><p class="e-hint">${esc(x.tr("end.srcTitle", { n: r.votes[me] }))}</p><div class="e-bar" aria-hidden="true">${list.map((k) => `<i style="flex:${mine[k]};opacity:${(1 - SRC.indexOf(k) * 0.11).toFixed(2)}"></i>`).join("")}</div>` +
+        `<ul>${list.map((k) => `<li data-src="${k}" data-n="${mine[k]}"><i style="opacity:${(1 - SRC.indexOf(k) * 0.11).toFixed(2)}" aria-hidden="true"></i>${esc(x.tr("end.src." + k))} <b>${mine[k]}</b></li>`).join("")}</ul></div>`;
+    }
+  }
+  const flowCard = flow ? `<section class="e-card e-flow">${flow}</section>` : "";
+  // This device's record and the next challenge (a solo game; a room has neither).
+  let rec = "", next = "", share = "";
+  if (o.solo && me >= 0) {
+    const rcd = o.record;
+    if (rcd) rec = `<section class="e-card e-rec" data-end-record data-games="${rcd.games}" data-wins="${rcd.wins}" data-streak="${rcd.streak}"><div><b>${esc(x.tr("end.recTitle"))}</b> ${esc(x.tr("end.rec", { games: rcd.games, wins: rcd.wins }))}<span class="rby">${esc(x.tr("end.recBy", { a: rcd.seats[0], b: rcd.seats[1], c: rcd.seats[2] }))}</span></div><div class="rsub">${rcd.streak > 0 ? `<b>${esc(x.tr("end.recStreak", { n: rcd.streak }))}</b> · ` : ""}${esc(x.tr("end.recDev"))}</div></section>`;
+    const btns = [], hardest = Object.keys(x.d.bots).length - 1, wins = (rcd && rcd.seats) || [0, 0, 0];
+    if (kind === "won") {
+      const others = SHOW_ORDER.filter((p) => p !== me).sort((a, b) => wins[a] - wins[b]);
+      btns.push(`<button type="button" class="nb pri s${others[0]}" data-next="seat:${others[0]}">${esc(x.tr("end.nextSeat", { name: x.full(others[0]) }))}</button>`);
+      if (o.solo.level < hardest) btns.push(`<button type="button" class="nb" data-next="level:${o.solo.level + 1}">${esc(x.tr("end.nextLevel", { bot: x.d.bots[o.solo.level + 1] }))}</button>`);
+    } else {
+      btns.push(`<button type="button" class="nb pri s${me}" data-next="again">${esc(x.tr("end.nextAgain"))}</button>`);
+      if (!o.solo.advisor) btns.push(`<button type="button" class="nb" data-next="advisor">${esc(x.tr("end.nextAdvisor"))}</button>`);
+    }
+    next = `<section class="e-next" data-end-next><p class="e-nl">${esc(x.tr(kind === "won" ? "end.nextWon" : "end.nextLost"))}</p><div class="nbs">${btns.join("")}</div></section>`;
+    const sep = x.tr("end.shareSep"), url = (o.shareUrl || "") + (x.lang === "en" ? "?lang=en" : "");
+    const text = x.tr("end.shareText", { title: x.d.title, who: x.full(w), votes: SHOW_ORDER.concat([]).sort((a, b) => r.votes[b] - r.votes[a] || (b === w) - (a === w)).map((p) => x.tr("end.shareV", { who: x.short(p), n: numOf(r.votes[p]) })).join(sep) });
+    share = `<button type="button" class="opt ghost" data-end-share data-share-text="${esc(text)}" data-share-url="${esc(url)}" data-copied="${esc(x.tr("end.copied"))}">${esc(x.tr("end.share"))}</button>`;
+  }
+  const againBtn = o.again ? `<button type="button" class="opt" data-msg="${esc(JSON.stringify(o.again.data))}">${esc(o.again.label)}</button>` : o.noAgain ? (o.againWait ? `<p class="sub wait">${esc(o.againWait)}</p>` : "") : `<button type="button" class="opt ghost" data-act="again">${esc(x.tr("end.again"))}</button>`;
+  return `<div class="endp s${w}">${paper}` +
     `<section class="e-res" aria-label="${esc(x.tr("end.resTitle"))}"><div class="e-rh"><h3>${esc(x.tr("end.resTitle"))}</h3><span>${esc(x.tr("end.turnout", { pct: pctOf(Math.round((cast / total) * 1000)), n: cast, all: total }))}</span></div>${rows}` +
     `<p class="e-note">${esc(lead)}${esc(nonvote)}</p></section>` +
+    `${tieBox}${why}${flowCard}${rec}${next}` +
+    `<div class="opts">${againBtn}${share}<a class="opt ghost" href="./${q}">${esc(x.tr("end.home"))}</a></div>` +
     `${you}<section class="e-cmp" aria-label="${esc(x.tr("end.cmpTitle"))}"><h3>${esc(x.tr("end.cmpTitle"))}</h3><div class="hgrid">${hist}</div><p>${esc(x.tr("end.turnCmp", { now: pctOf(Math.round((cast / total) * 1000)), then: "82.7%" }))}</p></section>` +
-    `<div class="opts">${o.again ? `<button type="button" class="opt" data-msg="${esc(JSON.stringify(o.again.data))}">${esc(o.again.label)}</button>` : o.noAgain ? (o.againWait ? `<p class="sub wait">${esc(o.againWait)}</p>` : "") : `<button type="button" class="opt" data-act="again">${esc(x.tr("end.again"))}</button>`}<a class="opt ghost" href="./${q}">${esc(x.tr("end.home"))}</a></div>` +
     `<div class="e-dets">${det("day", x.tr("end.dayTitle"), `<ul class="day">${lines.join("")}</ul>`)}${det("lead", x.tr("end.leadTitle"), `<div class="leads">${leadRows}</div>`)}</div>` +
     `<a class="e-jump" href="#end-board">${esc(x.tr("end.board"))}</a></div>`;
 }

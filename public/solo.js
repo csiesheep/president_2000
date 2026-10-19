@@ -286,7 +286,7 @@ export function screen(session, lang, opts = {}) {
   const html = tableHTML(v, d.choices, lang, {
     feed: session.feed, wait: botsToMove(session), advisor: { on: !!session.advisor, why: d.why },
     undo: session.tut || botsToMove(session).length ? null : canUndo(session) ? "on" : session.drew ? "off" : null,
-    recent: recentLines(rec, v, x), rec, mineActs: (session.mine && session.mine.lines) || [], result: resultBlock(session.mine, x), autoNote: session.autoNote || null, changed, ...opts, ...(session.tut && opts.county == null && boxCounty(session) != null ? { county: boxCounty(session) } : {}), turnCard: session.tut ? false : opts.turnCard, tip: tipFor(session, d.choices, lang, opts.tipsSeen),
+    recent: recentLines(rec, v, x), rec, solo: session.tut ? null : { level: session.level, advisor: !!session.advisor }, mineActs: (session.mine && session.mine.lines) || [], result: resultBlock(session.mine, x), autoNote: session.autoNote || null, changed, ...opts, ...(session.tut && opts.county == null && boxCounty(session) != null ? { county: boxCounty(session) } : {}), turnCard: session.tut ? false : opts.turnCard, tip: tipFor(session, d.choices, lang, opts.tipsSeen),
   });
   return session.tut ? decorate(html, session, lang, opts) : html;
 }
