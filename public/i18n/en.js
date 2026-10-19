@@ -314,6 +314,7 @@ export default {
       conn: {
         connecting: "Connecting…", retry: "Connection lost. Retrying in {n} s…", retrying: "Reconnecting…",
         leave: "Leave the room", leaveConfirm: "Leave this room? A bot will take your seat.",
+        elsewhere: "This seat is open in another tab.", takeover: "Continue here",
         unknownError: "Something unexpected happened. Refresh the page and try again.",
       },
     },

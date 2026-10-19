@@ -314,6 +314,7 @@ export default {
       conn: {
         connecting: "連線中…", retry: "連線中斷，{n} 秒後重試…", retrying: "重新連線中…",
         leave: "離開房間", leaveConfirm: "離開這個房間？你的位子會由 bot 接手。",
+        elsewhere: "這個座位在另一個分頁。", takeover: "在這裡繼續",
         unknownError: "發生了預期之外的狀況。請重新整理頁面再試一次。",
       },
     },
