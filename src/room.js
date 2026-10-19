@@ -4,6 +4,7 @@
 // (each socket tagged with its conn id), the room in storage under "room", the
 // one alarm at room.alarmAt, and deleting everything once room.dead.
 import { newRoom, handle } from "./roomcore.js";
+import { LIMITS, step } from "./limits.js";
 
 const MSG_MAX = 16 * 1024; // a move is a few hundred bytes
 
@@ -51,7 +52,11 @@ export class Room {
   async fetch(request) {
     const url = new URL(request.url);
     const room = await this.load();
-    if (url.pathname.endsWith("/status")) return Response.json({ exists: !!room });
+    if (url.pathname.endsWith("/status")) {
+      // member (#101): the token is one this room handed out (the Worker never limits a player coming back)
+      const token = url.searchParams.get("token");
+      return Response.json({ exists: !!room, member: !!(room && token && Object.prototype.hasOwnProperty.call(room.players, token)) });
+    }
     if (request.headers.get("Upgrade") !== "websocket") return new Response("Expected a WebSocket", { status: 426 });
 
     const pair = new WebSocketPair();
@@ -79,6 +84,12 @@ export class Room {
   async webSocketMessage(ws, raw) {
     const conn = this.connOf(ws);
     if (!conn) return;
+    // #101: at most LIMITS.msg per connection, before the core sees it; every message counts, the ones it cannot read
+    // too (a room that only counted what it understood could be flooded with nonsense). The count rides on the socket's
+    // attachment, so it outlives the object being evicted (hibernation).
+    const att = ws.deserializeAttachment() || {}, r = step(att.msgs, Date.now(), LIMITS.msg);
+    ws.serializeAttachment({ ...att, msgs: r.times });
+    if (!r.ok) { try { ws.send(JSON.stringify({ t: "error", code: "rate_limited" })); } catch {} return; }
     let data = null;
     if (typeof raw === "string" && raw.length <= MSG_MAX) { try { data = JSON.parse(raw); } catch {} }
     await this.run({ type: "msg", conn, data });

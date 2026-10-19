@@ -77,7 +77,7 @@ export function mount({ T, lang, qs, store, $ }) {
   });
 
   // ---- the room
-  let roomCode = null, name = "", client = RC.setAdvisor(RC.newClient(), store.get(ADV_KEY) === true), sock = null, attempts = 0, retry = null, tick = null, terminal = false, gone = false, elsewhere = false, kept = null;
+  let roomCode = null, name = "", client = RC.setAdvisor(RC.newClient(), store.get(ADV_KEY) === true), sock = null, attempts = 0, retry = null, tick = null, terminal = false, gone = false, blocked = false, elsewhere = false, kept = null;
   let ui = { feed: deskNow(), raise: false, county: null, seat: null, narrow: narrowNow(), sel: null, picks: [], help: null, moves: false, confirm: null, draft: "", level: [0, 1, 2, 3].includes(store.get(LEVEL_KEY)) ? store.get(LEVEL_KEY) : 0 };
 
   const say = (text) => { banner.textContent = text || ""; banner.hidden = !text; };
@@ -154,7 +154,7 @@ export function mount({ T, lang, qs, store, $ }) {
     if (!gone) countTick();
     if (gone) {
       $("#room").classList.remove("intable");
-      stage.innerHTML = `<section class="lobby setup"><p class="rerr" role="alert">${esc(T.errors.no_room)}</p><a class="big go" href="${esc(q({ join: "1" }))}">${esc(F.joinGo)}</a></section>`;
+      stage.innerHTML = `<section class="lobby setup"><p class="rerr" role="alert">${esc(blocked ? T.errors.rate_limited : T.errors.no_room)}</p><a class="big go" href="${esc(q({ join: "1" }))}">${esc(F.joinGo)}</a></section>`;
       return;
     }
     const cv = cardView();
@@ -250,6 +250,10 @@ export function mount({ T, lang, qs, store, $ }) {
         if (kept !== sig || msg.t === "hello") { kept = sig; keep.set(roomCode, client.token, name); }
       }
       if (msg.t === "error" && msg.code === "no_room") { terminal = gone = true; store.del(roomKey(roomCode)); keep.del(roomCode); s.close(); }
+      // #101: refused at the door (this address tried too many codes, or opened too many rooms): say so and stay put; no
+      // reconnecting by itself, which would only count as more tries. A rate_limited after hello (a flood) is an ordinary error.
+      if (msg.t === "hello") s.met = true;
+      if (msg.t === "error" && msg.code === "rate_limited" && !s.met) { terminal = gone = blocked = true; clearTimeout(retry); clearInterval(tick); say(""); s.close(); }
       draw();
     };
     s.onclose = (ev) => {

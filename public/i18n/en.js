@@ -627,6 +627,7 @@ export default {
     empty_chat: "An empty message can't be sent. Type something first.",
     not_ended: "This game isn't over yet. The host can start another one once it ends.",
     no_room: "There's no room with that code. Check it and try again.",
+    rate_limited: "Too many tries. Wait a moment and try again; if joining or opening a room was refused, come back in a few minutes.",
   },
   // English card text for the 70 events, keyed by the id in cards.js; local cards share one template ({county} is the county's English name).
   cards: {
