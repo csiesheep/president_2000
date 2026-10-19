@@ -360,7 +360,8 @@ c16("聊天：送出去每個人都收到（名字、座位、文字）；前後
   w.open("C", "Cy");
   const hist = lastChat(w, "C");
   r = eq(hist && hist.lines.map((l) => l.text.slice(0, 6)).join("|"), "誰要當阿扁？|xxxxxx", "C 連上時收到的聊天紀錄"); if (r !== true) return r;
-  for (let i = 0; i < 60; i++) w.msg("A", { t: "chat", text: `line ${i}` });
+  // one line every 2.1 s: #101 allows a player 5 lines within any 10 s
+  for (let i = 0; i < 60; i++) w.msg("A", { t: "chat", text: `line ${i}` }, w.now + 2100);
   w.open("D", "Di");
   r = eq(lastChat(w, "D").lines.length, 50, "D 連上時收到的聊天紀錄條數"); if (r !== true) return r;
   return ok(true, "廣播、清理、截斷、空字串、紀錄 50 條");
