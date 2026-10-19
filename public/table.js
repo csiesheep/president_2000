@@ -10,6 +10,7 @@ import { EVENTS, localCards, CANDIDATE_CARDS } from "./shared/cards.js";
 import { taiwanMap, popPlace, artSet } from "./map.js";
 import { stubHTML } from "./stub.js";
 import { mustAct } from "./shared/engine.js";
+import { moraleOf } from "./shared/recap.js";
 
 const CARD = Object.fromEntries(EVENTS.concat(localCards()).map((c) => [c.id, c]));
 const NO = [5, 1, 2]; // the ballot numbers on the 1999 flags: 陳 5, 宋 1, 連 2
@@ -828,8 +829,48 @@ function fxPrompt(v, x) {
   else if (s.op === "convert") line = x.tr("p.fxConvert", { left });
   else if (s.op === "anyIssue") line = s.target < 0 ? x.tr("p.fxIssue", { n: s.n, who: x.short(s.p) }) : x.tr("p.fxIssueRemove", { n: s.n, who: x.short(s.target) });
   else line = x.tr(noMom(v) ? "p.fxTvbsMorale" : "p.fxTvbs");
-  return `<p class="pr"><b>${esc(cardName)}</b> · ${esc(line)}</p><p class="ct">${esc(x.cardText(pd.fx.card))}</p>`;
+  // #92: when a rival played this card for CP the head line says so, in the same one line (the map's height is what the bar leaves it, #89)
+  const by = playedBy(v), why = by < 0 ? "" : ` · ${esc(x.tr("p.triggerNote", { who: x.short(by) }))}`;
+  return `<p class="pr"${by < 0 ? "" : " data-trigger-note"}><b>${esc(cardName)}</b>${why} · ${esc(line)}</p><p class="ct">${esc(x.cardText(pd.fx.card))}</p>`;
 }
+
+// #92: a rival played your event for CP and it happens for you: who, and which card (the pending effect is that card's).
+function playedBy(v) {
+  const card = v.pending && v.pending.fx && v.pending.fx.card, log = v.log || [];
+  if (!card || !CARD[card] || SEATS.indexOf(CARD[card].owner) !== v.seat) return -1;
+  const ti = log.map((e) => e.t === "trigger" && e.card === card && e.seat === v.seat).lastIndexOf(true);
+  if (ti < 0) return -1;
+  const pl = [...log.slice(0, ti)].reverse().find((e) => e.t === "play" && e.card === card);
+  return !pl || pl.seat === v.seat ? -1 : pl.seat;
+}
+
+// #92: a rival's event card opened where it can be played for CP: the event happens for its owner, so say what they get, how the morale
+// of each seat the card moves goes (now → after, held to 20–80, recap.js moraleOf) and, when the owner's morale rises and there is a
+// block of theirs to take, what that does to your chance of taking it (the way table.js's luckNow / checkRate work it out).
+const clampMorale = (n) => Math.max(20, Math.min(80, n));
+function giftNote(v, x, sel) {
+  const c = CARD[sel], q = c ? SEATS.indexOf(c.owner) : -1;
+  if (q < 0 || q === v.seat || !v.luck) return "";
+  const delta = [0, 0, 0];
+  for (const [who, d] of moraleOf(sel)) for (const p of who === "all" ? [0, 1, 2] : typeof who === "number" ? [who] : []) delta[p] += d;
+  const parts = [], order = [q, ...[0, 1, 2].filter((p) => p !== q)];
+  for (const p of order) {
+    if (!delta[p]) continue;
+    const b = v.luck[p], a = clampMorale(b + delta[p]);
+    if (a !== b) parts.push(`${x.short(p)} ${b}% → ${a}%`);
+  }
+  let rate = "";
+  if (delta[q] > 0 && v.counties.some((k) => k.blocks.some((b) => b.o === q))) {
+    const mine = luckNow(v, v.seat), th = luckNow(v, q), th2 = clampMorale(v.luck[q] + delta[q]) + (th - v.luck[q]);
+    const r0 = Math.round((100 * mine) / (mine + th)), r1 = Math.round((100 * mine) / (mine + th2));
+    if (r0 !== r1) rate = x.tr("p.giftRate", { who: x.short(q), a: r0, b: r1 });
+  }
+  const t = (k, vars) => esc(x.tr(k, vars));
+  return `<div class="gift" data-gift="${KEYS[q]}"><p class="gh"><b>${t("p.giftTitle", { who: x.short(q) })}</b> ${t("p.giftLead", { who: x.short(q), cp: c.cp })}</p>` +
+    `<p class="gg">${t("p.giftGets", { who: x.short(q), text: x.cardText(sel) })}</p>` +
+    `<p class="gm">${parts.length ? t("p.giftMorale", { list: parts.join(" · ") }) : t("p.giftNoMove")}</p>${rate ? `<p class="gr">${esc(rate)}</p>` : ""}</div>`;
+}
+const KEYS = ["chen", "soong", "lien"];
 
 function prompt(v, ch, x) {
   const me = v.seat, pd = v.pending, t = (k, vars) => esc(x.tr(k, vars));
@@ -933,7 +974,8 @@ function sheetHTML(v, ch, x, sel, auto = false) {
   const note = auto && { debate: "p.autoDebate", election: "p.autoElection", action: "p.autoAction" }[v.phase]; // #69: what is going on, for a sheet that opened by itself
   return (note ? `<p class="pr" data-auto-note>${esc(x.tr(note))}</p>` : "") + `<div class="sheet"><button type="button" class="pc-hit" data-camp="${CARD[sel].owner === "local" ? "local" : CARD[sel].owner}" data-sel="${esc(sel)}">${cardFace(sel, x)}</button><div class="sh-r">` +
     (moves.length ? `<div class="opts">${moves.map((c) => btn(v, c, "", x)).join("")}</div>` : `<p class="ct">${esc(x.tr("p.notNow"))}</p>`) +
-    (auto ? "" : `<button type="button" class="back" data-sel="">${esc(x.tr("p.back"))}</button>`) + `</div></div>`;
+    (auto ? "" : `<button type="button" class="back" data-sel="">${esc(x.tr("p.back"))}</button>`) + `</div></div>` +
+    (moves.some((c) => c.move.type === "play" && c.move.mode === "cp") ? giftNote(v, x, sel) : "");
 }
 
 // ---------------------------------------------------------------- hand bar
@@ -982,7 +1024,7 @@ function debateHTML(v, x) {
   }
   const cols = ISSUES.map((name) => {
     const st = settles.find((e) => e.issue === name);
-    const head = st ? x.tr("debate.settled", { who: x.short(st.seat), n: st.cubes }) : x.tr("debate.open");
+    const head = st ? settleWords("debate.settled", v, x, name, { who: x.short(st.seat) }) : x.tr("debate.open");
     const rows = SHOW_ORDER.map((p) => {
       const cards = shown[name][p];
       const pick = d.picks[p];
@@ -998,6 +1040,28 @@ function debateHTML(v, x) {
 }
 
 // ---------------------------------------------------------------- the record
+
+// #92: what a settled issue really got. The engine settles an issue (the log's "settle") and then the winner places the cubes one by
+// one (the log's "place", until the award is spent or no free block is left), so the count a settle was logged with (2 / 3 / 4) is only
+// what the winner may place. → the cubes put down so far, or null while the winner is still placing.
+export function forumPlaced(v, issue) {
+  const log = v && v.log;
+  if (!log) return null;
+  const i = log.findIndex((e) => e.t === "debate" && e.step === "settle" && e.issue === issue);
+  if (i < 0) return null;
+  if (v.debate && v.debate.award && v.debate.award.issue === issue) return null;
+  let n = 0;
+  for (const e of log.slice(i + 1)) {
+    if (e.t === "debate" && (e.step === "settle" || e.step === "end")) break;
+    if (e.t === "debate" && e.step === "place") n++;
+  }
+  return n;
+}
+// The words for a settle: the number really placed, "no block to place", or "placing" while it goes on. key: f.settle / debate.settled.
+const settleWords = (key, v, x, issue, vars) => {
+  const n = forumPlaced(v, issue);
+  return x.tr(n == null ? key + "Open" : n === 0 ? key + "None" : key, { ...vars, n });
+};
 
 export function feedLine(e, v, x) {
   const tr = x.tr, who = (p) => x.short(p);
@@ -1023,7 +1087,7 @@ export function feedLine(e, v, x) {
     case "pick": return tr("f.pick", { who: who(e.seat) });
     case "reveal": return tr("f.reveal", { who: who(e.seat), card: x.card(e.card), issue: x.issue(e.issue) });
     case "dead": return tr("f.dead", { who: who(e.seat), card: x.card(e.card), issue: x.issue(e.issue) });
-    case "settle": return tr("f.settle", { issue: x.issue(e.issue), who: who(e.seat), n: e.cubes });
+    case "settle": return settleWords("f.settle", v, x, e.issue, { issue: x.issue(e.issue), who: who(e.seat) });
     case "canvass": return tr("f.canvass", { who: who(e.seat), county: x.county(e.county) });
     case "convert": {
       if (!e.mom || !v || !v.luck) return tr("f.convert");
@@ -1085,10 +1149,18 @@ export function firstSayings(entries) {
 function feedHTML(v, x, o, lines = []) {
   const all = o.feed || [], keep = firstSayings(all);
   const feed = all.map((e, i) => ({ e, i })).slice(-30).reverse();
+  const hiddenPick = new Set(); // the rivals whose forum pick (its saying is in the feed) has not been turned over yet
+  all.forEach((e) => {
+    if (e.why && e.why.key === "debate_card") hiddenPick.add(e.seat);
+    else if ((e.k === "reveal" || e.k === "dead") && hiddenPick.has(e.seat)) hiddenPick.delete(e.seat);
+  });
   if (!feed.length && !o.chat && !lines.length) return "";
   const rows = feed.map(({ e, i }) => {
     const line = e.k === "say" ? "" : feedLine(e, v, x);
-    const say = keep.has(i) ? sayLine(e.why, line ? null : e.seat, x, noMom(v)) : "";
+    // #92: a rival's forum pick is face down until the reveal; what its team says names the issue, so it waits for the reveal too.
+    // (all of that seat's forum sayings wait: an older one may name the same issue.)
+    const faceDown = e.why && e.why.key === "debate_card" && e.seat !== v.seat && (hiddenPick.has(e.seat) || !!(v.debate && v.debate.picks && v.debate.picks[e.seat]));
+    const say = keep.has(i) && !faceDown ? sayLine(e.why, line ? null : e.seat, x, noMom(v)) : "";
     if (!line && !say) return "";
     return `<li class="${e.seat != null ? "s" + e.seat : "sys"}${e.k === "turn" ? " turn" : ""}">${line ? esc(line) : ""}${say ? `<span class="say">${esc(say)}</span>` : ""}</li>`;
   }).join("");

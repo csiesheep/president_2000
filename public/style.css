@@ -1429,3 +1429,9 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
     .tbl:not(.end) .t-lead { right: min(6px, calc(6 * var(--u))); bottom: min(26px, calc(26 * var(--u))); font-size: max(8px, min(9px, calc(9 * var(--u)))); padding: min(2px, calc(2 * var(--u))) min(6px, calc(6 * var(--u))); }
   }
 }
+
+/* #92: a rival's card opened for CP: what the rival gets (the sheet's foot; full width, three short lines) */
+.gift { background: #fff3e0; border: 2px solid #c25a12; border-radius: 6px; padding: 5px 9px; font-size: 12px; line-height: 1.45; color: var(--ink); }
+.gift p { margin: 0; }
+.gift .gh b { font: 900 14px var(--serif); margin-right: 4px; }
+.gift .gm, .gift .gr { font-weight: 700; }
