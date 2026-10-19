@@ -22,9 +22,8 @@
 //     placed, that none was (zh 「沒有方塊可放」, en "no … block"); never a number that was not placed;
 //   - while a rival's forum pick is face down, no screen shows its saying with that pick's issue (talk.debate_card).
 // Rows on the gift note report 尚未實作 until recap.js has moraleOf and a sheet has [data-gift]; the trigger row until
-// [data-trigger-note] appears; the forum and the pick rows are measured from the start, and report what they find as
-// 尚未實作 while the gift note is not there either (main has both defects: the work has not started), as a failure
-// once it is.
+// [data-trigger-note] appears; the forum and the pick rows are measured from the start. Since #92 landed (952e07f)
+// every part missing is a failure, not 尚未實作.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { R, section, check, ok, nonEmpty, summary } from "./harness.js";
@@ -82,14 +81,14 @@ function withCard(s0, id) {
 section("1 拿對手的牌當 CP：寫出對手會得到什麼");
 const BASE = (() => { for (let seed = 1; seed < 40; seed++) { const s = atPlay(seed); if (s) return s; } return null; })();
 const GIFT_READY = () => {
-  if (!RC || typeof RC.moraleOf !== "function") return "TODO: recap.js 的 moraleOf 還沒有（#90）";
+  if (!RC || typeof RC.moraleOf !== "function") return "recap.js 的 moraleOf 不見了：#90 已上線（2521f07），這是退步";
   if (!BASE) return "找不到陳的出牌時機（instrument）";
   for (const e of EVENTS.filter((c) => c.owner === "soong" || c.owner === "lien")) {
     const s = withCard(BASE, e.id);
     if (!S.choices(s, "zh-Hant").some((c) => c.move.type === "play" && c.move.card === e.id && c.move.mode === "cp")) continue;
     if (element(S.screen(s, "zh-Hant", { sel: e.id }), "data-gift")) return null;
   }
-  return "TODO: 打開對手的牌，牌面旁邊還沒有 [data-gift]";
+  return "打開對手的牌，牌面旁邊沒有 [data-gift]：#92 已上線（952e07f），這是退步，不是尚未實作";
 };
 check("對手的每一張可以當 CP 的事件牌：[data-gift] 寫出主人、牌文、士氣與搶塊機率的前後（中英）", () => {
   const nr = GIFT_READY(); if (nr) return nr;
@@ -183,7 +182,7 @@ section("2 對手拿你的牌當 CP、事件替你發生、輪到你做選擇");
 check("那個畫面有 [data-trigger-note]，寫出是誰打的、哪一張牌", () => {
   const all = games().flatMap((g) => g.trig);
   const z = nonEmpty(all.length, "輪到你替被觸發的事件做選擇的畫面"); if (z !== true) return z;
-  if (!all.some((t) => element(t.html, "data-trigger-note"))) return `TODO: ${all.length} 個這樣的畫面都還沒有 [data-trigger-note]`;
+  if (!all.some((t) => element(t.html, "data-trigger-note"))) return `${all.length} 個這樣的畫面都沒有 [data-trigger-note]：#92 已上線（952e07f），這是退步`;
   const bad = [];
   for (const t of all) {
     const x = X[t.lang], g = element(t.html, "data-trigger-note");
@@ -217,7 +216,6 @@ check("發表會結束後，紀錄裡每個結算的議題寫的是真的放下�
   const z = nonEmpty(n, "發表會之後紀錄裡的結算行"); if (z !== true) return z;
   if (!zero || !some) return `看到的結算行裡沒有「一塊都沒放」（${zero}）或「有放」（${some}）的，分不出對錯`;
   const msg = bad.slice(0, 4).join("；") + (bad.length > 4 ? `……共 ${bad.length} 行` : "");
-  if (bad.length && GIFT_READY()) return `TODO: 還沒修（#92 的送分提醒也還沒有）；現在量到：${msg}`;
   return ok(!bad.length, bad.length ? msg : `${n} 行都對（沒放 ${zero}、有放 ${some}）`);
 });
 
@@ -233,7 +231,6 @@ check("對手的牌還蓋著時，畫面上沒有他那句「翻這張，某議�
     if (text(p.html).includes(said)) bad.push(`${p.lang} ${x.short(p.q)} 押「${x.issue(p.issue)}」：畫面上有「${said}」`);
   }
   const msg = `${bad.length} 個畫面洩漏，例：${bad.slice(0, 2).join("；")}`;
-  if (bad.length && GIFT_READY()) return `TODO: 還沒修（#92 的送分提醒也還沒有）；現在量到：${msg}`;
   return ok(!bad.length, bad.length ? msg : `${all.length} 個畫面都沒有洩漏`);
 });
 
