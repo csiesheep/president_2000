@@ -234,10 +234,11 @@ try {
   // 3. #47's side, in a room of its own (a whole game to look in): at the human's card play with the replay up, a hand card
   // opened (its play buttons come up in the panel); a spot on the shown card with one of them under it is tapped twice,
   // quickly. The second tap lands on the button once the card has gone from that spot (it waits for that, at most 380 ms).
-  {
+  // The moment comes by chance (2 of 5 runs found none in 180 s, FE on #100): up to three rooms, 150 s each.
+  for (let roomNo = 1; roomNo <= 3 && !(M.under && M.under.onTop); roomNo++) {
     const t = await hostRoom(br);
     let opened = null; const t2 = Date.now();
-    while (!(M.under && M.under.onTop) && Date.now() - t2 < 180000) {
+    while (!(M.under && M.under.onTop) && Date.now() - t2 < 150000) {
       const st = t.log.state, plays = st ? st.legal.filter((m) => m.card && m.card !== "candidate" && m.type !== "candidate") : [];
       const up = await t.ev(CARD_FULL);
       if (plays.length && up) {
@@ -266,7 +267,7 @@ try {
       }
       await sleep(60);
     }
-    step(`under search ${Date.now() - t2} ms`);
+    step(`under search, room ${roomNo}: ${Date.now() - t2} ms`);
     t.close();
   }
 } catch (e) { M.err = e.message; } finally { br.close(); }
@@ -297,7 +298,7 @@ row("單人「選行動」那一步：真的點開一張手牌之後，原本按
 row("#47 照舊：在放大的牌上快點兩下（同一點），第二下落在牌底下的決定按鈕上，也不會做那一步", () => {
   if (M.err) return `儀器中途停下：${M.err}`;
   const x = M.under;
-  if (!x) return "房間裡找不到放大的牌壓在決定按鈕上的時候（instrument）";
+  if (!x) return "三間房間裡都找不到放大的牌壓在決定按鈕上的時候（instrument）";
   if (!x.onTop) return `${x.at}：第一下之後 380 ms 內那一點還是牌（下一張接上來了），量不到（instrument）`;
   if (x.gap == null || x.gap > 440) return `兩下隔了 ${x.gap} ms，量不到（instrument）`;
   return okm(!x.made, `${x.at}；兩下隔 ${x.gap} ms，${x.taps}；${x.made ? `做了 ${x.made} 步` : "沒有做任何一步"}`);
