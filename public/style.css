@@ -1435,3 +1435,28 @@ button[disabled][aria-disabled="true"] { opacity: .35; cursor: not-allowed; filt
 .gift p { margin: 0; }
 .gift .gh b { font: 900 14px var(--serif); margin-right: 4px; }
 .gift .gm, .gift .gr { font-weight: 700; }
+
+/* The first-time box (#96): over the table, the first time each of seven new things comes up. The table behind it is dimmed and
+   waits (the box is modal); both buttons are in the box, so the decision's own buttons are free as soon as it is gone. */
+.tip { position: fixed; inset: 0; z-index: 95; display: flex; flex-direction: column; align-items: center; overflow-y: auto; padding: max(10px, 8dvh) 12px 12px; background: rgba(20, 12, 6, .62); -webkit-tap-highlight-color: transparent; }
+.tip-card { width: 100%; max-width: 440px; margin: 0 auto auto; background: #fffaf0; color: var(--ink); border: 3px solid var(--ink); border-radius: 6px; box-shadow: 0 10px 28px rgba(0, 0, 0, .5); padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px; }
+.tip-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.tip-kick { background: var(--ink); color: #fffaf0; font: 700 11px/1.5 var(--sans); padding: 2px 8px; border-radius: 2px; letter-spacing: 1px; white-space: nowrap; }
+.tip-n { font-size: 11px; color: var(--mute); white-space: nowrap; }
+.tip-h { margin: 0; font: 900 21px/1.25 var(--serif); } /* (the Google subset has only some Chinese glyphs: Chinese uses the system serif, English the masthead face) */
+:lang(en) .tip-h { font-family: var(--mast); }
+.tip-row { display: flex; gap: 10px; align-items: flex-start; }
+.tip-body { margin: 0; font-size: 14px; line-height: 1.55; }
+.tip-note { margin: 0; font-size: 13px; line-height: 1.5; background: #f4ecd8; padding: 7px 10px; border-radius: 4px; }
+.tip-pic { flex: 0 0 104px; width: 104px; border-radius: 6px; overflow: hidden; color: #fff; display: flex; flex-direction: column; background: var(--k-ext); }
+.tip-pic.s0 { background: var(--k-chen); } .tip-pic.s1 { background: var(--k-soong); } .tip-pic.s2 { background: var(--k-lien); }
+.tip-pic img { display: block; width: 104px; height: 70px; object-fit: cover; }
+.tip-pic b { padding: 5px 6px 0; font-size: 12px; line-height: 1.3; }
+.tip-pic small { padding: 1px 6px 6px; font-size: 10px; line-height: 1.35; }
+.tip-btns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 2px; }
+.tip-btns button { min-height: 46px; border: 2px solid var(--ink); border-radius: 4px; font: 700 15px var(--sans); cursor: pointer; }
+.tip-ok { background: var(--ink); color: #fffaf0; }
+.tip-off { background: transparent; color: var(--ink); font-weight: 400 !important; font-size: 14px !important; }
+.tip-foot { position: fixed; left: 0; right: 0; bottom: 0; margin: 0; padding: 8px 12px calc(10px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: #f4ecd8; font-size: 12px; line-height: 1.5; }
+@media (max-height: 780px) { .tip-foot { display: none; } }
+@media (max-width: 380px) { .tip-h { font-size: 19px; } .tip-body { font-size: 13.5px; } .tip-row { gap: 8px; } .tip-pic { flex-basis: 88px; width: 88px; } .tip-pic img { width: 88px; height: 60px; } }
