@@ -96,7 +96,7 @@ function pool() {
   }
   return POOL;
 }
-const READY = () => { const p = pool(); if (!p.length) return "找不到下完的局（instrument）"; return one(S.screen(p[0].s, "zh-Hant"), "data-end-head") ? null : "TODO: 結局頁還沒有 [data-end-head]"; };
+const READY = () => { const p = pool(); if (!p.length) return "找不到下完的局（instrument）"; return one(S.screen(p[0].s, "zh-Hant"), "data-end-head") ? null : "結局頁沒有 [data-end-head]：#94 已上線（e835786），這是退步，不是尚未實作"; };
 const c94 = (name, fn) => check(name, () => READY() || fn());
 
 section("94 結局頁講清楚輸贏");

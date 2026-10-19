@@ -148,7 +148,7 @@ try {
 } finally { br.close(); }
 
 const ready = M.r1 && M.r1.rec;
-const R0 = (name, fn) => row(name, () => (!ready ? "TODO: 結局頁還沒有 [data-end-record]" : fn()));
+const R0 = (name, fn) => row(name, () => (!ready ? "結局頁沒有 [data-end-record]：#94 已上線（e835786），這是退步，不是尚未實作" : fn()));
 R0("戰績：每一局第一次出現結局頁時算一次；重新整理、再打開同一局不重算；輸了算連續落選", () => {
   const n = (r) => r && r.rec ? `${r.rec.games}/${r.rec.wins}/${r.rec.streak}` : "沒有";
   const want = ["1/1/0", "1/1/0", "1/1/0", "2/1/1"], have = [M.r1, M.r2, M.r3, M.r4].map(n);
