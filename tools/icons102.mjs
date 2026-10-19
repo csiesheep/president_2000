@@ -1,14 +1,14 @@
-// tools/icons103.mjs — the share images, the icons and the not-found page (#103). Orchestrator's instrument: a peer may run
+// tools/icons102.mjs — the share images, the icons and the not-found page (#102). Orchestrator's instrument: a peer may run
 // it, does not edit it. Needs a running server of this tree (`wrangler dev`: the 404 is the asset handler's); no browser,
 // a few seconds. How the images look is the orchestrator's eye (a contact sheet), not this.
 //
-//   node tools/icons103.mjs http://127.0.0.1:8787/president_2000/
+//   node tools/icons102.mjs http://127.0.0.1:8787/president_2000/
 //
 // The audit (商業盤點 E, items 3 and 9): no share image; no apple-touch-icon, no PNG or ICO favicon (only favicon.svg);
 // a path that does not exist answers a blank page.
-// Contract (orchestrator, #103), as served:
+// Contract (orchestrator, #102), as served:
 //   - art/share-zh.png and art/share-en.png: PNG, 1200×630, at most 400 KB each (the cards chat apps and search engines
-//     show for the Chinese and the English pages; #102's og:image points at them);
+//     show for the Chinese and the English pages; #103's og:image points at them);
 //   - favicon.ico (an ICO holding 16×16 and 32×32 at least), apple-touch-icon.png 180×180, icon-192.png 192×192,
 //     icon-512.png 512×512, all PNG inside; the home page and the rules page (as served, both languages) link
 //     favicon.ico (rel=icon) and apple-touch-icon.png (rel=apple-touch-icon), and keep favicon.svg;
@@ -17,7 +17,7 @@
 //     pages and assets that do exist still answer 200.
 // Reports 尚未實作 while it all behaves as on main.
 const base = (process.argv[2] || "").replace(/\/?$/, "/");
-if (!process.argv[2]) { console.log("usage: node tools/icons103.mjs <base url ending in /president_2000/>"); process.exit(2); }
+if (!process.argv[2]) { console.log("usage: node tools/icons102.mjs <base url ending in /president_2000/>"); process.exit(2); }
 async function get(path) { const r = await fetch(base + path, { redirect: "manual" }); return { status: r.status, type: r.headers.get("content-type") || "", body: Buffer.from(await r.arrayBuffer()) }; }
 const png = (b) => (b.length > 24 && b.readUInt32BE(0) === 0x89504e47 ? { w: b.readUInt32BE(16), h: b.readUInt32BE(20) } : null);
 function ico(b) {

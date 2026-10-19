@@ -1,13 +1,13 @@
-// tools/head102.mjs — what a search engine or a chat app sees of the pages before any script runs (#102). Orchestrator's
+// tools/head103.mjs — what a search engine or a chat app sees of the pages before any script runs (#103). Orchestrator's
 // instrument: a peer may run it, does not edit it. Needs a running server of this tree (`wrangler dev`: the Worker serves
 // the pages and the sitemap); no browser, a few seconds.
 //
-//   node tools/head102.mjs http://127.0.0.1:8787/president_2000/
+//   node tools/head103.mjs http://127.0.0.1:8787/president_2000/
 //
 // The audit (商業盤點 E, items 3 and 7): no OG, Twitter card, share image or JSON-LD; the server's lang, title and
 // description are Chinese for the English page too, no hreflang, the English page's canonical points at the Chinese one;
 // the rules page has no description; the sitemap lists two URLs.
-// Contract (orchestrator, #102), the HTML as the Worker sends it (no script run), for the four pages
+// Contract (orchestrator, #103), the HTML as the Worker sends it (no script run), for the four pages
 //   zh: /president_2000/  ·  en: /president_2000/?lang=en  ·  zh: /president_2000/rules  ·  en: /president_2000/rules?lang=en
 // and for every other query of a page (?play, ?tutorial, ?room=ABCD, with or without &lang=en) as the page it belongs to:
 //   - <html lang> is zh-Hant or en; <title> and <meta name="description"> are in the page's language (an en page has no
@@ -25,7 +25,7 @@
 //     on main and must keep passing).
 // Reports 尚未實作 while the pages behave as on main.
 const base = (process.argv[2] || "").replace(/\/?$/, "/");
-if (!process.argv[2]) { console.log("usage: node tools/head102.mjs <base url ending in /president_2000/>"); process.exit(2); }
+if (!process.argv[2]) { console.log("usage: node tools/head103.mjs <base url ending in /president_2000/>"); process.exit(2); }
 const SITE = "https://games.csiesheep.com/president_2000/";
 const CJK = /[㐀-鿿豈-﫿]/;
 const PAGES = [
