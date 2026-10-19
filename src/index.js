@@ -11,22 +11,12 @@ export { Room } from "./room.js";
 export { Limits } from "./address.js";
 import { addressKey } from "./limits.js";
 
+import { SITEMAP_XML, pageOf, langOf, rewriteHead } from "./head.js";
+
 const PREFIX = "/president_2000";
-const CANONICAL = "https://games.csiesheep.com" + PREFIX + "/";
-// Prefix-scoped sitemap. Game modes are query strings on the one page and
-// carry a canonical back to it, so the page and the rules are all there is.
-const SITEMAP_XML = [
-  '<?xml version="1.0" encoding="UTF-8"?>',
-  '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-  "  <url>",
-  "    <loc>" + CANONICAL + "</loc>",
-  "  </url>",
-  "  <url>",
-  "    <loc>" + CANONICAL + "rules</loc>",
-  "  </url>",
-  "</urlset>",
-  "",
-].join(String.fromCharCode(10));
+// Prefix-scoped sitemap (src/head.js): the home page and the rules, each in both
+// languages. Game modes are query strings on the one page and carry a canonical
+// back to it.
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 function newCode() {
@@ -101,7 +91,20 @@ export default {
     }
 
     url.pathname = sub;
-    const response = await env.ASSETS.fetch(new Request(url, request));
+    // The two pages get their head written per language (#104). Their stored file is the same for both languages and
+    // the head changes with the Worker, so a conditional request must not get a 304 for the file: drop the validators.
+    const page = pageOf(sub);
+    let assetRequest = new Request(url, request);
+    if (page) {
+      const headers = new Headers(request.headers);
+      headers.delete("if-none-match");
+      headers.delete("if-modified-since");
+      assetRequest = new Request(url, { method: request.method, headers, redirect: "manual" });
+    }
+    const response = await env.ASSETS.fetch(assetRequest);
+    if (page && response.status === 200 && (response.headers.get("content-type") || "").startsWith("text/html")) {
+      return rewriteHead(response, page, langOf(url.searchParams));
+    }
 
     // The static-asset handler builds Location from the url we just stripped
     // the prefix off, so a same-origin redirect would escape this Worker and
