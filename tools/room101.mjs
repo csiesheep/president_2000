@@ -33,14 +33,18 @@ const CODE = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const zh = (await import(new URL("../public/i18n/zh-Hant.js", import.meta.url).href)).default;
 const LIMIT_TEXT = zh.errors && zh.errors.rate_limited;
 
-// One socket: the messages it got, until it closes or `ms` pass (then it is closed).
-function connect(query, ip, { ms = 4000, until, send } = {}) {
+// One socket: the messages it got, until it closes or `ms` pass (then it is closed). Since #105 the name and the token
+// go in the socket's first message, { t: "join", name, token }, as the pages send them (the query keeps only the room
+// code, create=1 and lang); `name` and `token` given in `query` are moved there.
+const joinOf = (query) => { const q = new URLSearchParams(query), name = q.get("name"), token = q.get("token"); q.delete("name"); q.delete("token"); return { query: q.toString(), join: { t: "join", name: name || "", token: token || null } }; };
+function connect(query0, ip, { ms = 4000, until, send } = {}) {
+  const { query, join } = joinOf(query0);
   return new Promise((res) => {
     const got = []; let done = false, ws;
     const end = (why) => { if (done) return; done = true; try { ws.close(); } catch { /* closed */ } res({ got, why }); };
     try { ws = new WebSocket(`${wsBase}?${query}`, { headers: { "CF-Connecting-IP": ip } }); } catch (e) { res({ got, why: `cannot open: ${e.message}` }); return; }
     ws.onmessage = (e) => { let m = null; try { m = JSON.parse(e.data); } catch { return; } got.push(m); if (until && until(m, got)) end("until"); };
-    ws.onopen = () => { if (send) send(ws); };
+    ws.onopen = () => { try { ws.send(JSON.stringify(join)); } catch { /* closed */ } if (send) send(ws); };
     ws.onclose = () => end("closed"); ws.onerror = () => end("error");
     setTimeout(() => end("time"), ms);
   });
@@ -61,6 +65,10 @@ try {
   // 1. guessing from address a1: first a fair join (its token kept), then 20 misses, then a join without a token
   const fair = await connect(`room=${M.code}&name=${encodeURIComponent("乙")}`, addr("a1"), { until: firstAnswer });
   M.token = (helloOf(fair) || {}).token || null;
+  // does the server speak #105's join? A server before it answers the join with bad_message (it opened the seat from
+  // the URL); then every row here reads 尚未實作 (#105), not a failure of #101
+  const sj = await connect(`room=${M.code}&name=probe`, addr("a0", 9), { ms: 1500 });
+  M.speaksJoin = !!helloOf(sj) && !sj.got.some((m) => m.t === "error" && m.code === "bad_message");
   const taken = new Set([M.code]); M.misses = [];
   for (let i = 0; i < 20; i++) { const c = freeCode(taken); taken.add(c); M.misses.push(errOf(await connect(`room=${c}&name=x`, addr("a1"), { until: firstAnswer, ms: 3000 })) || "hello?"); }
   const after = await connect(`room=${M.code}&name=x`, addr("a1"), { until: firstAnswer });
@@ -77,9 +85,10 @@ try {
   step(`creates ${M.creates.join(",")}`);
   // 4. one socket, 40 messages the room cannot read, as fast as it goes (address a3)
   M.flood = await new Promise((res) => {
-    const codes = []; const ws = new WebSocket(`${wsBase}?create=1&name=x`, { headers: { "CF-Connecting-IP": addr("a3") } });
+    const codes = []; const ws = new WebSocket(`${wsBase}?create=1`, { headers: { "CF-Connecting-IP": addr("a3") } });
     ws.onmessage = (e) => { let m = null; try { m = JSON.parse(e.data); } catch { return; } if (m.t === "error") codes.push(m.code); };
-    ws.onopen = () => { setTimeout(() => { for (let i = 0; i < 40; i++) ws.send(JSON.stringify({ t: "nonsense", i })); }, 600); };
+    // the join is the socket's first message and counts as one of its 30 (#105): 29 of the 40 that follow are read
+    ws.onopen = () => { ws.send(JSON.stringify({ t: "join", name: "x", token: null })); setTimeout(() => { for (let i = 0; i < 40; i++) ws.send(JSON.stringify({ t: "nonsense", i })); }, 600); };
     setTimeout(() => { try { ws.close(); } catch { /* closed */ } res(codes); }, 5000);
   });
   step(`flood ${JSON.stringify(M.flood)}`);
@@ -131,7 +140,7 @@ async function page(code, ip) {
 const rows = [];
 const row = (name, fn) => { try { const r = fn(); rows.push(r === true ? { name, ok: true } : typeof r === "string" && r.startsWith("TODO:") ? { name, todo: r.slice(5).trim() } : r && r.pass ? { name, ok: true, msg: r.msg } : { name, ok: false, msg: String(r) }); } catch (e) { rows.push({ name, ok: false, msg: `instrument: ${e.message}` }); } };
 const okm = (c, msg) => (c ? { pass: true, msg } : msg);
-const pre = () => (M.err ? `儀器中途停下：${M.err}（instrument；同一個 wrangler 跑過的話，這次用的位址不一樣，不會被上一次擋住）` : null);
+const pre = () => (M.err ? `儀器中途停下：${M.err}（instrument；同一個 wrangler 跑過的話，這次用的位址不一樣，不會被上一次擋住）` : M.speaksJoin === false ? "TODO: 伺服器還不懂第一則的 join（#105 之前）：名字與 token 不在網址裡就入不了座" : null);
 const any = () => [...(M.misses || []), M.after, M.miss21, ...(M.creates || []), ...(M.flood || [])].includes("rate_limited");
 row("猜代碼：同一個位址 20 次加入不存在的房間都回 no_room；之後沒帶 token 加入存在的房間、或再猜一次，都回 rate_limited", () => {
   const p = pre(); if (p) return p;
@@ -154,11 +163,11 @@ row("開房間：同一個位址 10 分鐘內 30 間都開得成，第 31 間回
   if (!any()) return `#101 上線之後是失敗：31 間都開成了（${ok30 + (last === "room" ? 1 : 0)} 間）`;
   return okm(ok30 === 30 && last === "rate_limited", `前 30 間開成 ${ok30} 間，第 31 間：${last}`);
 });
-row("一條連線一口氣送 40 則：前 30 則照常處理（bad_message），後 10 則回 rate_limited", () => {
+row("一條連線 join 之後一口氣送 40 則：join 算第一則，接著 29 則照常處理（bad_message），後 11 則回 rate_limited", () => {
   const p = pre(); if (p) return p;
   const f = M.flood || [], bm = f.filter((c) => c === "bad_message").length, rl = f.filter((c) => c === "rate_limited").length;
   if (!any()) return `#101 上線之後是失敗：40 則都照常處理（bad_message ${bm}）`;
-  return okm(bm === 30 && rl === 10, `bad_message ${bm}、rate_limited ${rl}（共收到 ${f.length} 個錯誤）`);
+  return okm(bm === 29 && rl === 11, `bad_message ${bm}、rate_limited ${rl}（共收到 ${f.length} 個錯誤）`);
 });
 row("IPv6 以 /64 為一組：同一個 /64 的一台猜錯 20 次，另一台沒帶 token 加入也被擋；另一個 /64 照常", () => {
   const p = pre(); if (p) return p;
