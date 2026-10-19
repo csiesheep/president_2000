@@ -8,6 +8,7 @@
 // The public path segment is independent of the repo / Worker name — change
 // PREFIX alone to move the site to a different path.
 export { Room } from "./room.js";
+import { ADDRESS_HEADER } from "./room.js";
 export { Limits } from "./address.js";
 import { addressKey } from "./limits.js";
 
@@ -32,20 +33,23 @@ async function askLimits(limits, path) {
   return !!(await res.json()).ok;
 }
 
-// /president_2000/ws?create=1&name=Alice&lang=en    opens a fresh room
-// /president_2000/ws?room=ABCD&name=Bob&token=…     joins (or reconnects to) a room
-// Per client address (#101; src/limits.js LIMITS, counted by the Limits object of that address): opening rooms, and joins
-// without a valid token once the address has guessed too many codes that are not there. The address is CF-Connecting-IP
-// only (Cloudflare sets it; X-Forwarded-For and the like are the client's to write); an IPv6 address counts as its /64
-// (addressKey, orchestrator's ruling in #101).
+// /president_2000/ws?create=1&lang=en    opens a fresh room
+// /president_2000/ws?room=ABCD             joins (or reconnects to) a room
+// The name and the seat token are not in the URL (#105: the request logs keep URLs): they come in the socket's first
+// message, which the Room object reads (src/room.js). Per client address (#101; src/limits.js LIMITS, counted by the
+// Limits object of that address): opening rooms is counted here; joins without a valid token are put to the Limits
+// object by the Room, once it has the join, and the Worker hands it the address's key in ADDRESS_HEADER (overwriting
+// anything the client sent under that name). The address is CF-Connecting-IP only (Cloudflare sets it;
+// X-Forwarded-For and the like are the client's to write); an IPv6 address counts as its /64 (addressKey,
+// orchestrator's ruling in #101).
 async function connectRoom(request, env, url) {
   if (request.headers.get("Upgrade") !== "websocket") {
     return new Response("Expected a WebSocket", { status: 426 });
   }
   const ip = addressKey(request.headers.get("CF-Connecting-IP") || "unknown"); // IPv6 by its /64 (#101)
-  const limits = env.LIMITS.get(env.LIMITS.idFromName(ip));
   let code = (url.searchParams.get("room") || "").toUpperCase();
   if (url.searchParams.get("create") === "1") {
+    const limits = env.LIMITS.get(env.LIMITS.idFromName(ip));
     if (!(await askLimits(limits, "/create"))) return refuse(limits, request);
     // Pick a code nobody holds. Rooms are named by their code, so ask the
     // object whether it already has state.
@@ -58,17 +62,11 @@ async function connectRoom(request, env, url) {
     url.searchParams.set("room", code);
   } else if (!/^[A-Z0-9]{4}$/.test(code)) {
     return new Response("Bad room code", { status: 400 });
-  } else {
-    // A player with a token of this room always gets back in (many people share one address: a school, an office, a
-    // phone carrier). Everyone else is refused once the address is, whether the room is there or not: refusing only the
-    // misses would still tell which codes are open.
-    const token = url.searchParams.get("token");
-    const stub = env.ROOMS.get(env.ROOMS.idFromName(code));
-    const status = await (await stub.fetch("https://room/status" + (token ? "?token=" + encodeURIComponent(token) : ""))).json();
-    if (!status.member && !(await askLimits(limits, "/join?exists=" + (status.exists ? "1" : "0")))) return refuse(limits, request);
   }
+  const headers = new Headers(request.headers);
+  headers.set(ADDRESS_HEADER, ip);
   const stub = env.ROOMS.get(env.ROOMS.idFromName(code));
-  return stub.fetch(new Request(url.toString(), request));
+  return stub.fetch(new Request(url.toString(), { method: request.method, headers }));
 }
 
 export default {

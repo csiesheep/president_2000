@@ -217,15 +217,14 @@ export function mount({ T, lang, qs, store, $ }) {
     const u = new URL("ws", location.href);
     u.protocol = location.protocol === "https:" ? "wss:" : "ws:";
     if (roomCode) u.searchParams.set("room", roomCode); else u.searchParams.set("create", "1");
-    u.searchParams.set("name", name);
-    if (client.token) u.searchParams.set("token", client.token);
-    return u.toString();
+    return u.toString(); // the name and the token go in the first message, not here (#105: the server's request logs keep URLs)
   };
   let sawLobby = false; // this page saw the room before the game began (a reload in mid-game has not: it replays nothing)
   const connect = () => {
     clearTimeout(retry); clearInterval(tick);
     const s = new WebSocket(url());
     sock = s;
+    s.onopen = () => { if (s === sock) s.send(JSON.stringify({ t: "join", name, token: client.token || null })); }; // #105
     s.onmessage = (ev) => {
       if (s !== sock) return;
       let msg; try { msg = JSON.parse(ev.data); } catch { return; }
