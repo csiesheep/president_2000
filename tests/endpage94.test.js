@@ -178,27 +178,30 @@ c94("同票規則照規則頁（#98）：v0.8 三條、第三條是催票順序�
   const g = pool().find((x) => x.kind === "tie");
   if (!g) return "局裡沒有同票落選的（instrument）";
   const bad = [], seen = [];
+  // old: "mom" (a v0.7 game, momentum decides) or "order" (a v0.7 game, momentum tied too, so the order decides: ④)
   const make = (old) => {
     const s = JSON.parse(JSON.stringify(g.s)), r = s.st.result, w = r.winner, me = g.seat;
     r.leads[me] = r.leads[w];
-    if (old) { delete s.st.momentum; r.momentum = [0, 0, 0]; r.momentum[w] = 2; r.decidedBy = "momentum"; } else { r.momentum = [0, 0, 0]; r.decidedBy = "order"; }
+    if (old) { delete s.st.momentum; r.momentum = [0, 0, 0]; if (old === "mom") { r.momentum[w] = 2; r.decidedBy = "momentum"; } else r.decidedBy = "order"; } else { r.momentum = [0, 0, 0]; r.decidedBy = "order"; }
     return s;
   };
   let pending = null;
-  for (const [old, want, word] of [[false, ["votes", "leads", "order"], { "zh-Hant": "催票順序", en: /order/i }], [true, ["votes", "leads", "momentum"], { "zh-Hant": "動能", en: /momentum/i }]]) {
+  for (const [old, want, word, num] of [[false, ["votes", "leads", "order"], { "zh-Hant": "催票順序", en: /order/i }, "③"], ["mom", ["votes", "leads", "momentum"], { "zh-Hant": "動能", en: /momentum/i }, "③"], ["order", ["votes", "leads", "momentum", "order"], { "zh-Hant": "催票順序", en: /order/i }, "④"]]) {
     for (const lang of LANGS) {
-      const box = one(S.screen(make(old), lang), "data-end-tie"), name = `${old ? "v0.7 舊局" : "v0.8"} ${lang}`;
+      const box = one(S.screen(make(old), lang), "data-end-tie"), name = `${old ? `v0.7 舊局（${old === "mom" ? "動能" : "順序"}決定）` : "v0.8"} ${lang}`;
       if (!box) { bad.push(`${name}：沒有 [data-end-tie]`); continue; }
       const rows = elements(box.html, "data-tie-rule"), names = rows.map((e) => e.attrs["data-tie-rule"]), last = rows[rows.length - 1];
       seen.push(`${name} ${names.join(",")}`);
       const t = last ? text(last.html) : "", hasWord = typeof word[lang] === "string" ? t.includes(word[lang]) : word[lang].test(t);
       const noMomRow = /這局沒有這一項|氣勢|tempo|not in this game/i.test(text(box.html));
       if (!old && (names.includes("momentum") || noMomRow)) { pending = pending || `v0.8 的同票還列出動能那一條（${names.join(",")}）`; continue; }
-      if (old && !hasWord && /氣勢|tempo/i.test(t)) { pending = pending || `舊局的第三條還叫「${t.slice(0, 20)}」`; continue; }
+      const momRow = rows.find((e) => e.attrs["data-tie-rule"] === "momentum"), momText = momRow ? text(momRow.html) : "";
+      if (old && /氣勢|tempo/i.test(momText)) { pending = pending || `舊局的第三條還叫「${momText.slice(0, 20)}」`; continue; }
       if (JSON.stringify(names) !== JSON.stringify(want)) bad.push(`${name}：規則列 ${names.join(",")}，應是 ${want.join(",")}`);
       else if (!("data-decided-here" in last.attrs)) bad.push(`${name}：最後一條沒有標成決定`);
-      else if (!hasWord) bad.push(`${name}：第三條「${t.slice(0, 30)}」沒有寫${old ? "動能" : "催票順序"}`);
-      else if (lang === "zh-Hant" && !t.includes("③")) bad.push(`${name}：第三條「${t.slice(0, 30)}」不是 ③`);
+      else if (!hasWord) bad.push(`${name}：最後一條「${t.slice(0, 30)}」沒有寫${old === "mom" ? "動能" : "催票順序"}`);
+      else if (lang === "zh-Hant" && !t.includes(num)) bad.push(`${name}：最後一條「${t.slice(0, 30)}」不是 ${num}`);
+      else if (old) { const m = rows.find((e) => e.attrs["data-tie-rule"] === "momentum"), mt = m ? text(m.html) : ""; if (!(lang === "en" ? /momentum/i.test(mt) : mt.includes("動能"))) bad.push(`${name}：動能那一條「${mt.slice(0, 30)}」沒有寫動能`); }
     }
   }
   if (pending && !bad.length) return `TODO: ${pending}（#98）`;
