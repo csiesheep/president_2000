@@ -32,6 +32,23 @@ export default {
     stubIssue: "Debate", stubCanvass: "Election day",
     // The advisor (#18): the switch above the table, the star on its pick, the line before its reason
     advisor: { label: "Advisor", on: "On", off: "Off", prefix: "Advisor:", starLabel: "Advisor's pick", note: "Marks the move your strategist would make, using only what you can see." },
+    // #93: election night as a TV special on the invented channel "Campaign News" (count.js)
+    count: {
+      tagA: "CAMPAIGN", tagB: "NEWS", special: "Election Night Special", year: "2000 Presidential Election", live: "LIVE",
+      soonTag: "UP NEXT", soonLine: "The first county is about to report", candsTitle: "The three candidates", no: "No. {n}",
+      settleTitle: "Settled before the count", strategic: "Tactical vote", endorse: "Endorsements", noMove: "no blocks moved this game", noGift: "no endorsement blocks this game",
+      gain: "{who} +{n} {blocks}", sFull: "{label}: {text}",
+      start: "Start the count", auto: "Starts in {n} s", skip: "Skip to result", speed: "Speed: {v}", speeds: { normal: "Normal", fast: "Fast" },
+      latest: "LATEST", nth: "County {n} reports", done: "{n} of 24 counties in",
+      takes: "{who} takes {county}", noLead: "{county}: no clear leader", overtakes: "{who} overtakes {prev}", overtakesSame: "overtakes {prev}",
+      mapTitle: "County by county", unopened: "Not in yet", tied: "Tied", cities: "Dots are the seven cities", islets: "Kinmen & Matsu", penghu: "Penghu",
+      justIn: "Just in", next: "Next: {county}", allIn: "All 24 counties in",
+      tOpen: "Polls are closed · counting in all 24 counties · county by county on air", tCounty: "{county}: {text}", tNext: "{county} is next", tTotals: "Running totals: {text}",
+      flash: "BREAKING", flashLine: "All 24 counties in", live2: "LIVE", scene: "{who} headquarters: supporters pour in", kicker: "The 10th president", wins: "{who} wins",
+      line: "{votes}M votes · {n} counties", mapWon: "Counties won", tResult: "Final count: {text}", tVotes: "{who} {votes}M",
+      next2: "See the analysis", replay: "Watch the count again", unit: "M",
+      alt: { studio: "The Campaign News studio: the anchor desk and a wall of screens", wall: "The Campaign News studio: the screen wall", end: "{who} celebrates" },
+    },
     // The tutorial (#27): one fixed game; the words in the bubble. {...} are filled by tutorial.js from the values on screen.
     tutorial: {
       home: { title: "Tutorial", sub: "Play through one action, hands on" },
