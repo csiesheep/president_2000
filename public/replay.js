@@ -242,16 +242,19 @@ export function createReplay({ labels, lang, onIdle, ready, rules } = {}) { // r
 // A tap the replay uses belongs to the replay alone: one that lands on the big card or the stamps' plate (they take clicks), and the
 // second of two quick taps (even when the card has gone by then), are stopped here and reach nothing under them. A tap on a
 // decision or anything else visible outside the card still goes through (and skips what is left).
-const TAP_GAP = 450;
+// #100: two taps are a double tap only when the second lands within TAP_NEAR px of the first (a finger does not move far);
+// a quick tap farther away is a tap of its own (on a decision it makes that move).
+const TAP_GAP = 450, TAP_NEAR = 40;
 export function bindTaps({ active, onStep, onAll, ignore }) {
-  let last = -1e9;
+  let last = -1e9, lx = 0, ly = 0;
   document.addEventListener("click", (ev) => {
     const t = ev.target, onCard = !!(t && t.closest && t.closest(".rp-card, .rp-tray"));
+    const near = Math.hypot((ev.clientX || 0) - lx, (ev.clientY || 0) - ly) <= TAP_NEAR;
     if (!onCard && t && t.closest && t.closest(ignore)) return;
-    const now = performance.now(), quick = now - last <= TAP_GAP;
+    const now = performance.now(), quick = now - last <= TAP_GAP && near;
     if (!onCard && !active() && !quick) return;
     if (quick) { last = -1e9; ev.stopPropagation(); ev.preventDefault(); onAll(); return; }
-    last = now;
+    last = now; lx = ev.clientX || 0; ly = ev.clientY || 0;
     if (onCard) { ev.stopPropagation(); ev.preventDefault(); }
     onStep();
   }, true);
