@@ -1375,6 +1375,29 @@ function turnCardHTML(v, x, o) {
     `<div class="tc-ft"><div class="tc-prog"><i${age ? ` style="animation-delay:-${age}ms"` : ""}></i></div><div class="tc-row"><span class="tc-hint">${esc(T.hint)}</span><button type="button" class="tc-go" data-tc-close="1">${esc(fill(T.start, { n }))}</button></div></div></div></div>`;
 }
 
+// ---------------------------------------------------------------- the first-time box (#96)
+// One box over the table the first time each of seven new things comes up (solo.tipFor says which, and what it needs). Its
+// buttons are data-tip-ok (this one is not shown again) and data-tip-off (no more boxes); the page keeps both on the device.
+function tipHTML(t, v, x) {
+  const T = x.S.tip, K = T[t.id], vars = {};
+  let pic = "";
+  if (t.id === "trigger") {
+    vars.who = x.short(t.by); vars.card = x.card(t.card);
+    vars.morale = t.morale ? fill(K.morale, { d: t.morale }) : "";
+    pic = `<div class="tip-pic s${v.seat}"><img src="${cardArt(t.card)}" alt="" width="104" height="70"><b>${esc(x.card(t.card))}</b><small>${esc(x.cardText(t.card))}</small></div>`;
+  } else if (t.id === "steal") vars.who = x.short(t.target), vars.p = t.p;
+  else if (t.id === "canvass") vars.p = t.p;
+  else if (t.id === "endorse") vars.region = x.region(t.region);
+  const body = t.id === "save" ? K[t.forum ? "bodyForum" : "bodyElection"] : t.id === "canvass" && t.p == null ? K.bodyNone : K.body;
+  return `<div class="tip" data-tip="${t.id}" data-tip-n="${t.n}" role="dialog" aria-modal="true" aria-label="${esc(T.label)}"><div class="tip-card">` +
+    `<div class="tip-top"><span class="tip-kick">${esc(T.first)}</span><span class="tip-n">${esc(fill(T.nth, { n: t.n }))}</span></div>` +
+    `<h2 class="tip-h">${esc(fill(K.title, vars))}</h2>` +
+    `<div class="tip-row">${pic}<p class="tip-body">${esc(fill(body, vars))}</p></div>` +
+    (K.note ? `<p class="tip-note">${esc(K.note)}</p>` : "") +
+    `<div class="tip-btns"><button type="button" class="tip-ok" data-tip-ok="1">${esc(T.ok)}</button><button type="button" class="tip-off" data-tip-off="1">${esc(T.off)}</button></div></div>` +
+    `<p class="tip-foot">${esc(T.foot)}</p></div>`;
+}
+
 export function tableHTML(view, choices, lang, opts = {}) {
   const x = bind(lang), v = view, o = opts;
   x.v7 = isV07(v); // v0.7: no rest cubes on the stubs
@@ -1410,5 +1433,5 @@ export function tableHTML(view, choices, lang, opts = {}) {
   return `<div class="tbl${up ? " hand-up" : ""}" data-phase="${esc(v.phase)}">${headerHTML(v, choices, x, o)}<div class="col cl">${playersHTML(v, x, o)}${trackHTML(v, x, o, acts.issues)}</div>` +
     `<div class="col cc">${mapNow}</div>` +
     `<div class="col cr">${feedHTML(v, x, o, lines)}${sheet}</div>` +
-    `${handHTML(v, choices, x, o)}${next}${o.turnCard ? turnCardHTML(v, x, o) : ""}</div>`;
+    `${handHTML(v, choices, x, o)}${next}${o.turnCard ? turnCardHTML(v, x, o) : ""}${o.tip ? tipHTML(o.tip, v, x) : ""}</div>`;
 }

@@ -98,7 +98,7 @@ if (typeof document !== "undefined") {
       heard = { seed: session.seed, st: session.st };
     };
     // The rivals' moves shown big (#47). Not in the tutorial: it has its own steps for the rivals' turn and keeps the old way.
-    const rep = Replay.createReplay({ labels: { hit: S.replay.hit, miss: S.replay.miss }, lang: code, rules: () => session && session.st && session.st.rules, onIdle: () => { if (!card && cardWanted()) pump(); else if (handWanted()) pump(); else if (autoWanted() && !autoTimer) pump(); else if (Sound.gap() == null && session && session.st && !Solo.botsToMove(session).length && stage.querySelector("[data-botnext]")) draw(); } });
+    const rep = Replay.createReplay({ labels: { hit: S.replay.hit, miss: S.replay.miss }, lang: code, rules: () => session && session.st && session.st.rules, onIdle: () => { if (!card && cardWanted()) pump(); else if (handWanted()) pump(); else if (autoWanted() && !autoTimer) pump(); else if (tipShown() && !stage.querySelector("[data-tip]")) draw(); else if (Sound.gap() == null && session && session.st && !Solo.botsToMove(session).length && stage.querySelector("[data-botnext]")) draw(); } });
     const stepOpt = () => (Sound.gap() == null && session.st && (Solo.botsToMove(session).length || rep.active()) ? { botnext: S.menu.next } : {});
     // The turn card (#44): each turn opens with it, once. It holds the rivals back, stays about 1.5 s and fades out; a tap
     // anywhere closes it (that is not the skip: the rivals only start after it has gone, one step at a time as before).
@@ -147,12 +147,21 @@ if (typeof document !== "undefined") {
       hoff = { seat, t0: performance.now(), out: false };
       // (the hold is counted from the end of the draw that shows it: a cold draw can take 200 ms, which must not be taken off the hold)
     };
+    // The first-time boxes (#96): which have been seen is kept on this device (localStorage), and in memory as well, so a device
+    // that cannot keep it still never shows the same box twice in one visit. A box waits for the cards and the replay to be gone.
+    const TIPS = "p2000.tips";
+    const tipsLoad = () => { try { const o = JSON.parse(localStorage.getItem(TIPS)); return { seen: o && Array.isArray(o.seen) ? o.seen.filter((k) => typeof k === "string") : [], off: !!(o && o.off) }; } catch { return { seen: [], off: false }; } };
+    let tips = tipsLoad();
+    const tipsSave = () => { try { localStorage.setItem(TIPS, JSON.stringify(tips)); } catch { /* not kept: the memory above still holds for this visit */ } };
+    const tipsSeen = () => (tips.off ? ["off"] : tips.seen);
+    const tipsNow = () => (card || hoff || rep.active() || !session || !session.st || session.tut ? ["off"] : tipsSeen());
+    const tipShown = () => !!(session && session.st && !session.tut && Solo.tipFor(session, Solo.choices(session, code), code, tipsNow()));
     const draw = () => {
       syncUrl();
       hear();
       // The tutorial's "player board" step is about the hand and the bag: on a phone that board shows them while it is on.
       const boardStep = !!(session.tut && Tut.step(session, code).id === "board");
-      drawInto(stage, Solo.screen(session, code, { feedOpen: ui.feed, raise: ui.raise, sel: ui.sel, picks: ui.picks, help: ui.help, moves: ui.moves, confirm: ui.confirm, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow, turnCard: !!card && !card.out, cardAge: card ? performance.now() - card.t0 : 0, handoff: hoff && !hoff.out ? hoff.seat : undefined, handoffAge: hoff ? performance.now() - hoff.t0 : 0, ...stepOpt() }), { seat: boardStep ? session.seat : ui.seat, menu: menu.isOpen() });
+      drawInto(stage, Solo.screen(session, code, { feedOpen: ui.feed, raise: ui.raise, sel: ui.sel, picks: ui.picks, help: ui.help, moves: ui.moves, confirm: ui.confirm, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow, turnCard: !!card && !card.out, cardAge: card ? performance.now() - card.t0 : 0, handoff: hoff && !hoff.out ? hoff.seat : undefined, handoffAge: hoff ? performance.now() - hoff.t0 : 0, tipsSeen: tipsNow(), ...stepOpt() }), { seat: boardStep ? session.seat : ui.seat, menu: menu.isOpen() });
       $("#solo").classList.add("intable");
       $("#quit").hidden = false;
       placeTutorial(stage);
@@ -162,7 +171,7 @@ if (typeof document !== "undefined") {
     // the turn card is gone, the rivals' replay is over, nobody is to move. Never in the tutorial (Solo.autoChoice says null).
     const AUTO_WAIT = 700;
     let autoTimer = null;
-    const autoWanted = () => !!(session && session.st && !session.tut && !card && !hoff && !rep.active() && !Solo.botsToMove(session).length && Solo.autoChoice(session, code));
+    const autoWanted = () => !!(session && session.st && !session.tut && !card && !hoff && !rep.active() && !Solo.botsToMove(session).length && Solo.autoChoice(session, code) && !tipShown());
     const autoMake = () => {
       autoTimer = null;
       if (!autoWanted()) return;
@@ -223,7 +232,7 @@ if (typeof document !== "undefined") {
     let swallow = false;
     Replay.bindTaps({ active: () => !!session && !!session.st && (!!timer || (!session.tut && rep.active())),
       onStep: () => { swallow = !!timer; setTimeout(() => { swallow = false; }, 0); if (session.tut) skipAll(); else skipStep(); }, onAll: () => { swallow = !!timer; setTimeout(() => { swallow = false; }, 0); skipAll(); },
-      ignore: "[data-menu], [data-menu-top], #gmenu, .mset, [data-botnext], [data-feed-toggle], [data-turncard], [data-handoff], [data-rp-next], a, input, textarea" });
+      ignore: "[data-menu], [data-menu-top], #gmenu, .mset, [data-botnext], [data-feed-toggle], [data-turncard], [data-handoff], [data-tip], [data-rp-next], a, input, textarea" });
     // (in the tutorial the bubble decides what scrolls)
     // (#66: the table is one screen that never scrolls, so a tapped card or a question does not scroll to the decision any more)
 
@@ -284,7 +293,13 @@ if (typeof document !== "undefined") {
       if (swallow) { swallow = false; if (t && t.tagName !== "A") return; } // a tap that skipped the rivals does nothing else
       if (!t) return;
       const d = t.dataset;
-      if (d.tut) {
+      if (d.tipOk != null || d.tipOff != null) {
+        // A first-time box (#96): "got it" marks this one seen, "no more tips" turns them all off. The page then goes on as it was.
+        const box = t.closest("[data-tip]"), id = box && box.getAttribute("data-tip");
+        if (d.tipOff != null) tips = { ...tips, off: true };
+        else if (id && !tips.seen.includes(id)) tips = { ...tips, seen: [...tips.seen, id] };
+        tipsSave(); Sound.play("tap"); pump();
+      } else if (d.tut) {
         // The tutorial's bubble: next, or out of the tutorial (what is left is a normal game).
         session = d.tut === "skip" ? Tut.skip(session) : Tut.next(session);
         ui = { ...ui, raise: false, sel: null, picks: [], confirm: null, county: null, seat: null };

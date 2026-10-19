@@ -8,7 +8,8 @@
 import * as E from "./shared/engine.js";
 import { chooseMove, advise } from "./shared/bots.js";
 import { COUNTIES } from "./shared/board.js";
-import { exactP, tableHTML, labelMove, orderChoices, recentLines, resultLine, resultBlock, changedCounties, bind } from "./table.js";
+import { exactP, tableHTML, labelMove, orderChoices, recentLines, resultLine, resultBlock, changedCounties, bind, checkRate, luckNow } from "./table.js";
+import { EVENTS } from "./shared/cards.js";
 import { decorate, boxCounty } from "./tutorial.js"; // the tutorial (#27) is a layer on this controller; it only acts while session.tut is set
 
 const FEED_MAX = 60;
@@ -247,6 +248,37 @@ export function lastResult(session, lang) {
   return resultLine(session.mine, bind(lang));
 }
 
+// #96: the first game teaches as it goes. Seven new things, in this order; each has a moment, and the box for the first one
+// whose moment it is and that this device has not seen yet is drawn on the human's decision. seen is the list of ids seen,
+// "off" in it for no boxes at all. -> { id, n, ... what the words of that box need } or null. Never in the tutorial.
+export const TIP_IDS = ["trigger", "steal", "save", "debate", "canvass", "strategic", "endorse"];
+const EVENT_OWNER = Object.fromEntries(EVENTS.map((e) => [e.id, e.owner]));
+const SIGNED = (n) => (n > 0 ? "+" : "−") + Math.abs(n);
+export function tipFor(session, choices, lang, seen) {
+  if (!Array.isArray(seen) || seen.includes("off") || session.tut || !session.st || session.st.phase === "end" || !choices.length) return null;
+  const st = session.st, me = session.seat, log = st.log, v = E.view(st, me);
+  const held = [];
+  const ti = log.map((e) => e.t).lastIndexOf("trigger"), tr = log[ti], fx = st.pending && st.pending.fx;
+  if (tr && tr.seat === me && EVENT_OWNER[tr.card] === ["chen", "soong", "lien"][me] && fx && fx.card === tr.card && !log.slice(ti + 1).some((e) => e.t === "play")) {
+    const pl = [...log.slice(0, ti)].reverse().find((e) => e.t === "play");
+    if (pl && pl.seat !== me && pl.card === tr.card) {
+      const mine = E.moraleOf(tr.card).find((e) => e[0] === me);
+      held.push({ id: "trigger", card: tr.card, by: pl.seat, morale: mine ? SIGNED(mine[1]) : null });
+    }
+  }
+  const steals = choices.filter((c) => (c.move.type === "steal" || c.move.type === "remove") && c.move.target != null && c.move.target !== me);
+  const rate = steals.map((c) => ({ c, p: Math.round(checkRate(v, me, c.move)) })).find((r) => Number.isFinite(r.p));
+  if (rate) held.push({ id: "steal", p: rate.p, target: rate.c.move.target });
+  if (st.phase === "save" && choices.length > 1) held.push({ id: "save", forum: st.turn <= 5 });
+  if (st.phase === "debate" && choices.some((c) => c.move.type === "reveal")) held.push({ id: "debate" });
+  if (st.phase === "election" && choices.some((c) => c.move.type === "canvass")) { const p = Math.round(luckNow(v, me)); held.push({ id: "canvass", p: Number.isFinite(p) ? p : null }); }
+  if (st.phase === "election") held.push({ id: "strategic" });
+  const r = (st.endorse || []).findIndex((h) => h === me);
+  if (r >= 0) held.push({ id: "endorse", region: r });
+  const t = held.find((h) => !seen.includes(h.id));
+  return t ? { ...t, n: TIP_IDS.indexOf(t.id) + 1 } : null;
+}
+
 export function screen(session, lang, opts = {}) {
   const v = E.view(session.st, session.seat);
   const d = decide(session, lang), x = bind(lang), rec = session.rec || [];
@@ -254,7 +286,7 @@ export function screen(session, lang, opts = {}) {
   const html = tableHTML(v, d.choices, lang, {
     feed: session.feed, wait: botsToMove(session), advisor: { on: !!session.advisor, why: d.why },
     undo: session.tut || botsToMove(session).length ? null : canUndo(session) ? "on" : session.drew ? "off" : null,
-    recent: recentLines(rec, v, x), rec, mineActs: (session.mine && session.mine.lines) || [], result: resultBlock(session.mine, x), autoNote: session.autoNote || null, changed, ...opts, ...(session.tut && opts.county == null && boxCounty(session) != null ? { county: boxCounty(session) } : {}), turnCard: session.tut ? false : opts.turnCard,
+    recent: recentLines(rec, v, x), rec, mineActs: (session.mine && session.mine.lines) || [], result: resultBlock(session.mine, x), autoNote: session.autoNote || null, changed, ...opts, ...(session.tut && opts.county == null && boxCounty(session) != null ? { county: boxCounty(session) } : {}), turnCard: session.tut ? false : opts.turnCard, tip: tipFor(session, d.choices, lang, opts.tipsSeen),
   });
   return session.tut ? decorate(html, session, lang, opts) : html;
 }
