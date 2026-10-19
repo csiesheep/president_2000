@@ -27,8 +27,8 @@
 //     client address (tools/room101.mjs measures those, and the wiring).
 //   - a game played at a quick person's pace (a move every 400 ms, the whole game, through limiter(LIMITS.msg)) meets no
 //     rate_limited.
-// Reports 尚未實作 while names behave as on main (format characters kept), while chat is never rate_limited, and until
-// src/limits.js exists.
+// #101 landed (46ca7d8): format characters kept, chat never rate_limited or no src/limits.js is a failure now (it
+// reported 尚未實作 before the work was done).
 import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
@@ -89,19 +89,19 @@ check("名字：拿掉控制與格式字元、空白收成一個、NFC、24 個�
     if (CF.test(input) && CF.test(got || "")) kept.push(what);
   }
   const z = nonEmpty(HAS_FORMAT.length, "帶格式字元的名字"); if (z !== true) return z;
-  if (kept.length === HAS_FORMAT.length) return `TODO: 名字裡的格式字元都還在（${kept.join("、")}）`;
+  if (kept.length === HAS_FORMAT.length) return `#101 上線之後是失敗：名字裡的格式字元都還在（${kept.join("、")}）`;
   return ok(!bad.length, bad.length ? `${bad.length}/${NAMES.length} 條不對：${bad.slice(0, 4).join("；")}` : `${NAMES.length} 條都對`);
 });
 check("名字：全是格式字元的名字，跟空的名字一樣", () => {
   const got = shown("​‮⁦");
-  if (FORMAT.test(got || "")) return `TODO: 格式字元還在（${cps(got)}）`;
+  if (FORMAT.test(got || "")) return `#101 上線之後是失敗：格式字元還在（${cps(got)}）`;
   return ok(got === EMPTY, `${cps(got)}（空的名字是 ${JSON.stringify(EMPTY)}）`);
 });
 check("聊天：同樣拿掉控制與格式字元、空白收成一個、NFC、200 個字", () => {
   const LINES = [["‮txet", "txet"], ["hi​ there", "hi there"], ["a\nb", "a b"], ["é", "é"], ["好😀", "好😀"], ["x".repeat(250), "x".repeat(200)]];
   const bad = [];
   for (const [input, want] of LINES) { const got = said(input); if (got !== want) bad.push(`${cps(input).slice(0, 40)} → ${cps(got).slice(0, 40)}，應是 ${cps(want).slice(0, 40)}`); }
-  if (FORMAT.test(said("‮txet") || "") && FORMAT.test(said("hi​ there") || "")) return "TODO: 聊天裡的格式字元還在";
+  if (FORMAT.test(said("‮txet") || "") && FORMAT.test(said("hi​ there") || "")) return "#101 上線之後是失敗：聊天裡的格式字元還在";
   return ok(!bad.length, bad.length ? bad.join("；") : `${LINES.length} 條都對`);
 });
 
@@ -112,9 +112,9 @@ const FILE = new URL("../src/limits.js", import.meta.url);
 let L = null, L_ERR = null;
 if (existsSync(FILE)) { try { L = await import(FILE.href); } catch (e) { L_ERR = e; } }
 const cL = (name, fn) => check(name, () => {
-  if (!existsSync(FILE)) return "TODO: src/limits.js 還沒有（#101）";
+  if (!existsSync(FILE)) return "#101 上線之後是失敗：src/limits.js 還沒有（#101）";
   if (L_ERR) return `src/limits.js 在 node 裡 import 就丟錯：${L_ERR.message}`;
-  if (!L.LIMITS || typeof L.limiter !== "function") return "TODO: src/limits.js 還沒有 LIMITS、limiter（#101）";
+  if (!L.LIMITS || typeof L.limiter !== "function") return "#101 上線之後是失敗：src/limits.js 還沒有 LIMITS、limiter（#101）";
   return fn();
 });
 cL("LIMITS 跟契約一樣（每條連線 10 秒 30 則；每個位址 10 分鐘猜錯 20 次、開 30 間房）", () => {
@@ -138,7 +138,7 @@ check("聊天：一位玩家 6 秒內說 12 句，送出前 5 句，第 6–12 �
   for (let i = 0; i < 12; i++) outs.push(w.msg("A", { t: "chat", text: `第 ${i + 1} 句` }, T0 + 100 + i * 500));
   const toB = outs.map((o) => o.some((x) => x.to === "B" && x.msg.t === "chat")), n = toB.filter(Boolean).length, kept = w.room.chat.length - kept0;
   const later = w.msg("A", { t: "chat", text: "第 13 句" }, T0 + 20_000);
-  if (n === 12) return "TODO: 12 句都照送（聊天還沒有限速）";
+  if (n === 12) return "#101 上線之後是失敗：12 句都照送（聊天還沒有限速）";
   const bad = [];
   if (toB.slice(0, 5).some((x) => !x)) bad.push(`前 5 句有 ${toB.slice(0, 5).filter((x) => !x).length} 句沒送到 B`);
   if (n !== 5) bad.push(`送到 B 的是 ${n} 句（應是 5 句）`);

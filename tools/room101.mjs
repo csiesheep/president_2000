@@ -17,7 +17,7 @@
 //   - opening rooms (create=1): 30 within 10 minutes from one address; the 31st is rate_limited;
 //   - a socket: at most 30 messages within any 10 s (src/limits.js LIMITS.msg); each one more is answered rate_limited;
 //   - the room page, refused when joining: shows T.errors.rate_limited and opens no new socket (40 s).
-// Reports 尚未實作 while nothing is ever rate_limited.
+// #101 landed (46ca7d8): nothing ever rate_limited is a failure now (it reported 尚未實作 before the work was done).
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 
@@ -135,7 +135,7 @@ const pre = () => (M.err ? `儀器中途停下：${M.err}（instrument；同一�
 const any = () => [...(M.misses || []), M.after, M.miss21, ...(M.creates || []), ...(M.flood || [])].includes("rate_limited");
 row("猜代碼：同一個位址 20 次加入不存在的房間都回 no_room；之後沒帶 token 加入存在的房間、或再猜一次，都回 rate_limited", () => {
   const p = pre(); if (p) return p;
-  if (!any()) return `TODO: 從來沒有 rate_limited（20 次都是 ${[...new Set(M.misses)].join("/")}，之後加入存在的房間：${M.after}）`;
+  if (!any()) return `#101 上線之後是失敗：從來沒有 rate_limited（20 次都是 ${[...new Set(M.misses)].join("/")}，之後加入存在的房間：${M.after}）`;
   const bad = [];
   const early = M.misses.findIndex((x) => x !== "no_room"); if (early >= 0) bad.push(`第 ${early + 1} 次猜就回 ${M.misses[early]}（前 20 次應是 no_room）`);
   if (M.after !== "rate_limited") bad.push(`之後沒帶 token 加入存在的房間：${M.after}（應是 rate_limited：不然有沒有這間房還是看得出來）`);
@@ -145,32 +145,32 @@ row("猜代碼：同一個位址 20 次加入不存在的房間都回 no_room；
 row("同一個位址被擋的時候，帶著自己座位的 token 回來照常坐回去", () => {
   const p = pre(); if (p) return p;
   if (!M.token) return "第一次公平加入沒有拿到 token（instrument）";
-  if (!any()) return "TODO: 還沒有限制，量不出被擋時回不回得去";
+  if (!any()) return "#101 上線之後是失敗：還沒有限制，量不出被擋時回不回得去";
   return okm(M.back === "same", M.back === "same" ? "hello，同一個 token" : `回來時：${M.back}`);
 });
 row("開房間：同一個位址 10 分鐘內 30 間都開得成，第 31 間回 rate_limited", () => {
   const p = pre(); if (p) return p;
   const ok30 = M.creates.slice(0, 30).filter((x) => x === "room").length, last = M.creates[30];
-  if (!any()) return `TODO: 31 間都開成了（${ok30 + (last === "room" ? 1 : 0)} 間）`;
+  if (!any()) return `#101 上線之後是失敗：31 間都開成了（${ok30 + (last === "room" ? 1 : 0)} 間）`;
   return okm(ok30 === 30 && last === "rate_limited", `前 30 間開成 ${ok30} 間，第 31 間：${last}`);
 });
 row("一條連線一口氣送 40 則：前 30 則照常處理（bad_message），後 10 則回 rate_limited", () => {
   const p = pre(); if (p) return p;
   const f = M.flood || [], bm = f.filter((c) => c === "bad_message").length, rl = f.filter((c) => c === "rate_limited").length;
-  if (!any()) return `TODO: 40 則都照常處理（bad_message ${bm}）`;
+  if (!any()) return `#101 上線之後是失敗：40 則都照常處理（bad_message ${bm}）`;
   return okm(bm === 30 && rl === 10, `bad_message ${bm}、rate_limited ${rl}（共收到 ${f.length} 個錯誤）`);
 });
 row("IPv6 以 /64 為一組：同一個 /64 的一台猜錯 20 次，另一台沒帶 token 加入也被擋；另一個 /64 照常", () => {
   const p = pre(); if (p) return p;
-  if (!any()) return "TODO: 還沒有限制";
+  if (!any()) return "#101 上線之後是失敗：還沒有限制";
   const x = M.v6 || {};
   return okm(x.same === "rate_limited" && x.other === "hello", `同一個 /64 的另一台：${x.same}（應是 rate_limited）；另一個 /64：${x.other}（應是 hello）`);
 });
 row("房間頁：被擋的位址打開 ?room=<代碼>，畫面寫出 errors.rate_limited，40 秒內不再開新連線", () => {
   const p = pre(); if (p) return p;
-  if (!LIMIT_TEXT) return "TODO: zh-Hant 的 errors.rate_limited 還沒有";
+  if (!LIMIT_TEXT) return "#101 上線之後是失敗：zh-Hant 的 errors.rate_limited 還沒有";
   const x = M.page; if (!x) return "沒有量到（instrument）";
-  if (!any()) return "TODO: 還沒有限制";
+  if (!any()) return "#101 上線之後是失敗：還沒有限制";
   const bad = [];
   if (!x.shows) bad.push(`畫面沒有寫出「${LIMIT_TEXT}」（寫的是：${x.text}）`);
   if (x.more) bad.push(`之後 40 秒又開了 ${x.more} 條連線`);
