@@ -18,6 +18,7 @@ import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import * as S from "../public/solo.js";
 import * as D from "../tests/driver.js";
+import { EVENTS } from "../public/shared/cards.js";
 
 const base = process.argv[2];
 if (!base) { console.log("usage: node tools/polish30.mjs <base url ending in /president_2000/>"); process.exit(2); }
@@ -25,7 +26,16 @@ const CHROME = process.env.CHROME || "C:/Program Files/Google/Chrome/Application
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const KEY = "p2000.solo.session";
 
-// A solo game stopped where the human may trigger their own card (a tall decision with the card drawn).
+// A solo game stopped at a tall decision about the human's own card that a rival played for CP. Before v0.8 that was
+// the question whether to trigger it; since v0.8 (#82, no question: it always happens) it is the event's own choice the
+// human makes (where to place), with #92's note above it saying who played it.
+const OWNER = Object.fromEntries(EVENTS.map((e) => [e.id, e.owner]));
+function tallMine(st) {
+  const log = st.log, ti = log.map((e) => e.t).lastIndexOf("trigger"), tr = log[ti], fx = st.pending && st.pending.fx;
+  if (!tr || tr.seat !== 0 || OWNER[tr.card] !== "chen" || !fx || fx.card !== tr.card || log.slice(ti + 1).some((e) => e.t === "play")) return false;
+  const pl = [...log.slice(0, ti)].reverse().find((e) => e.t === "play");
+  return !!pl && pl.seat !== 0 && pl.card === tr.card;
+}
 function triggerSession() {
   for (let seed = 1; seed < 400; seed++) {
     let s = S.advance(S.newSolo({ seat: 0, level: 2, seed }));
@@ -33,7 +43,7 @@ function triggerSession() {
     for (let n = 0; n < 300 && s.st.phase !== "end"; n++) {
       const ch = S.choices(s, "zh-Hant");
       if (!ch.length) break;
-      if (ch.some((c) => c.move && c.move.type === "trigger")) return { s, seed, n };
+      if (ch.some((c) => c.move && c.move.type === "trigger") || (ch.length > 1 && tallMine(s.st))) return { s, seed, n };
       s = S.advance(S.act(s, ch[Math.floor(R() * ch.length)].move));
     }
   }
@@ -98,7 +108,7 @@ const SMALL = `(()=>{
 const out = [];
 const rule = (ok, what) => out.push({ ok, what });
 const trig = triggerSession();
-if (!trig) { console.log("FAIL: no solo game reached a trigger decision (instrument)"); process.exit(1); }
+if (!trig) { console.log("FAIL: no solo game reached a decision about your card a rival played (instrument)"); process.exit(1); }
 const br = await launch();
 try {
   for (const [w, h, mob, scroll] of [[1440, 900, false, false], [1280, 800, false, true], [390, 844, true, true]]) {
@@ -132,7 +142,7 @@ try {
   }
 } finally { br.close(); }
 
-console.log(`(trigger decision from seed ${trig.seed}, after ${trig.n} human decisions)`);
+console.log(`(your card played by a rival: seed ${trig.seed}, after ${trig.n} human decisions)`);
 let bad = 0;
 for (const r of out) { if (!r.ok) bad++; console.log(`${r.ok ? "✓" : "✗"} ${r.what}`); }
 console.log(bad ? `FAIL: ${bad} of ${out.length}` : `PASS: ${out.length} checks`);
