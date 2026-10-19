@@ -11,7 +11,8 @@
 // socket's first message instead (the protocol is the BE's to define, the client follows it). The room works as
 // before: the host sits, a second player (another browser) joins under their name and sits, both see each other's name
 // on the seats, and a reload sits the host down again in the same seat. A socket that never sends its first message is
-// closed within 15 s and gets nothing of the room before (ruling on #105 after the BE's note).
+// given up within 15 s (the client sees an error or the close, whichever comes first) and gets nothing of the room before
+// (ruling on #105 after the BE's notes).
 // Measured with two browser profiles (two players); every WebSocket each opens is read off CDP.
 // Reports 尚未實作 while the pages put the name or the token in the URL (as on main).
 import { spawn } from "node:child_process";
@@ -90,8 +91,11 @@ try {
   M.idle = await new Promise((res) => {
     const wsBase = base.replace(/^http/, "ws") + "ws", t0 = Date.now(), got = [];
     let ws; try { ws = new WebSocket(`${wsBase}?room=${M.code}`, { headers: { "CF-Connecting-IP": "2001:db8:105::1" } }); } catch (e) { res({ err: e.message }); return; }
-    ws.onmessage = (e) => { try { got.push(JSON.parse(e.data).t); } catch { /* not json */ } };
-    const done = (closedAfter) => res({ closedAfter, got });
+    // the server gives up on the socket when it says so (an error) or closes it, whichever the client sees first: in
+    // wrangler dev a close of a socket that never sent a frame reaches the client about 10 s late (BE on #105)
+    let said = null;
+    ws.onmessage = (e) => { try { const t = JSON.parse(e.data).t; got.push(t); if (t === "error" && said == null) said = Date.now() - t0; } catch { /* not json */ } };
+    const done = (closedAt) => res({ closedAfter: [said, closedAt].filter((x) => x != null).reduce((a, b) => Math.min(a, b), Infinity), said, closedAt, got });
     ws.onclose = () => done(Date.now() - t0);
     setTimeout(() => { try { ws.close(); } catch { /* closed */ } done(null); }, 20000);
   });
@@ -133,11 +137,11 @@ row("連上之後一直不送第一則訊息的連線：15 秒內被關掉，在
   const x = M.idle || {};
   if (x.err) return `開不了連線：${x.err}（instrument）`;
   const roomish = (x.got || []).filter((t) => ["hello", "room", "state", "chat"].includes(t));
-  if (roomish.includes("hello") && x.closedAfter == null) return `TODO: 沒送 join 也拿到 hello、連線一直開著（收到 ${roomish.join("、")}）`;
+  if (roomish.includes("hello") && !Number.isFinite(x.closedAfter)) return `TODO: 沒送 join 也拿到 hello、連線一直開著（收到 ${roomish.join("、")}）`;
   const bad = [];
-  if (x.closedAfter == null || x.closedAfter > 15500) bad.push(`20 秒內沒被關掉（${x.closedAfter == null ? "一直開著" : x.closedAfter + " ms"}）`);
+  if (!Number.isFinite(x.closedAfter) || x.closedAfter > 15000) bad.push(`15 秒內伺服器沒有放棄這條連線（${Number.isFinite(x.closedAfter) ? x.closedAfter + " ms" : "20 秒都開著、沒有 error"}）`);
   if (roomish.length) bad.push(`關掉之前收到 ${roomish.join("、")}`);
-  return okm(!bad.length, bad.join("；") || `${x.closedAfter} ms 後被關掉，之前沒收到房間的東西`);
+  return okm(!bad.length, bad.join("；") || `${x.closedAfter} ms 伺服器放棄這條連線（error ${x.said ?? "—"} ms、close ${x.closedAt ?? "—"} ms），之前沒收到房間的東西`);
 });
 
 let bad = 0, pend = 0;
