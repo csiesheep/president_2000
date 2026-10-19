@@ -16,8 +16,9 @@
 //   D. the solo setup screen (1440 and 390 wide): tap each of the three candidates and a bot level; the page only
 //      marks which one is picked, so no picture should be rebuilt (#39, owner 2026-10-15: "單人對戰，選候選人時，所有
 //      候選人的圖會閃動" - every tap rewrote the screen and rebuilt all three pictures).
-// Not counted: pictures inside a replayed rival card ([data-replay], #47) or the turn card ([data-turncard], #44) -
-// those are new pictures by design, shown once.
+// Not counted: pictures inside a replayed rival card ([data-replay], #47), the turn card ([data-turncard], #44) or
+// the handoff card ([data-handoff], #73: whose turn it is, with that candidate's picture) - those are new pictures by
+// design, shown once each (since #73 window C had one per seat change: candidates/soong, candidates/chen).
 // Pass: no <img> rebuilt in any window (owner, 2026-10-15: "玩 tutorial 時，圖片會一直閃動").
 // It also prints how many times the table was swapped as a whole, for the record.
 import { spawn } from "node:child_process";
@@ -78,7 +79,7 @@ const WATCH = `(()=>{
   window.__churnSeen = new WeakSet(document.querySelectorAll("img, image"));
   if (window.__churnMO) window.__churnMO.disconnect();
   const look = (n) => { if (n.nodeType !== 1) return; const list = n.tagName === "IMG" || n.tagName === "image" ? [n] : [...(n.querySelectorAll ? n.querySelectorAll("img, image") : [])];
-    for (const im of list) if (!__churnSeen.has(im) && !(im.closest && im.closest("[data-replay], [data-turncard]"))) { __churnSeen.add(im); __churn.newImg++; if (__churn.newSrc.length < 5) __churn.newSrc.push((im.getAttribute("src") || im.getAttribute("href") || "").split("/").slice(-2).join("/")); } };
+    for (const im of list) if (!__churnSeen.has(im) && !(im.closest && im.closest("[data-replay], [data-turncard], [data-handoff]"))) { __churnSeen.add(im); __churn.newImg++; if (__churn.newSrc.length < 5) __churn.newSrc.push((im.getAttribute("src") || im.getAttribute("href") || "").split("/").slice(-2).join("/")); } };
   window.__churnMO = new MutationObserver((list) => { for (const m of list) for (const n of m.addedNodes) {
     look(n); if (n.nodeType === 1 && n.querySelector && n.querySelector("[data-county]")) __churn.tableSwaps++; } });
   window.__churnMO.observe(document.body, { childList: true, subtree: true });
