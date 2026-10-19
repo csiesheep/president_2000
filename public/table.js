@@ -1249,7 +1249,7 @@ function endHTML(v, x, o) {
   // The tie-break: every rule up to the one that decided it, with each tied seat's number.
   let tieBox = "";
   if (kind === "tie") {
-    const RULES = ["votes", "leads", "momentum", "order"], upto = RULES.slice(0, RULES.indexOf(rc.decidedBy) + 1);
+    const RULES = noMom(v) ? ["votes", "leads", "order"] : ["votes", "leads", "momentum", "order"], upto = RULES.slice(0, RULES.indexOf(rc.decidedBy) + 1);
     const prio = isV06(v) && Array.isArray(v.order) && v.order.length === 3 ? v.order : [0, 1, 2].map((i) => ((v.initiative >= 0 ? v.initiative : 0) + i) % 3);
     let pool = tied;
     const rowsT = upto.map((rule) => {
@@ -1258,17 +1258,16 @@ function endHTML(v, x, o) {
       if (rule === "order") cells = prio.filter((p) => mine.includes(p)).map((p) => `<span class="tcell s${p}${p === w ? " win" : ""}">${esc(x.short(p))}${p === w ? " ✓" : ""}</span>`).join("");
       else {
         const arr = r[rule === "votes" ? "votes" : rule === "leads" ? "leads" : "momentum"];
-        const val = (p) => (rule === "momentum" && noMom(v) ? "—" : arr[p]);
-        cells = rule === "momentum" && noMom(v) ? `<span class="tcell">—</span>` : mine.map((p) => `<span class="tcell s${p}${here && p === w ? " win" : ""}">${esc(x.tr("end.tieCell", { who: x.short(p), n: val(p) }))}${here && p === w ? " ✓" : ""}</span>`).join("");
+        cells = mine.map((p) => `<span class="tcell s${p}${here && p === w ? " win" : ""}">${esc(x.tr("end.tieCell", { who: x.short(p), n: arr[p] }))}${here && p === w ? " ✓" : ""}</span>`).join("");
         const m = Math.max(...mine.map((p) => arr[p]));
         pool = mine.filter((p) => arr[p] === m);
       }
       if (here) {
         if (rule === "leads") extra = x.tr("end.tieLeads", { who: x.short(w), d: r.leads[w] - r.leads[me] });
-        else if (rule === "momentum" && !noMom(v)) extra = x.tr("end.tieMom", { who: x.short(w), d: r.momentum[w] - r.momentum[me] });
+        else if (rule === "momentum") extra = x.tr("end.tieMom", { who: x.short(w), d: r.momentum[w] - r.momentum[me] });
         else if (rule === "order") extra = x.tr("end.tieOrder", { who: x.short(w) });
       }
-      return `<div class="trow${here ? " here" : ""}" data-tie-rule="${rule}"${here ? " data-decided-here" : ""}><span class="tl">${esc(x.tr("end.tieRule." + (rule === "momentum" && noMom(v) ? "noMom" : rule)))}</span><span class="tcs">${cells}</span>${here ? `<em class="td">${esc(x.tr("end.tieDecided"))}${extra ? ` · ${esc(extra)}` : ""}</em>` : ""}</div>`;
+      return `<div class="trow${here ? " here" : ""}" data-tie-rule="${rule}"${here ? " data-decided-here" : ""}><span class="tl">${esc(x.tr("end.tieRule." + (rule === "order" && !noMom(v) ? "order4" : rule)))}</span><span class="tcs">${cells}</span>${here ? `<em class="td">${esc(x.tr("end.tieDecided"))}${extra ? ` · ${esc(extra)}` : ""}</em>` : ""}</div>`;
     }).join("");
     tieBox = `<section class="e-card e-tie" data-end-tie data-decided="${rc.decidedBy}"><h3>${esc(x.tr("end.tieTitle"))}</h3>${rowsT}</section>`;
   }
