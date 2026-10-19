@@ -11,6 +11,7 @@
 import * as RC from "./roomclient.js";
 import * as Sound from "./sound.js";
 import * as Replay from "./replay.js";
+import * as Count from "./count.js";
 import { esc, turnSeat } from "./table.js";
 import { drawInto, deskNow, narrowNow, watchNarrow, bindCounty, bindSeat, bindMenu } from "./drawing.js";
 
@@ -116,7 +117,24 @@ export function mount({ T, lang, qs, store, $ }) {
   Replay.bindTaps({ active: () => rep.active(), onStep: () => { rep.skipStep(); }, onAll: () => { rep.skipAll(); draw(); },
     ignore: "[data-menu], [data-menu-top], #rmenu, .mset, [data-feed-toggle], [data-turncard], [data-handoff], [data-rp-next], a, input, textarea, form, .t-chat" });
   addEventListener("p2000:settings", () => { if (Sound.getSpeed() !== "step") rep.skipStep(); });
+  // Election night (#93): the game ends in everyone's page at once, and each page that saw it still running plays the count
+  // once (after the replay of the last moves). A page opened on a finished game shows the end page with the replay button;
+  // a rematch (the game running again) puts any count away.
+  let count = null, liveGame = false, pendingCount = false;
+  const endView = () => { const v = client.state && client.state.view; return v && v.phase === "end" && v.result ? v : null; };
+  const startCount = () => {
+    const v = endView();
+    if (count || !v) return;
+    count = Count.mountCount({ T, lang, view: v, onClose: () => { count = null; } });
+  };
+  const countTick = () => {
+    const v = client.state && client.state.view;
+    if (v && v.phase !== "end") { liveGame = true; pendingCount = false; if (count) count.close(); }
+    else if (endView() && liveGame) { liveGame = false; pendingCount = true; }
+    if (pendingCount && !count && !rep.active() && !rep.running()) { pendingCount = false; startCount(); }
+  };
   const draw = () => {
+    if (!gone) countTick();
     if (gone) {
       $("#room").classList.remove("intable");
       stage.innerHTML = `<section class="lobby setup"><p class="rerr" role="alert">${esc(T.errors.no_room)}</p><a class="big go" href="${esc(q({ join: "1" }))}">${esc(F.joinGo)}</a></section>`;
@@ -140,6 +158,7 @@ export function mount({ T, lang, qs, store, $ }) {
     const box = $("#chatin"), had = box && document.activeElement === box, caret = had ? [box.selectionStart, box.selectionEnd] : null;
     const log = stage.querySelector(".chatlog"), pinned = !log || log.scrollHeight - log.scrollTop - log.clientHeight < 40;
     drawInto(stage, RC.screen(client, lang, { feedOpen: ui.feed, raise: ui.raise, level: ui.level, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow, sel: ui.sel, picks: ui.picks, draft: ui.draft, help: ui.help, moves: ui.moves, confirm: ui.confirm, turnCard: !!card && !card.out && !!cv, cardAge: card ? performance.now() - card.t0 : 0, handoff: hoff && !hoff.out && !!hv ? hoff.seat : undefined, handoffAge: hoff ? performance.now() - hoff.t0 : 0 }), { seat: ui.seat, menu: menu.isOpen() });
+    if (endView()) Count.addReplay(stage, T, startCount);
     // At the table the top row has its own menu button, so the page's top bar steps aside.
     $("#room").classList.toggle("intable", !!stage.querySelector(".tbl"));
     const nb = $("#chatin");

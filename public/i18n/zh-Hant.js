@@ -31,6 +31,23 @@ export default {
     stubIssue: "政見發表會", stubCanvass: "投票日催票",
     // 軍師 (#18): 牌桌上方的軍師開關、★ 標記，與理由前的一句
     advisor: { label: "軍師", on: "開", off: "關", prefix: "軍師：", starLabel: "軍師推薦", note: "標出操盤手會走的那一步，只用你看得到的畫面。" },
+    // #93: election night as a TV special on the invented channel 選戰新聞台 (count.js)
+    count: {
+      tagA: "選戰", tagB: "新聞台", special: "開票特別報導", year: "2000 第十任總統大選", live: "LIVE",
+      soonTag: "即將開出", soonLine: "第一個縣市的開票結果即將揭曉", candsTitle: "三組候選人", no: "{n} 號",
+      settleTitle: "開票前先結算", strategic: "棄保", endorse: "背書", noMove: "這局沒有票移動", noGift: "這局沒有人拿到背書的票",
+      gain: "{who} +{n} 塊", sFull: "{label}：{text}",
+      start: "開始開票", auto: "{n} 秒後自動開始", skip: "跳到結果", speed: "開票速度：{v}", speeds: { normal: "一般", fast: "快速" },
+      latest: "最新開出", nth: "第 {n} 個縣市開出", done: "已開出 {n}／24 縣市",
+      takes: "{who}拿下{county}", noLead: "{county}未分勝負", overtakes: "{who}反超{prev}", overtakesSame: "反超{prev}",
+      mapTitle: "各縣市開票", unopened: "未開出", tied: "平手", cities: "圓點是七個省轄市", islets: "金馬", penghu: "澎湖",
+      justIn: "剛剛開出", next: "下一個：{county}", allIn: "24 縣市全部開出",
+      tOpen: "投票已結束・各縣市計票中・本台將逐縣開出", tCounty: "{county}：{text}", tNext: "{county}即將開出", tTotals: "目前累計：{text}",
+      flash: "快訊", flashLine: "24 縣市全部開出", live2: "現場連線", scene: "{who}競選總部　支持者湧入", kicker: "第十任總統", wins: "{who}　當選",
+      line: "得 {votes} 萬票，拿下 {n} 個縣市", mapWon: "各縣市拿下", tResult: "開票結果：{text}", tVotes: "{who} {votes} 萬",
+      next2: "看選後分析", replay: "重看開票", unit: "萬",
+      alt: { studio: "選戰新聞台的攝影棚：主播台與一整面螢幕牆", wall: "選戰新聞台的攝影棚：螢幕牆", end: "{who}的勝選現場" },
+    },
     // 新手教學 (#27)：固定一局，說明框的字。{...} 由 tutorial.js 用畫面上當下的值填。
     tutorial: {
       home: { title: "新手教學", sub: "帶你親手走完一個行動" },

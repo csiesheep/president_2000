@@ -461,3 +461,60 @@ export function taiwanMap(view, lang, opts = {}) {
   return `<section class="t-map" aria-label="${esc(M.board)}"><h3 class="sr">${esc(M.board)}</h3>` +
     `<div class="tw-box" style="--aw:${m.w};--ah:${m.h}" title="${esc(M.hint)}">${svg}${pics.join("")}${chips}${key}${media}${o.floats || ""}${o.overlay || ""}${o.handoff || ""}</div><ul class="sr tw-keys">${keyList}</ul>${o.cover || ""}</section>`;
 }
+
+// ---------------------------------------------------------------- the count night's map (#93)
+// countMap(opts) → an SVG string for 選戰新聞台's count: the same coast, county borders, Penghu and seven cities as the board,
+// as one flat news graphic (no papers, no blocks, no text). Every county is exactly one element carrying
+// data-cmap-k="<index in COUNTIES>" and data-lead="" (count.js sets it: "" not yet in, "0" "1" "2" a seat leads alone, "-1" a
+// tie or nobody); the colours live in count.css, keyed on data-lead. The fifteen counties of the island are one path of their
+// cells; Penghu is its own path, the seven cities dots, 金馬 a small dashed frame in the sea top-left. For each island county
+// there is also a [data-ring] group (hidden until count.js turns it on): the yellow frame of the county just opened, its borders
+// and its stretch of coast. Pure, like taiwanMap: one call, the same bytes. It does not touch the board's own map.
+//   opts.label  the aria-label of the svg
+export function countMap(opts = {}) {
+  const { k, x0, y0, lon0, lat0 } = MODES.phone;
+  const P = (lon, lat) => [(lon - lon0) * COS * k + x0, (lat0 - lat) * k + y0];
+  const idx = (name) => COUNTIES.findIndex((c) => c[0] === name);
+  const pathOf = (pts) => "M" + pts.map((p) => f1(p.x ?? p[0]) + " " + f1(p.y ?? p[1])).join("L") + "Z";
+  const seedList = [];
+  for (const [name, pts] of Object.entries(SEEDS)) for (const [a, b] of pts) { const [x, y] = P(a, b); seedList.push({ x, y, k: idx(name) }); }
+  const box = [{ x: -5000, y: -5000, l: "box" }, { x: 9000, y: -5000, l: "box" }, { x: 9000, y: 9000, l: "box" }, { x: -5000, y: 9000, l: "box" }];
+  const cells = seedList.map((s, i) => {
+    let poly = box.map((p) => ({ ...p }));
+    seedList.forEach((t, j) => { if (i !== j) poly = clipHalf(poly, t.x - s.x, t.y - s.y, (t.x * t.x + t.y * t.y - s.x * s.x - s.y * s.y) / 2, j); });
+    return poly;
+  });
+  const coastPts = COAST.map(([a, b]) => P(a, b)), penghuPts = PENGHU.map((pp) => pp.map(([a, b]) => P(a, b)));
+  const coast = pathOf(coastPts);
+  const all = [...coastPts, ...penghuPts.flat()], pad = 6;
+  const vx = Math.floor(Math.min(...all.map((p) => p[0])) - pad), vy = Math.floor(Math.min(...all.map((p) => p[1])) - pad);
+  const vw = Math.ceil(Math.max(...all.map((p) => p[0])) + pad) - vx, vh = Math.ceil(Math.max(...all.map((p) => p[1])) + pad) - vy;
+  const fills = new Map(), rings = new Map(); let edge = "";
+  cells.forEach((poly, i) => {
+    const c = seedList[i].k;
+    fills.set(c, (fills.get(c) || "") + pathOf(poly));
+    poly.forEach((p, q) => {
+      const n = poly[(q + 1) % poly.length];
+      if (p.l === "box" || p.l === undefined) return;
+      const o = seedList[p.l].k;
+      if (o === c) return;
+      const seg = `M${f1(p.x)} ${f1(p.y)}L${f1(n.x)} ${f1(n.y)}`;
+      edge += seg;
+      rings.set(c, (rings.get(c) || "") + seg);
+    });
+  });
+  const island = [...fills.keys()].sort((a, b) => a - b);
+  const defs = `<clipPath id="cmland"><path d="${coast}"/></clipPath>` + island.map((c) => `<clipPath id="cmc${c}"><path d="${fills.get(c)}"/></clipPath>`).join("");
+  const land = island.map((c) => `<path class="cm-c" data-cmap-k="${c}" data-lead="" d="${fills.get(c)}"/>`).join("");
+  const ring = island.map((c) => `<g class="cm-ring" data-ring="${c}"><path d="${rings.get(c) || ""}" clip-path="url(#cmland)"/><path d="${coast}" clip-path="url(#cmc${c})"/></g>`).join("");
+  const ell = (cx, cy, rx, ry) => `M${f1(cx - rx)} ${f1(cy)}a${rx} ${ry} 0 1 0 ${2 * rx} 0a${rx} ${ry} 0 1 0 ${-2 * rx} 0Z`;
+  const ix = vx + 4, iy = vy + 4, iw = 52, ih = 40;
+  const cities = Object.entries(CITY).map(([name, [lon, lat]]) => { const [x, y] = P(lon, lat); return `<circle class="cm-c cm-city" data-cmap-k="${idx(name)}" data-lead="" cx="${f1(x)}" cy="${f1(y)}" r="5.5"/>`; }).join("");
+  return `<svg class="cm-svg" xmlns="http://www.w3.org/2000/svg" viewBox="${vx} ${vy} ${vw} ${vh}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${esc(opts.label || "")}">` +
+    `<defs>${defs}</defs><g clip-path="url(#cmland)">${land}<path class="cm-edge" d="${edge}" fill="none"/></g>` +
+    `<path class="cm-coast" d="${coast}" fill="none"/>${ring}` +
+    `<path class="cm-c cm-isl" data-cmap-k="${idx("澎湖縣")}" data-lead="" d="${penghuPts.map(pathOf).join("")}"/>` +
+    `<rect class="cm-box" x="${ix}" y="${iy}" width="${iw}" height="${ih}" rx="4" fill="none"/>` +
+    `<path class="cm-c cm-isl" data-cmap-k="${idx("金馬")}" data-lead="" d="${ell(ix + 30, iy + 27, 11, 5)}${ell(ix + 18, iy + 11, 5, 3.5)}"/>` +
+    `${cities}</svg>`;
+}

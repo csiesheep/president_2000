@@ -7,6 +7,7 @@ import * as Solo from "./solo.js";
 import * as Tut from "./tutorial.js";
 import * as Sound from "./sound.js";
 import * as Replay from "./replay.js";
+import * as Count from "./count.js";
 import * as E from "./shared/engine.js";
 import { mount as mountRoom } from "./roompage.js";
 import { drawInto, deskNow, narrowNow, watchNarrow, bindCounty, bindSeat, bindMenu, placeTutorial } from "./drawing.js";
@@ -98,7 +99,16 @@ if (typeof document !== "undefined") {
       heard = { seed: session.seed, st: session.st };
     };
     // The rivals' moves shown big (#47). Not in the tutorial: it has its own steps for the rivals' turn and keeps the old way.
-    const rep = Replay.createReplay({ labels: { hit: S.replay.hit, miss: S.replay.miss }, lang: code, rules: () => session && session.st && session.st.rules, onIdle: () => { if (!card && cardWanted()) pump(); else if (handWanted()) pump(); else if (autoWanted() && !autoTimer) pump(); else if (tipShown() && !stage.querySelector("[data-tip]")) draw(); else if (Sound.gap() == null && session && session.st && !Solo.botsToMove(session).length && stage.querySelector("[data-botnext]")) draw(); } });
+    const rep = Replay.createReplay({ labels: { hit: S.replay.hit, miss: S.replay.miss }, lang: code, rules: () => session && session.st && session.st.rules, onIdle: () => { if (countDue()) pump(); else if (!card && cardWanted()) pump(); else if (handWanted()) pump(); else if (autoWanted() && !autoTimer) pump(); else if (tipShown() && !stage.querySelector("[data-tip]")) draw(); else if (Sound.gap() == null && session && session.st && !Solo.botsToMove(session).length && stage.querySelector("[data-botnext]")) draw(); } });
+    // Election night (#93): a game that ends on this page (the human's last move or a rival's) is followed by the count, once.
+    // A game that was already over when the page opened shows the end page, with a button that plays the count.
+    let count = null, liveGame = false, pendingCount = false;
+    const finished = () => !!(session && session.st && !session.tut && session.st.phase === "end" && session.st.result);
+    const countDue = () => pendingCount && !count && !rep.active();
+    const startCount = () => {
+      if (count || !finished()) return;
+      count = Count.mountCount({ T, lang: code, view: session.st, onClose: () => { count = null; } });
+    };
     const stepOpt = () => (Sound.gap() == null && session.st && (Solo.botsToMove(session).length || rep.active()) ? { botnext: S.menu.next } : {});
     // The turn card (#44): each turn opens with it, once. It holds the rivals back, stays about 1.5 s and fades out; a tap
     // anywhere closes it (that is not the skip: the rivals only start after it has gone, one step at a time as before).
@@ -154,7 +164,7 @@ if (typeof document !== "undefined") {
     let tips = tipsLoad();
     const tipsSave = () => { try { localStorage.setItem(TIPS, JSON.stringify(tips)); } catch { /* not kept: the memory above still holds for this visit */ } };
     const tipsSeen = () => (tips.off ? ["off"] : tips.seen);
-    const tipsNow = () => (card || hoff || rep.active() || !session || !session.st || session.tut ? ["off"] : tipsSeen());
+    const tipsNow = () => (card || hoff || count || pendingCount || rep.active() || !session || !session.st || session.tut ? ["off"] : tipsSeen());
     const tipShown = () => !!(session && session.st && !session.tut && Solo.tipFor(session, Solo.choices(session, code), code, tipsNow()));
     const draw = () => {
       syncUrl();
@@ -162,6 +172,7 @@ if (typeof document !== "undefined") {
       // The tutorial's "player board" step is about the hand and the bag: on a phone that board shows them while it is on.
       const boardStep = !!(session.tut && Tut.step(session, code).id === "board");
       drawInto(stage, Solo.screen(session, code, { feedOpen: ui.feed, raise: ui.raise, sel: ui.sel, picks: ui.picks, help: ui.help, moves: ui.moves, confirm: ui.confirm, county: ui.county == null ? undefined : ui.county, narrow: ui.narrow, turnCard: !!card && !card.out, cardAge: card ? performance.now() - card.t0 : 0, handoff: hoff && !hoff.out ? hoff.seat : undefined, handoffAge: hoff ? performance.now() - hoff.t0 : 0, tipsSeen: tipsNow(), ...stepOpt() }), { seat: boardStep ? session.seat : ui.seat, menu: menu.isOpen() });
+      if (finished()) Count.addReplay(stage, T, startCount);
       $("#solo").classList.add("intable");
       $("#quit").hidden = false;
       placeTutorial(stage);
@@ -182,6 +193,9 @@ if (typeof document !== "undefined") {
     };
     const pump = () => {
       clearTimeout(autoTimer); autoTimer = null;
+      if (session && session.st && !session.tut && !finished()) liveGame = true;
+      if (finished() && liveGame) { liveGame = false; pendingCount = true; }
+      if (countDue()) { pendingCount = false; startCount(); }
       if (!card && cardWanted()) openCard();
       if (!card && handWanted()) openHand();
       draw();
